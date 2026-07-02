@@ -1,0 +1,72 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: get-yourself-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: get_yourself
+      MYSQL_USER: getyourself
+      MYSQL_PASSWORD: getyourself123
+    ports:
+      - "3306:3306"
+    volumes:
+      - get_yourself_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: get-yourself-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - get_yourself_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: get-yourself-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: getyourself
+      RABBITMQ_DEFAULT_PASS: getyourself123
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - get_yourself_rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    container_name: get-yourself-opensearch
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: GetYourself123!
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - get_yourself_opensearch:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+volumes:
+  get_yourself_mysql:
+  get_yourself_redis:
+  get_yourself_rabbitmq:
+  get_yourself_opensearch:

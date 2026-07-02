@@ -1,0 +1,11 @@
+package com.getyourself.backend.agentlog;
+
+public enum AgentRunType {
+    EVENT_RECOMMENDATION,
+    PLAN_RECOMMENDATION,
+    GROWTH_TAG_EXTRACTION,
+    EVENT_QUALITY_ANALYSIS,
+    ABILITY_EVIDENCE_ASSESSMENT,
+    ABILITY_JUDGE,
+    BAD_CASE_INTAKE
+}

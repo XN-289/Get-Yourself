@@ -1,0 +1,40 @@
+# Environment and secrets
+.env
+*.env
+!.env.example
+*.local
+
+# Claude Code local config
+.claude/
+
+# Java / Maven
+target/
+*.class
+
+# Frontend / Node
+node_modules/
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS / local files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local generated files
+*.zip
+*.mp4
+.tmp-docx/
+docker-registry-backup/
+edge-headless-profile/
+repair-docker-update.ps1
+docker-update-admin.log

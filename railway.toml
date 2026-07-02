@@ -1,0 +1,82 @@
+# Railway configuration for "Get Yourself" project
+# This file defines services for the monorepo deployment.
+#
+# Railway setup instructions:
+#   1. Create a Railway project named "Get Yourself"
+#   2. Add plugins: MySQL, Redis, RabbitMQ (from Railway dashboard)
+#   3. Add two services from this repo:
+#      - Backend  (root: /backend)
+#      - Frontend (root: /frontend)
+#   4. Set environment variables (see [env] sections below)
+#
+# Railway auto-injects these env vars for plugin services:
+#   MySQL:     MYSQL_URL (or MYSQLHOST, MYSQLPORT, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE)
+#   Redis:     REDIS_URL (or REDISHOST, REDISPORT, REDISPASSWORD)
+#   RabbitMQ:  RABBITMQ_URL (or RABBITMQHOST, RABBITMQPORT, RABBITMQUSER, RABBITMQPASSWORD)
+#
+# ============================================================
+# Backend Service  (Spring Boot / Java 21)
+# ============================================================
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "backend/Dockerfile"
+
+[deploy]
+startCommand = ""
+healthcheckPath = "/api/actuator/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
+
+# -- Backend environment variables --
+# Map Railway plugin vars to Spring Boot expected vars.
+# DASHSCOPE_API_KEY and other app-specific keys must be set in Railway dashboard.
+
+[env]
+  # Spring Boot profile
+  SPRING_PROFILES_ACTIVE = "production"
+
+  # Server
+  SERVER_PORT = "8080"
+
+  # MySQL - Railway MySQL plugin auto-provides these; the vars below map them
+  # DB_URL is set in Railway dashboard using the MYSQL_URL value:
+  #   DB_URL = $MYSQL_URL  (add ?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Tokyo)
+  # DB_USERNAME = $MYSQLUSER
+  # DB_PASSWORD = $MYSQLPASSWORD
+
+  # Redis
+  # REDIS_HOST = $REDISHOST
+  # REDIS_PORT = $REDISPORT
+  # REDIS_PASSWORD = $REDISPASSWORD
+
+  # RabbitMQ
+  # RABBITMQ_HOST = $RABBITMQHOST
+  # RABBITMQ_PORT = $RABBITMQPORT
+  # RABBITMQ_USERNAME = $RABBITMQUSER
+  # RABBITMQ_PASSWORD = $RABBITMQPASSWORD
+
+  # AI (set in Railway dashboard)
+  # DASHSCOPE_API_KEY = "sk-..."
+  AI_PROVIDER = "qwen"
+
+  # JVM tuning for Railway (small container)
+  JAVA_OPTS = "-Xms256m -Xmx512m"
+
+# ============================================================
+# Frontend Service  (Vue 3 + Vite, served by Nginx)
+# ============================================================
+# In Railway, add a SECOND service from the same repo with root = /frontend.
+# The config below applies when this service is selected.
+# Alternatively, create a separate railway.toml in /frontend/ or configure
+# via Railway dashboard.
+
+# [build]
+# builder = "dockerfile"
+# dockerfilePath = "frontend/Dockerfile"
+#
+# [env]
+#   # Internal URL to the backend service (Railway private networking)
+#   # Format: https://<service-name>.railway.internal:8080
+#   BACKEND_URL = "https://get-yourself-backend.railway.internal:8080"
