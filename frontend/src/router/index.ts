@@ -110,7 +110,7 @@ const router = createRouter({
     {
       path: "/student",
       component: StudentLayout,
-      redirect: "/student/growth/timeline",
+      redirect: "/student/events",
       meta: { requiresAuth: true, roles: ["STUDENT"] },
       children: studentChildren
     },

@@ -179,7 +179,7 @@ docker compose version
 进入后端目录：
 
 ```powershell
-cd D:\warma\Documents\backend
+cd D:\projects\get-yourself\backend
 ```
 
 启动服务：
@@ -558,7 +558,7 @@ npm --version
 ### 8.2 第一次安装前端依赖
 
 ```powershell
-cd D:\warma\Documents\frontend
+cd D:\projects\get-yourself\frontend
 npm install
 ```
 
@@ -569,7 +569,7 @@ npm install
 先确保 Spring Boot 后端运行在 `8080`，然后新开一个 PowerShell：
 
 ```powershell
-cd D:\warma\Documents\frontend
+cd D:\projects\get-yourself\frontend
 npm run dev
 ```
 
@@ -590,7 +590,7 @@ http://localhost:8080
 ### 8.4 生产构建
 
 ```powershell
-cd D:\warma\Documents\frontend
+cd D:\projects\get-yourself\frontend
 npm run build
 ```
 
@@ -744,7 +744,7 @@ mvn spring-boot:run
 
 ### 13.1 推荐方式：使用本地 `.env` 文件
 
-后端启动时会自动读取 `D:\warma\Documents\backend\.env`。
+后端启动时会自动读取 `D:\projects\get-yourself\backend\.env`。
 
 在后端目录新建 `.env` 文件，内容如下：
 
@@ -760,7 +760,7 @@ MCP_DEFAULT_LOCATION=中国 上海
 然后正常启动后端：
 
 ```powershell
-cd D:\warma\Documents\backend
+cd D:\projects\get-yourself\backend
 docker compose up -d mysql redis
 mvn spring-boot:run
 ```
@@ -772,7 +772,7 @@ mvn spring-boot:run
 在启动后端的同一个 PowerShell 窗口里执行：
 
 ```powershell
-cd D:\warma\Documents\backend
+cd D:\projects\get-yourself\backend
 
 $env:AI_PROVIDER="qwen"
 $env:DASHSCOPE_API_KEY="你的百炼API Key"
