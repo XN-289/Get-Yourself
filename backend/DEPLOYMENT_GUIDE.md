@@ -1,6 +1,6 @@
-# do not miss 后端部署指南
+# Get Yourself 后端部署指南
 
-这份指南假设你的电脑里什么环境都没有，只有前端代码 `do-not-miss-frontend` 和后端代码 `do-not-miss-backend`。
+这份指南假设你的电脑里什么环境都没有，只有前端代码 `frontend` 和后端代码 `backend`。
 
 后端技术栈：
 
@@ -179,7 +179,7 @@ docker compose version
 进入后端目录：
 
 ```powershell
-cd D:\warma\Documents\do-not-miss-backend
+cd D:\warma\Documents\backend
 ```
 
 启动服务：
@@ -203,8 +203,8 @@ http://localhost:15672
 默认账号：
 
 ```text
-username: donotmiss
-password: donotmiss123
+username: getyourself
+password: getyourself123
 ```
 
 OpenSearch / Elasticsearch BM25 检索是可选增强项。`docker compose up -d` 会同时准备 OpenSearch 容器；如果暂时不用搜索引擎，后端仍会默认走本地 Java 规则检索。
@@ -219,7 +219,7 @@ SEARCH_RERANK_TOP_N=12
 AI_EMBEDDING_MODEL=text-embedding-v4
 AI_EMBEDDING_DIMENSIONS=1024
 SEARCH_BASE_URL=http://localhost:9200
-SEARCH_INDEX_NAME=do_not_miss_events
+SEARCH_INDEX_NAME=get_yourself_events
 ```
 
 启动后端后执行一次重建索引：
@@ -233,10 +233,10 @@ curl -X POST "http://localhost:8080/api/ai/retrieval/reindex" `
 
 正常情况下会看到：
 
-- `do-not-miss-mysql`
-- `do-not-miss-redis`
-- `do-not-miss-rabbitmq`
-- `do-not-miss-opensearch`
+- `get-yourself-mysql`
+- `get-yourself-redis`
+- `get-yourself-rabbitmq`
+- `get-yourself-opensearch`
 
 ## 6. 启动 Spring Boot 后端
 
@@ -268,7 +268,7 @@ http://localhost:8080/api/health
 ```json
 {
   "status": "ok",
-  "service": "do-not-miss-backend"
+  "service": "backend"
 }
 ```
 
@@ -339,7 +339,7 @@ curl -X POST "http://localhost:8080/api/ai/event-recommendations" `
 curl -X POST "http://localhost:8080/api/ai/action-plans" `
   -H "Content-Type: application/json" `
   -H "Authorization: Bearer $TOKEN" `
-  -d "{""goal"":""想提升日语能力，同时参加线下实践"",""horizonDays"":14,""intensity"":""balanced"",""location"":""大阪""}"
+  -d "{""goal"":""想提升日语能力，同时参加线下实践"",""horizonDays"":14,""intensity"":""balanced"",""location"":""上海""}"
 ```
 
 返回结果里会有多份 `plans`。每份计划包含 `title`、`style`、`summary`、`steps` 和 `warnings`；步骤里如果来自数据库事件，会带 `eventId`，前端可以据此展示预约按钮或跳转事件卡片。
@@ -350,7 +350,7 @@ curl -X POST "http://localhost:8080/api/ai/action-plans" `
 curl -X POST "http://localhost:8080/api/events" `
   -H "Content-Type: application/json" `
   -H "Authorization: Bearer $TOKEN" `
-  -d "{""title"":""商店街采访协助"",""organizationName"":""Tokyo Local Lab"",""category"":""研究"",""startTime"":""2026-07-01T14:00:00"",""location"":""东京 中野"",""content"":""协助采访商店街店主并整理访谈记录。"",""benefitType"":""两者都有"",""skill"":""访谈、日语沟通、资料整理"",""moneyAmount"":3000}"
+  -d "{""title"":""商店街采访协助"",""organizationName"":""上海社区服务中心"",""category"":""研究"",""startTime"":""2026-07-01T14:00:00"",""location"":""上海 浦东"",""content"":""协助采访商店街店主并整理访谈记录。"",""benefitType"":""两者都有"",""skill"":""访谈、日语沟通、资料整理"",""moneyAmount"":3000}"
 ```
 
 ### 7.6 预约事件
@@ -509,7 +509,7 @@ curl "http://localhost:8080/api/coach/logs" `
 ```powershell
 curl -X POST "http://localhost:8080/api/mcp/context" `
   -H "Content-Type: application/json" `
-  -d "{""timezone"":""Asia/Tokyo"",""latitude"":34.6937,""longitude"":135.5023,""locationText"":""日本 大阪""}"
+  -d "{""timezone"":""Asia/Shanghai"",""latitude"":31.2304,""longitude"":121.4737,""locationText"":""中国 上海""}"
 ```
 
 返回结果会包含 `currentTime`、`location` 和 `toolTrace`。AI 事件推荐和计划推荐会自动使用这份工具上下文；前端会尽量从浏览器读取时区和定位，定位被拒绝时使用后端默认地点。
@@ -535,7 +535,7 @@ curl -X POST "http://localhost:8080/api/mcp/context" `
 原来的静态页面完整保存在：
 
 ```text
-do-not-miss-frontend\legacy-index.html
+frontend\legacy-index.html
 ```
 
 它只用于后续逐模块迁移时对照，不再是默认入口。
@@ -558,7 +558,7 @@ npm --version
 ### 8.2 第一次安装前端依赖
 
 ```powershell
-cd D:\warma\Documents\do-not-miss-frontend
+cd D:\warma\Documents\frontend
 npm install
 ```
 
@@ -569,7 +569,7 @@ npm install
 先确保 Spring Boot 后端运行在 `8080`，然后新开一个 PowerShell：
 
 ```powershell
-cd D:\warma\Documents\do-not-miss-frontend
+cd D:\warma\Documents\frontend
 npm run dev
 ```
 
@@ -590,14 +590,14 @@ http://localhost:8080
 ### 8.4 生产构建
 
 ```powershell
-cd D:\warma\Documents\do-not-miss-frontend
+cd D:\warma\Documents\frontend
 npm run build
 ```
 
 构建结果位于：
 
 ```text
-do-not-miss-frontend\dist
+frontend\dist
 ```
 
 可以使用：
@@ -647,9 +647,9 @@ http://localhost:8080
 然后创建数据库和用户：
 
 ```sql
-CREATE DATABASE do_not_miss CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'donotmiss'@'localhost' IDENTIFIED BY 'donotmiss123';
-GRANT ALL PRIVILEGES ON do_not_miss.* TO 'donotmiss'@'localhost';
+CREATE DATABASE get_yourself CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'getyourself'@'localhost' IDENTIFIED BY 'getyourself123';
+GRANT ALL PRIVILEGES ON get_yourself.* TO 'getyourself'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
@@ -679,7 +679,7 @@ ports:
 然后启动后端时指定：
 
 ```powershell
-$env:DB_URL="jdbc:mysql://localhost:3307/do_not_miss?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Tokyo"
+$env:DB_URL="jdbc:mysql://localhost:3307/get_yourself?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai"
 mvn spring-boot:run
 ```
 
@@ -744,7 +744,7 @@ mvn spring-boot:run
 
 ### 13.1 推荐方式：使用本地 `.env` 文件
 
-后端启动时会自动读取 `D:\warma\Documents\do-not-miss-backend\.env`。
+后端启动时会自动读取 `D:\warma\Documents\backend\.env`。
 
 在后端目录新建 `.env` 文件，内容如下：
 
@@ -753,14 +753,14 @@ AI_PROVIDER=qwen
 AI_MODEL=qwen-plus
 AI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 DASHSCOPE_API_KEY=你的百炼API Key
-MCP_DEFAULT_TIMEZONE=Asia/Tokyo
-MCP_DEFAULT_LOCATION=日本 大阪
+MCP_DEFAULT_TIMEZONE=Asia/Shanghai
+MCP_DEFAULT_LOCATION=中国 上海
 ```
 
 然后正常启动后端：
 
 ```powershell
-cd D:\warma\Documents\do-not-miss-backend
+cd D:\warma\Documents\backend
 docker compose up -d mysql redis
 mvn spring-boot:run
 ```
@@ -772,14 +772,14 @@ mvn spring-boot:run
 在启动后端的同一个 PowerShell 窗口里执行：
 
 ```powershell
-cd D:\warma\Documents\do-not-miss-backend
+cd D:\warma\Documents\backend
 
 $env:AI_PROVIDER="qwen"
 $env:DASHSCOPE_API_KEY="你的百炼API Key"
 $env:AI_MODEL="qwen-plus"
 $env:AI_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
-$env:MCP_DEFAULT_TIMEZONE="Asia/Tokyo"
-$env:MCP_DEFAULT_LOCATION="日本 大阪"
+$env:MCP_DEFAULT_TIMEZONE="Asia/Shanghai"
+$env:MCP_DEFAULT_LOCATION="中国 上海"
 
 mvn spring-boot:run
 ```
@@ -800,8 +800,8 @@ setx AI_PROVIDER "qwen"
 setx DASHSCOPE_API_KEY "你的百炼API Key"
 setx AI_MODEL "qwen-plus"
 setx AI_BASE_URL "https://dashscope.aliyuncs.com/compatible-mode/v1"
-setx MCP_DEFAULT_TIMEZONE "Asia/Tokyo"
-setx MCP_DEFAULT_LOCATION "日本 大阪"
+setx MCP_DEFAULT_TIMEZONE "Asia/Shanghai"
+setx MCP_DEFAULT_LOCATION "中国 上海"
 ```
 
 执行 `setx` 后，需要重新打开 PowerShell 才会生效。
@@ -836,7 +836,7 @@ curl -X POST "http://localhost:8080/api/ai/event-recommendations" `
 curl -X POST "http://localhost:8080/api/ai/action-plans" `
   -H "Content-Type: application/json" `
   -H "Authorization: Bearer $TOKEN" `
-  -d "{""goal"":""想提升日语能力，同时参加线下实践"",""horizonDays"":14,""intensity"":""balanced"",""location"":""大阪""}"
+  -d "{""goal"":""想提升日语能力，同时参加线下实践"",""horizonDays"":14,""intensity"":""balanced"",""location"":""上海""}"
 ```
 
 计划推荐会先用混合召回找候选事件，再把用户画像、候选事件证据和当前 schedule 一起传给模型，让模型生成多份可选择的行动计划。

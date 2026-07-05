@@ -44,7 +44,7 @@ public class EventSearchIndexService {
                                    @Value("${app.search.vector-enabled:false}") boolean vectorEnabled,
                                    @Value("${app.ai.embedding-dimensions:1024}") int embeddingDimensions,
                                    @Value("${app.search.base-url:http://localhost:9200}") String baseUrl,
-                                   @Value("${app.search.index-name:do_not_miss_events}") String indexName) {
+                                   @Value("${app.search.index-name:get_yourself_events}") String indexName) {
         this.eventRepository = eventRepository;
         this.qualityReportRepository = qualityReportRepository;
         this.llmClient = llmClient;

@@ -1,16 +1,16 @@
-const STORAGE_KEY = "do-not-miss-events";
-const FOLLOW_STORAGE_KEY = "do-not-miss-followed-organizations";
-const RESERVATION_STORAGE_KEY = "do-not-miss-reservations";
-const COMPLETED_STORAGE_KEY = "do-not-miss-completed-records";
-const CHALLENGE_STORAGE_KEY = "do-not-miss-challenges";
-const SCHEDULE_STORAGE_KEY = "do-not-miss-schedule";
-const AUTH_STORAGE_KEY = "do-not-miss-auth-session";
-const LOCAL_USERS_STORAGE_KEY = "do-not-miss-local-users";
+const STORAGE_KEY = "get-yourself-events";
+const FOLLOW_STORAGE_KEY = "get-yourself-followed-organizations";
+const RESERVATION_STORAGE_KEY = "get-yourself-reservations";
+const COMPLETED_STORAGE_KEY = "get-yourself-completed-records";
+const CHALLENGE_STORAGE_KEY = "get-yourself-challenges";
+const SCHEDULE_STORAGE_KEY = "get-yourself-schedule";
+const AUTH_STORAGE_KEY = "get-yourself-auth-session";
+const LOCAL_USERS_STORAGE_KEY = "get-yourself-local-users";
 const PAGE_SIZE = 3;
 const API_BASE_URL = "http://localhost:8080";
 
 const categories = ["公益", "企业", "校内", "线上", "研究", "文化"];
-const defaultFollowedOrganizations = ["Tokyo Bridge NPO", "Mirai Career Lab"];
+const defaultFollowedOrganizations = ["上海青年志愿中心", "未来职业发展中心"];
 const defaultLocalUsers = [
   {
     userId: "demo-student",
@@ -29,15 +29,15 @@ const defaultLocalUsers = [
 ];
 
 const organizationDefaults = {
-  "Tokyo Bridge NPO": {
+  "上海青年志愿中心": {
     type: "公益组织",
     summary: "长期发布社区陪伴、儿童教育和多文化交流相关实践。"
   },
-  "Mirai Career Lab": {
+  "未来职业发展中心": {
     type: "企业项目",
     summary: "提供展会运营、职业体验和留学生向项目协助机会。"
   },
-  "Waseda Research Hub": {
+  "北大社会调研中心": {
     type: "大学研究室",
     summary: "关注城市生活、学生经验和社会调研项目。"
   },
@@ -45,7 +45,7 @@ const organizationDefaults = {
     type: "校内组织",
     summary: "发布线上内容运营、采访编辑和短视频协作任务。"
   },
-  "Kansai Culture Center": {
+  "杭州文化交流中心": {
     type: "文化机构",
     summary: "围绕地域文化节、翻译协助和跨文化活动招募学生。"
   }
@@ -55,10 +55,10 @@ const sampleEvents = [
   {
     id: "sample-1",
     title: "社区儿童日语阅读陪伴",
-    organization: "Tokyo Bridge NPO",
+    organization: "上海青年志愿中心",
     category: "公益",
     date: "2026-06-05T15:00",
-    location: "东京 新宿区",
+    location: "上海 浦东新区",
     content: "协助社区中心的儿童阅读活动，准备材料、陪伴朗读，并记录活动反馈。",
     benefitType: "skill",
     skill: "日语沟通、儿童陪伴、活动记录",
@@ -68,10 +68,10 @@ const sampleEvents = [
   {
     id: "sample-2",
     title: "留学生展会现场运营",
-    organization: "Mirai Career Lab",
+    organization: "未来职业发展中心",
     category: "企业",
     date: "2026-06-12T10:30",
-    location: "大阪 梅田",
+    location: "上海 徐汇区",
     content: "负责签到、引导、问卷收集和会场整理，适合想接触活动执行的学生。",
     benefitType: "both",
     skill: "现场运营、跨文化沟通、团队协作",
@@ -81,10 +81,10 @@ const sampleEvents = [
   {
     id: "sample-3",
     title: "城市生活问卷访谈协助",
-    organization: "Waseda Research Hub",
+    organization: "北大社会调研中心",
     category: "研究",
     date: "2026-06-18T13:00",
-    location: "东京 早稻田",
+    location: "北京 海淀区",
     content: "协助研究室进行问卷整理、访谈预约和基础资料录入。",
     benefitType: "both",
     skill: "社会调研、访谈整理、数据录入",
@@ -107,10 +107,10 @@ const sampleEvents = [
   {
     id: "sample-5",
     title: "关西地域文化节翻译协助",
-    organization: "Kansai Culture Center",
+    organization: "杭州文化交流中心",
     category: "文化",
     date: "2026-06-29T09:30",
-    location: "京都 左京区",
+    location: "杭州 西湖区",
     content: "在文化节现场协助中日翻译、游客引导和活动记录。",
     benefitType: "both",
     skill: "中日翻译、公共沟通、活动执行",
@@ -2545,7 +2545,7 @@ function formatJudgeReasons(reasons = []) {
 }
 
 async function buildMcpToolContext() {
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Tokyo";
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai";
   const context = {
     timezone,
     clientNow: new Date().toISOString()

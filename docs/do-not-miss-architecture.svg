@@ -32,7 +32,7 @@
   </defs>
 
   <rect class="bg" x="0" y="0" width="1500" height="1060"/>
-  <text class="title" x="60" y="66">Do Not Miss 整体架构图</text>
+  <text class="title" x="60" y="66">Get Yourself 整体架构图</text>
   <text class="subtitle" x="60" y="94">面向大学生成长实践的平台：事件发现、挑战、日程、Coach、能力地图、智能简历与 Agent 推荐链路</text>
 
   <rect class="panel frontend" x="55" y="130" width="1390" height="160"/>

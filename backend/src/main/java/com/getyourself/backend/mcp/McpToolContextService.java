@@ -18,8 +18,8 @@ public class McpToolContextService {
     private final String defaultTimezone;
     private final String defaultLocation;
 
-    public McpToolContextService(@Value("${app.mcp.default-timezone:Asia/Tokyo}") String defaultTimezone,
-                                 @Value("${app.mcp.default-location:日本 大阪}") String defaultLocation) {
+    public McpToolContextService(@Value("${app.mcp.default-timezone:Asia/Shanghai}") String defaultTimezone,
+                                 @Value("${app.mcp.default-location:中国 上海}") String defaultLocation) {
         this.defaultTimezone = defaultTimezone;
         this.defaultLocation = defaultLocation;
     }

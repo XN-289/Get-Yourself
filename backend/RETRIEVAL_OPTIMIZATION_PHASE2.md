@@ -20,7 +20,7 @@ Set these values in `.env`:
 ```properties
 SEARCH_ENABLED=true
 SEARCH_BASE_URL=http://localhost:9200
-SEARCH_INDEX_NAME=do_not_miss_events
+SEARCH_INDEX_NAME=get_yourself_events
 ```
 
 Start infrastructure:

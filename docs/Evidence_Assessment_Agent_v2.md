@@ -29,7 +29,7 @@ achievement_records
 Outbox Dispatcher 将消息投递到：
 
 ```text
-queue: do-not-miss.ability-evidence
+queue: get-yourself.ability-evidence
 routing key: ability-evidence.assess
 ```
 

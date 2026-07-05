@@ -203,12 +203,15 @@ public class QueryRewriteService {
             constraints.add("适合初学者");
             evidence.add("rule: zero/basic level");
         }
-        if (matches(normalizedNeed, "大阪")) {
-            location = "大阪";
-            evidence.add("rule: location Osaka");
-        } else if (matches(normalizedNeed, "东京")) {
-            location = "东京";
-            evidence.add("rule: location Tokyo");
+        if (matches(normalizedNeed, "上海")) {
+            location = "上海";
+            evidence.add("rule: location Shanghai");
+        } else if (matches(normalizedNeed, "北京")) {
+            location = "北京";
+            evidence.add("rule: location Beijing");
+        } else if (matches(normalizedNeed, "杭州")) {
+            location = "杭州";
+            evidence.add("rule: location Hangzhou");
         } else if (matches(normalizedNeed, "线上", "远程", "在家")) {
             location = "线上";
             constraints.add("线上可参与");
@@ -244,7 +247,7 @@ public class QueryRewriteService {
         if (matches(normalizedNeed, "重新", "重来", "换个", "换一个", "不找", "清空", "算了")) {
             return new RetrievalDtos.ContextDecision("CLEAR", "NEW_TOPIC", 0.9, "用户显式要求重新开始或换方向");
         }
-        if (matches(normalizedNeed, "线上", "线下", "大阪", "东京", "周末", "晚上", "下午", "报酬", "有偿", "零基础", "从零", "初学", "最好", "更好")
+        if (matches(normalizedNeed, "线上", "线下", "上海", "北京", "杭州", "周末", "晚上", "下午", "报酬", "有偿", "零基础", "从零", "初学", "最好", "更好")
                 && !matches(normalizedNeed, "日语", "n1", "n2", "n3", "java", "spring", "python", "go", "ai", "agent", "llm", "大模型", "研究", "健身")) {
             return new RetrievalDtos.ContextDecision("MERGE", "REFINE", 0.72, "规则判断为补充地点、时间、收益或难度约束");
         }

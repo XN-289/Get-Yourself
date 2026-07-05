@@ -34,6 +34,27 @@ public class UserEntity {
     @Column(nullable = false, length = 32)
     private UserRole role;
 
+    @Column(length = 64)
+    private String openid;
+
+    @Column(length = 64)
+    private String unionid;
+
+    @Column(length = 20)
+    private String phone;
+
+    @Column(length = 60)
+    private String nickname;
+
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
+    @Column(length = 120)
+    private String school;
+
+    @Column(length = 120)
+    private String major;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -86,6 +107,62 @@ public class UserEntity {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public String getOpenid() {
+        return openid;
+    }
+
+    public void setOpenid(String openid) {
+        this.openid = openid;
+    }
+
+    public String getUnionid() {
+        return unionid;
+    }
+
+    public void setUnionid(String unionid) {
+        this.unionid = unionid;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public String getSchool() {
+        return school;
+    }
+
+    public void setSchool(String school) {
+        this.school = school;
+    }
+
+    public String getMajor() {
+        return major;
+    }
+
+    public void setMajor(String major) {
+        this.major = major;
     }
 
     public Instant getCreatedAt() {

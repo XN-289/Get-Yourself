@@ -12,7 +12,7 @@
 {
   "intentTags": ["Java", "项目实践"],
   "timePreference": "weekend",
-  "locationPreference": "大阪附近",
+  "locationPreference": "上海附近",
   "benefitPreference": "skill",
   "hardConstraints": [],
   "softPreferences": ["离我近", "适合初学者"]

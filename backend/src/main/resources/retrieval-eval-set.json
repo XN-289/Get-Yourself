@@ -27,13 +27,13 @@
     "note": "测试项目语义和线上约束，目标是 Spring Boot 商城项目实战。"
   },
   {
-    "id": "java-paid-competition-osaka",
-    "need": "我想在大阪参加 Java 团队开发比赛，希望能提交完整作品、现场答辩，而且最好有奖金",
+    "id": "java-paid-competition-shanghai",
+    "need": "我想在上海参加 Java 团队开发比赛，希望能提交完整作品、现场答辩，而且最好有奖金",
     "category": "COMPANY",
     "benefitType": "BOTH",
-    "location": "大阪",
+    "location": "上海",
     "judgments": [
-      {"eventId": 29, "relevance": 3, "reason": "大阪、Java 团队竞赛、作品答辩和奖金全部匹配"}
+      {"eventId": 29, "relevance": 3, "reason": "上海、Java 团队竞赛、作品答辩和奖金全部匹配"}
     ],
     "expectedEventIds": [29],
     "expectedTerms": ["Java", "团队", "答辩", "奖金", "项目"],
@@ -152,14 +152,14 @@
   },
   {
     "id": "generative-ai-art",
-    "need": "我想在京都体验 AI 画画，学习怎么用提示词控制构图和风格，最后完成一张插画",
+    "need": "我想在杭州体验 AI 画画，学习怎么用提示词控制构图和风格，最后完成一张插画",
     "category": "CULTURE",
-    "location": "京都",
+    "location": "杭州",
     "judgments": [
-      {"eventId": 38, "relevance": 3, "reason": "京都、AI 绘画、提示词、构图和插画完全匹配"}
+      {"eventId": 38, "relevance": 3, "reason": "杭州、AI 绘画、提示词、构图和插画完全匹配"}
     ],
     "expectedEventIds": [38],
-    "expectedTerms": ["AI", "绘画", "提示词", "插画", "京都"],
+    "expectedTerms": ["AI", "绘画", "提示词", "插画", "杭州"],
     "topK": 5,
     "note": "测试生成式 AI 艺术场景，避免召回 Agent 开发活动。"
   },
@@ -177,7 +177,7 @@
     "note": "测试日语学习难度，不能把翻译、商务日语或留学说明会排在前面。"
   },
   {
-    "id": "japanese-speaking-osaka",
+    "id": "japanese-speaking-shanghai",
     "need": "我会一些基础日语但开口比较困难，想通过口语陪练、职场交流或公益服务增加真实沟通机会",
     "judgments": [
       {"eventId": 40, "relevance": 3, "reason": "日语口语陪练和生活会话最符合需求"},
@@ -186,21 +186,21 @@
       {"eventId": 44, "relevance": 1, "reason": "提供现场中日沟通机会，但更侧重翻译和活动执行"}
     ],
     "expectedEventIds": [40],
-    "expectedTerms": ["日语口语", "大阪", "生活会话", "日本大学生"],
+    "expectedTerms": ["日语口语", "上海", "生活会话", "大学生"],
     "topK": 5,
     "note": "测试口语陪练与零基础课程的区别。"
   },
   {
-    "id": "business-japanese-paid-tokyo",
-    "need": "我准备在日本找工作，想去东京学习敬语、商务邮件、电话应对和会议表达，最好是有报酬的实习",
+    "id": "business-japanese-paid-beijing",
+    "need": "我准备在北京找工作，想学习敬语、商务邮件、电话应对和会议表达，最好是有报酬的实习",
     "category": "COMPANY",
     "benefitType": "BOTH",
-    "location": "东京",
+    "location": "北京",
     "judgments": [
-      {"eventId": 41, "relevance": 3, "reason": "东京、有偿实习、商务日语、敬语和会议表达完全匹配"}
+      {"eventId": 41, "relevance": 3, "reason": "北京、有偿实习、商务日语、敬语和会议表达完全匹配"}
     ],
     "expectedEventIds": [41],
-    "expectedTerms": ["商务日语", "敬语", "邮件", "东京", "实习"],
+    "expectedTerms": ["商务日语", "敬语", "邮件", "北京", "实习"],
     "topK": 5,
     "note": "测试商务日语、求职和报酬约束。"
   },
@@ -218,13 +218,13 @@
     "note": "测试线上字幕翻译，区分现场翻译活动。"
   },
   {
-    "id": "japan-study-application",
-    "need": "我准备去日本留学，既想了解选学校、研究计划书和签证，也希望补足日语沟通能力",
+    "id": "study-abroad-application",
+    "need": "我准备出国留学，既想了解选学校、研究计划书和签证，也希望补足英语沟通能力",
     "judgments": [
       {"eventId": 43, "relevance": 3, "reason": "院校、研究计划书、签证和奖学金申请完全匹配"},
-      {"eventId": 39, "relevance": 2, "reason": "适合补足零基础日语，为留学做语言准备"},
-      {"eventId": 40, "relevance": 2, "reason": "适合提高日本生活场景口语"},
-      {"eventId": 41, "relevance": 1, "reason": "对后续日本求职和商务交流有帮助，但不是申请阶段核心需求"}
+      {"eventId": 39, "relevance": 2, "reason": "适合补足零基础外语，为留学做语言准备"},
+      {"eventId": 40, "relevance": 2, "reason": "适合提高口语交流能力"},
+      {"eventId": 41, "relevance": 1, "reason": "对后续求职和商务交流有帮助，但不是申请阶段核心需求"}
     ],
     "expectedEventIds": [43],
     "expectedTerms": ["留学", "研究计划书", "签证", "奖学金", "院校"],
@@ -233,16 +233,16 @@
   },
   {
     "id": "live-translation-culture-festival",
-    "need": "我想做中日翻译实践，线上字幕翻译或文化活动现场口译都可以，如果有报酬更好",
+    "need": "我想做英语翻译实践，线上字幕翻译或文化活动现场口译都可以，如果有报酬更好",
     "judgments": [
       {"eventId": 44, "relevance": 3, "reason": "现场翻译、游客引导和报酬完全匹配"},
       {"eventId": 42, "relevance": 2, "reason": "线上字幕翻译符合翻译实践，但没有报酬"},
       {"eventId": 41, "relevance": 1, "reason": "有报酬并涉及双语资料，但主要是商务日语实习"}
     ],
     "expectedEventIds": [44],
-    "expectedTerms": ["中日", "现场翻译", "文化节", "引导", "报酬"],
+    "expectedTerms": ["英语", "现场翻译", "文化节", "引导", "报酬"],
     "topK": 5,
-    "note": "测试现场翻译、文化类别、京都和报酬组合。"
+    "note": "测试现场翻译、文化类别、杭州和报酬组合。"
   },
   {
     "id": "survey-design-research",
@@ -287,7 +287,7 @@
     "note": "测试 Python 数据处理、研究场景与有偿约束。"
   },
   {
-    "id": "llm-paper-reading-osaka",
+    "id": "llm-paper-reading-shanghai",
     "need": "我想深入学习 Agent 和 RAG，论文阅读、系统实现或多智能体实验都可以",
     "judgments": [
       {"eventId": 48, "relevance": 3, "reason": "Agent/RAG 论文阅读、讲解和复现实验完全匹配"},
@@ -296,12 +296,12 @@
       {"eventId": 33, "relevance": 1, "reason": "适合 Agent 工程入门，但研究深度较低"}
     ],
     "expectedEventIds": [48],
-    "expectedTerms": ["论文", "Agent", "RAG", "复现", "大阪"],
+    "expectedTerms": ["论文", "Agent", "RAG", "复现", "上海"],
     "topK": 5,
     "note": "测试学术论文阅读，区分工程工作坊和开发竞赛。"
   },
   {
-    "id": "paid-exhibition-operation-osaka",
+    "id": "paid-exhibition-operation-shanghai",
     "need": "我想锻炼线下活动执行和现场运营能力，可以做签到、引导、问卷收集或物资服务",
     "judgments": [
       {"eventId": 49, "relevance": 3, "reason": "签到、引导、问卷和会场整理完全匹配"},
@@ -315,7 +315,7 @@
     "note": "测试现场运营，区分研究问卷和普通志愿活动。"
   },
   {
-    "id": "children-japanese-reading-tokyo",
+    "id": "children-reading-shanghai",
     "need": "我想用日语参加公益或志愿活动，在真实服务中练沟通、翻译或陪伴能力",
     "judgments": [
       {"eventId": 50, "relevance": 3, "reason": "日语儿童阅读陪伴和公益服务完全匹配"},
@@ -359,28 +359,28 @@
     "note": "测试 AI 数据质量岗位，区分 Agent 开发和内容运营。"
   },
   {
-    "id": "osaka-marathon-volunteer",
-    "need": "我想参加大阪的体育志愿服务，最好是在马拉松现场负责补给、物资发放和路线引导",
-    "location": "大阪",
+    "id": "shanghai-marathon-volunteer",
+    "need": "我想参加上海的体育志愿服务，最好是在马拉松现场负责补给、物资发放和路线引导",
+    "location": "上海",
     "judgments": [
-      {"eventId": 53, "relevance": 3, "reason": "大阪马拉松志愿服务完全匹配"},
+      {"eventId": 53, "relevance": 3, "reason": "上海马拉松志愿服务完全匹配"},
       {"eventId": 54, "relevance": 2, "reason": "同样提供跑步和体能相关实践，但不是志愿服务"}
     ],
     "expectedEventIds": [53],
-    "expectedTerms": ["大阪", "马拉松", "志愿", "补给", "路线引导"],
+    "expectedTerms": ["上海", "马拉松", "志愿", "补给", "路线引导"],
     "topK": 5,
     "note": "测试体育志愿活动和具体岗位语义。"
   },
   {
-    "id": "fitness-training-osaka",
-    "need": "我想在大阪规律锻炼身体，通过跑步、核心力量和体能测试改善自己的运动状态",
+    "id": "fitness-training-shanghai",
+    "need": "我想在上海规律锻炼身体，通过跑步、核心力量和体能测试改善自己的运动状态",
     "category": "CAMPUS",
-    "location": "大阪",
+    "location": "上海",
     "judgments": [
-      {"eventId": 54, "relevance": 3, "reason": "大阪校园体能、跑步、核心力量和测试完全匹配"}
+      {"eventId": 54, "relevance": 3, "reason": "上海校园体能、跑步、核心力量和测试完全匹配"}
     ],
     "expectedEventIds": [54],
-    "expectedTerms": ["体能", "跑步", "力量", "训练", "大阪"],
+    "expectedTerms": ["体能", "跑步", "力量", "训练", "上海"],
     "topK": 5,
     "note": "测试健身意图，不能因为出现跑步而只召回马拉松志愿者。"
   },
