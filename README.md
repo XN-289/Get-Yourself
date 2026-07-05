@@ -149,14 +149,17 @@ Query Rewrite 理解你的真实意图 → BM25 + Embedding 混合召回 → LLM
 
 ### 前置条件
 
-- Java 21+
-- Node.js 18+
-- Docker & Docker Compose
+- **Java 21+** — 安装后运行 `java -version` 确认
+- **Maven 3.9+** — 安装后运行 `mvn -v` 确认，需要加到 PATH
+- **Node.js 18+** — 安装后运行 `node -v` 确认
+- **Docker Desktop** — 必须先启动应用，等左下角显示引擎运行中再操作
 - 通义千问 API Key（或其他 OpenAI 兼容 API）
 
 ### 1. 启动中间件
 
-```bash
+> ⚠️ 确保 Docker Desktop 已经启动，`docker version` 能正常输出再继续。
+
+```powershell
 cd backend
 docker compose up -d
 ```
@@ -165,28 +168,41 @@ docker compose up -d
 
 ### 2. 配置环境变量
 
-```bash
-cd backend
+```powershell
+# 已经在 backend 目录，不需要再 cd backend
 cp .env.example .env
 # 编辑 .env，填入 DASHSCOPE_API_KEY
 ```
 
 ### 3. 启动后端
 
-```bash
-cd backend
+> ⚠️ 需要先安装 Maven 并确保 `mvn` 命令在 PATH 中可用。
+
+```powershell
+# 在 backend 目录
 mvn spring-boot:run
 # 后端地址: http://localhost:8080
 ```
 
 ### 4. 启动前端
 
-```bash
+> ⚠️ 前端命令在 `frontend` 目录执行，不是 `backend`。需要另开一个终端窗口。
+
+```powershell
 cd frontend
 npm install
 npm run dev
 # 前端地址: http://localhost:5173
 ```
+
+### 常见问题
+
+| 问题 | 原因 | 解决 |
+|------|------|------|
+| `dockerDesktopLinuxEngine` 报错 | Docker Desktop 没启动 | 打开 Docker Desktop，等引擎启动完成 |
+| `mvn` 命令找不到 | Maven 没装或没加 PATH | 安装 Maven，配置 `MAVEN_HOME` 和 `Path` |
+| `package.json` 找不到 | 在错误的目录跑 npm | npm 命令在 `frontend` 目录执行 |
+| 端口 3306 被占用 | 本机已有 MySQL | 改 `docker-compose.yml` 端口为 `3307:3306` |
 
 ---
 
