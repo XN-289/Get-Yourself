@@ -53,7 +53,7 @@ function resetFields() {
       <div class="form-grid-three">
         <label><span>开始时间</span><input v-model="form.startTime" type="datetime-local" required /></label>
         <label><span>结束时间</span><input v-model="form.endTime" type="datetime-local" required /></label>
-        <label><span>地点</span><input v-model="form.location" required placeholder="大阪 / 线上" /></label>
+        <label><span>地点</span><input v-model="form.location" required placeholder="上海 / 线上" /></label>
       </div>
       <label><span>分类</span><select v-model="form.category"><option v-for="item in categories" :key="item">{{ item }}</option></select></label>
       <label><span>活动内容</span><textarea v-model="form.content" rows="6" required placeholder="写清楚学生需要做什么、适合谁参加、预计产出是什么"></textarea></label>

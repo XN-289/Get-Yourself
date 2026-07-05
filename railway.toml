@@ -42,7 +42,7 @@ restartPolicyMaxRetries = 5
 
   # MySQL - Railway MySQL plugin auto-provides these; the vars below map them
   # DB_URL is set in Railway dashboard using the MYSQL_URL value:
-  #   DB_URL = $MYSQL_URL  (add ?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Tokyo)
+  #   DB_URL = $MYSQL_URL  (add ?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai)
   # DB_USERNAME = $MYSQLUSER
   # DB_PASSWORD = $MYSQLPASSWORD
 

@@ -294,7 +294,7 @@ async function importPlan(plan: RecommendedPlan) {
 
 function buildToolContext(): ToolContextRequest {
   return {
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Tokyo",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai",
     clientNow: new Date().toISOString(),
     locationText: location.value.trim()
   };
@@ -391,7 +391,7 @@ function errorMessage(error: unknown, fallback: string) {
             <span>地点</span>
             <div>
               <MapPin :size="16" />
-              <input v-model="location" placeholder="例如：大阪、线上" @keyup.enter="loadEvents" />
+              <input v-model="location" placeholder="例如：上海、线上" @keyup.enter="loadEvents" />
             </div>
           </label>
           <button type="button" @click="loadEvents">应用筛选</button>
