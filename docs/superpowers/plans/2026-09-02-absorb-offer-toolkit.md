@@ -173,7 +173,7 @@ Use `feat: add structured resume rendering`.
 - `importJobAnalysis(filePath, options)`
 - Schema: `get-yourself.job-analysis`, version `1`.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create tests for:
 
@@ -187,21 +187,21 @@ test('routes job analysis into the evaluation workflow', () => {});
 
 Cover JD-as-data, strict fields, cross references, deterministic score caps, red-line handling, insufficient information, dry-run no-write, apply, idempotence, replacement, status, and tracker isolation.
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run: `npm test`
 
 Expected: job-analysis tests fail because the module and schema do not exist.
 
-- [ ] **Step 3: Implement minimally**
+- [x] **Step 3: Implement minimally**
 
 Implement schema validation, deterministic calculations, Markdown rendering, status, import, backups, and CLI arguments.
 
-- [ ] **Step 4: Verify green**
+- [x] **Step 4: Verify green**
 
 Run: `npm test` and `node --check job-analysis.mjs`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Use `feat: add job analysis contract`.
 

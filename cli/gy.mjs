@@ -8,6 +8,7 @@ import { inspectEvidencePackage } from './evidence-package.mjs';
 import { inspectResumeMaterials } from './resume-materials.mjs';
 import { inspectResumeFinal } from './resume-final.mjs';
 import { inspectResumeRender } from './resume-render.mjs';
+import { inspectJobAnalysis } from './job-analysis.mjs';
 import { inspectInterviewPrep } from './interview-prep.mjs';
 import { inspectInterviewReview } from './interview-review.mjs';
 import { connectDevice, disconnectDevice, inspectDeviceBinding } from './device-binding.mjs';
@@ -31,6 +32,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     resumeMaterials: inspectResumeMaterials(root),
     resumeFinal: inspectResumeFinal(root),
     resumeRender: inspectResumeRender(root),
+    jobAnalysis: inspectJobAnalysis(root),
     interviewPrep: inspectInterviewPrep(root),
     interviewReview: inspectInterviewReview(root),
     deviceBinding: inspectDeviceBinding(root),
@@ -103,6 +105,17 @@ function printStatus({ json = false, root } = {}) {
     console.log('简历渲染：未生成');
   }
   const interviewPrep = payload.interviewPrep;
+  const jobAnalysis = payload.jobAnalysis;
+  if (jobAnalysis.state === 'ready') {
+    const currentCount = jobAnalysis.analyses.filter(item => item.markdownState === 'current').length;
+    console.log(`岗位分析：${jobAnalysis.analysisCount} 份（${currentCount} 份报告一致）`);
+  } else if (jobAnalysis.state === 'invalid') {
+    console.log(`岗位分析：本地文件无效（${jobAnalysis.error}）`);
+  } else if (jobAnalysis.state === 'blocked') {
+    console.log('岗位分析：等待素材包导入');
+  } else {
+    console.log('岗位分析：未生成');
+  }
   if (interviewPrep.state === 'ready') {
     const currentCount = interviewPrep.preparations.filter(item => item.markdownState === 'current').length;
     console.log(`面试准备：${interviewPrep.preparationCount} 份（${currentCount} 份清单一致）`);

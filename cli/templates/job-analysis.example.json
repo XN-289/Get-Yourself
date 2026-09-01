@@ -1,0 +1,96 @@
+{
+  "schema": "get-yourself.job-analysis",
+  "schemaVersion": 1,
+  "analysisId": "job-analysis-demo-2026-09-02",
+  "generatedAt": "2026-09-02T10:00:00.000Z",
+  "traceId": "trace.job-analysis-demo",
+  "materialsPackageId": "resume-materials-demo-2026-09-01",
+  "materialsContentHash": "sha256:538792dc67572464ae59c52bfc1afe777d1075111cb7096ae062cc8493d3125b",
+  "company": "示例科技",
+  "role": "Java 后端开发实习生",
+  "confirmation": "user_confirmed",
+  "jd": {
+    "sourceType": "text",
+    "text": "负责校园服务类小程序后端接口设计与前端联调；要求 Java、MySQL、接口协作，能端到端推进试用；熟悉微服务者优先。"
+  },
+  "mustHave": [
+    {
+      "id": "must-java",
+      "requirement": "Java 后端开发经验",
+      "matchLevel": 1,
+      "evidenceRefs": ["internship-repair-backend"]
+    },
+    {
+      "id": "must-mysql",
+      "requirement": "MySQL 使用经验",
+      "matchLevel": 1,
+      "evidenceRefs": ["project-frontend-contract"]
+    },
+    {
+      "id": "must-api",
+      "requirement": "接口设计与跨端协作",
+      "matchLevel": 1,
+      "evidenceRefs": ["project-frontend-contract", "story-repair-api"]
+    },
+    {
+      "id": "must-cloud",
+      "requirement": "Spring Cloud 微服务实战",
+      "matchLevel": 0,
+      "evidenceRefs": []
+    }
+  ],
+  "niceToHave": [
+    {
+      "id": "nice-redis",
+      "requirement": "Redis 缓存经验",
+      "matchLevel": 0.5,
+      "evidenceRefs": ["internship-repair-backend"]
+    }
+  ],
+  "hiddenSignals": [
+    {
+      "id": "hidden-ownership",
+      "requirement": "需要端到端负责接口交付",
+      "matchLevel": 1,
+      "evidenceRefs": ["story-repair-api"]
+    }
+  ],
+  "capabilityGaps": [
+    {
+      "id": "gap-cloud",
+      "requirementRefs": ["must-cloud"],
+      "severity": "hard_to_close",
+      "description": "缺少 Spring Cloud 微服务实战证据。",
+      "action": "从报修接口项目拆出服务边界设计案例；无法证明实战时如实承认。"
+    }
+  ],
+  "recruiterRisks": [
+    {
+      "id": "risk-scale",
+      "concern": "招聘经理可能担心校园项目规模不足。",
+      "response": "用接口契约、联调和宿舍试用结果说明完整交付链路。"
+    }
+  ],
+  "redFlags": [],
+  "interviewTopics": [
+    {
+      "id": "topic-api-design",
+      "topic": "接口设计",
+      "question": "说明报修接口的边界设计、异常处理和联调取舍。",
+      "requirementRefs": ["must-api"]
+    }
+  ],
+  "evaluation": {
+    "careerTrajectory": 1,
+    "downsideRisk": 0,
+    "compensationFit": 1,
+    "opportunityCost": 1,
+    "companyInformation": "insufficient",
+    "payInformation": "insufficient",
+    "policyInformation": "insufficient"
+  },
+  "nextActions": [
+    "先补充公司主体、薪资范围和加班政策信息。",
+    "用 story-repair-api 准备接口设计追问。"
+  ]
+}

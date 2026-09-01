@@ -67,10 +67,10 @@ const ROUTES = {
     displayName: '评估岗位',
     moduleDestination: 'interview-management',
     modeFile: 'modes/eval.md',
-    suggestedAction: '先做存活检查和防骗核查，再输出匹配度、机会质量、待遇、风险和投递建议。',
+    suggestedAction: '先生成并校验 job-analysis.mjs 岗位分析草稿，用户确认后 dry-run / --apply；再做存活检查、防骗核查和完整评估。',
     needsConfirmation: true,
     fallbackPrompt: '请粘贴 JD 全文或岗位链接，并说明你的目标方向和特别在意的问题。',
-    securityNotes: [EXTERNAL_CONTENT_NOTE],
+    securityNotes: [EXTERNAL_CONTENT_NOTE, '岗位分析只写本地 JSON、Markdown 和备份，不写投递进度表、简历素材或能力资产。'],
   },
   resume: {
     intent: 'structure_experience',
