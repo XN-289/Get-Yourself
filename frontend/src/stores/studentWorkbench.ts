@@ -47,20 +47,28 @@ export interface ResumeAsset {
   coverage: string;
 }
 
-export interface InterviewStage {
+export type ProcessStageStatus = "todo" | "active" | "waiting" | "passed" | "failed" | "offer";
+
+export interface ProcessStage {
   id: number;
   name: string;
-  state: "done" | "current" | "todo";
+  status: ProcessStageStatus;
   note: string;
+  nextAction?: string;
+  skillKey: string;
+  skillName: string;
+  encouragement: string;
+  artifact?: string;
+  date?: string;
 }
 
-export interface ApplicationItem {
+export interface CompanyOpportunity {
   id: number;
   company: string;
   role: string;
-  stage: string;
   nextAction: string;
   synced: boolean;
+  stages: ProcessStage[];
 }
 
 export interface TraceItem {
@@ -175,40 +183,269 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     }
   ]);
 
-  const interviewStages = ref<InterviewStage[]>([
-    { id: 1, name: "JD 解析", state: "done", note: "提取 Spring Boot、MySQL、协作三项要求" },
-    { id: 2, name: "简历适配", state: "done", note: "Java 后端主简历 v3 已生成待确认版" },
-    { id: 3, name: "投递记录", state: "done", note: "摘要同步需用户确认" },
-    { id: 4, name: "笔试准备", state: "done", note: "星野科技笔试材料已核对" },
-    { id: 5, name: "一面执行", state: "current", note: "远山数据一面：明天 15:00" },
-    { id: 6, name: "面试复盘", state: "todo", note: "等待面试后口述与材料回填" },
-    { id: 7, name: "反哺能力资产", state: "todo", note: "生成新的证据与学习任务" }
-  ]);
-
-  const applications = ref<ApplicationItem[]>([
+  const opportunities = ref<CompanyOpportunity[]>([
     {
       id: 1,
       company: "星野科技",
       role: "Java 后端开发",
-      stage: "笔试",
       nextAction: "9月3日 19:00 前提交笔试",
-      synced: false
+      synced: false,
+      stages: [
+        {
+          id: 101,
+          name: "JD 分析",
+          status: "passed",
+          note: "提取 Spring Boot、MySQL、协作三项要求",
+          skillKey: "jd-analysis",
+          skillName: "JD 分析",
+          encouragement: "JD 拆完了，方向清楚了。",
+          artifact: "岗位评估报告 v1"
+        },
+        {
+          id: 102,
+          name: "简历适配",
+          status: "passed",
+          note: "Java 后端主简历 v3 已生成",
+          skillKey: "resume-tailoring",
+          skillName: "简历写作",
+          encouragement: "这份简历已经对准岗位，不是海投版本。",
+          artifact: "Java 后端 v3"
+        },
+        {
+          id: 103,
+          name: "投递",
+          status: "passed",
+          note: "官网投递完成，回执已归档",
+          nextAction: "保留回执链接",
+          skillKey: "application-submission",
+          skillName: "投递材料检查",
+          encouragement: "投出去就是一次真实市场校验。",
+          date: "8月28日"
+        },
+        {
+          id: 104,
+          name: "笔试",
+          status: "active",
+          note: "编程题 + 系统设计基础",
+          nextAction: "9月3日 19:00 前提交",
+          skillKey: "written-test-prep",
+          skillName: "笔试准备",
+          encouragement: "笔试前每完成一套题，都是在降低未知。",
+          date: "9月3日 19:00"
+        },
+        {
+          id: 105,
+          name: "一面",
+          status: "todo",
+          note: "等待笔试结果后安排",
+          skillKey: "interview-prep",
+          skillName: "面试准备",
+          encouragement: "到这一步时，你已经带着岗位证据进场。"
+        },
+        {
+          id: 106,
+          name: "面试复盘",
+          status: "todo",
+          note: "面试后由用户口述或粘贴记录",
+          skillKey: "interview-review",
+          skillName: "面试复盘",
+          encouragement: "每次复盘都会留下可复用证据。"
+        },
+        {
+          id: 107,
+          name: "反哺能力资产",
+          status: "todo",
+          note: "生成新的证据与学习任务",
+          skillKey: "asset-feedback",
+          skillName: "资产反哺",
+          encouragement: "真实反馈会让能力资产更接近市场。"
+        }
+      ]
     },
     {
       id: 2,
       company: "远山数据",
       role: "前端开发实习生",
-      stage: "一面",
       nextAction: "明天 15:00 面试，先完成项目追问准备",
-      synced: false
+      synced: false,
+      stages: [
+        {
+          id: 201,
+          name: "JD 分析",
+          status: "passed",
+          note: "确认组件设计、接口协作和实习时长",
+          skillKey: "jd-analysis",
+          skillName: "JD 分析",
+          encouragement: "岗位重点已经拆出来了。",
+          artifact: "岗位评估报告 v1"
+        },
+        {
+          id: 202,
+          name: "简历适配",
+          status: "passed",
+          note: "前端实习一页版 v2 已锁定",
+          skillKey: "resume-tailoring",
+          skillName: "简历写作",
+          encouragement: "一页版更贴近实习岗的阅读速度。",
+          artifact: "前端实习 v2"
+        },
+        {
+          id: 203,
+          name: "投递",
+          status: "passed",
+          note: "邮箱投递完成",
+          skillKey: "application-submission",
+          skillName: "投递材料检查",
+          encouragement: "这次投递已经完成了市场校验的第一步。",
+          date: "8月25日"
+        },
+        {
+          id: 204,
+          name: "一面",
+          status: "active",
+          note: "项目与协作追问",
+          nextAction: "明天 15:00，先完成项目追问准备",
+          skillKey: "interview-prep",
+          skillName: "面试准备",
+          encouragement: "讲出来的经历已经开始变成你的资产。",
+          date: "9月2日 15:00"
+        },
+        {
+          id: 205,
+          name: "面试复盘",
+          status: "todo",
+          note: "等待面试后回填",
+          skillKey: "interview-review",
+          skillName: "面试复盘",
+          encouragement: "复盘会把临场表现沉淀成下一轮准备。"
+        },
+        {
+          id: 206,
+          name: "反哺能力资产",
+          status: "todo",
+          note: "把追问转成证据和学习任务",
+          skillKey: "asset-feedback",
+          skillName: "资产反哺",
+          encouragement: "面试反馈会反向校准能力资产。"
+        }
+      ]
     },
     {
       id: 3,
       company: "南风教育",
       role: "全栈开发实习生",
-      stage: "待评估",
       nextAction: "补充 JD 城市与转正信息",
-      synced: false
+      synced: false,
+      stages: [
+        {
+          id: 301,
+          name: "JD 分析",
+          status: "waiting",
+          note: "岗位描述缺少城市与转正信息",
+          nextAction: "补充城市、转正和招聘批次",
+          skillKey: "jd-analysis",
+          skillName: "JD 分析",
+          encouragement: "先把关键信息问清楚，再决定是否投入简历。"
+        },
+        {
+          id: 302,
+          name: "简历适配",
+          status: "todo",
+          note: "等待 JD 分析结论",
+          skillKey: "resume-tailoring",
+          skillName: "简历写作",
+          encouragement: "适配会从能力资产中取证据，不重写一份空简历。"
+        },
+        {
+          id: 303,
+          name: "投递",
+          status: "todo",
+          note: "等待评估和简历确认",
+          skillKey: "application-submission",
+          skillName: "投递材料检查",
+          encouragement: "确认后再投，一次投递就是一次有效校验。"
+        }
+      ]
+    },
+    {
+      id: 4,
+      company: "云洲物流",
+      role: "供应链系统实习生",
+      nextAction: "确认入职材料清单",
+      synced: true,
+      stages: [
+        {
+          id: 401,
+          name: "JD 分析",
+          status: "passed",
+          note: "确认 Java 基础、SQL 和业务理解要求",
+          skillKey: "jd-analysis",
+          skillName: "JD 分析",
+          encouragement: "这份 JD 的能力要求已经拆清楚。",
+          artifact: "岗位评估报告 v1"
+        },
+        {
+          id: 402,
+          name: "简历适配",
+          status: "passed",
+          note: "供应链系统版本 v1 已锁定",
+          skillKey: "resume-tailoring",
+          skillName: "简历写作",
+          encouragement: "项目条目已经对准供应链场景。",
+          artifact: "供应链系统 v1"
+        },
+        {
+          id: 403,
+          name: "投递",
+          status: "passed",
+          note: "校招系统投递完成",
+          skillKey: "application-submission",
+          skillName: "投递材料检查",
+          encouragement: "材料齐全再投递，这一步做得很稳。",
+          date: "8月20日"
+        },
+        {
+          id: 404,
+          name: "一面",
+          status: "passed",
+          note: "项目实现与 SQL 追问",
+          skillKey: "interview-prep",
+          skillName: "面试准备",
+          encouragement: "项目细节能讲清楚，是这轮通过的基础。",
+          date: "8月24日"
+        },
+        {
+          id: 405,
+          name: "二面",
+          status: "passed",
+          note: "业务场景与学习计划追问",
+          skillKey: "interview-prep",
+          skillName: "面试准备",
+          encouragement: "二面能聊业务场景，说明准备开始复用了。",
+          date: "8月27日"
+        },
+        {
+          id: 406,
+          name: "HR 面",
+          status: "passed",
+          note: "实习时间与入职材料确认",
+          skillKey: "interview-prep",
+          skillName: "面试准备",
+          encouragement: "把时间边界讲清楚，也是职业沟通能力。",
+          date: "8月30日"
+        },
+        {
+          id: 407,
+          name: "Offer",
+          status: "offer",
+          note: "口头 Offer 已确认，邮件待归档",
+          nextAction: "确认入职材料清单",
+          skillKey: "offer-checklist",
+          skillName: "Offer 核对",
+          encouragement: "Offer 拿下了，这一路的每一步都算数。",
+          artifact: "Offer 检查清单"
+        }
+      ]
     }
   ]);
 
@@ -254,6 +491,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
 
   let messageId = 2;
   let traceId = 3;
+  let processStageId = 500;
 
   function generateDeviceCode() {
     const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
@@ -289,7 +527,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     evidenceTime.value = "";
     lastSyncTime.value = "";
     evidenceAbilities.value = [];
-    applications.value = applications.value.map((item) => ({ ...item, synced: false }));
+    opportunities.value = opportunities.value.map((item) => ({ ...item, synced: false }));
     pushMessage(
       "system",
       "设备已解绑",
@@ -466,8 +704,18 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
           source: "interview"
         });
       }
-      interviewStages.value = interviewStages.value.map((stage) =>
-        stage.id === 6 ? { ...stage, state: "current", note: "已生成复盘草稿，等待确认" } : stage
+      opportunities.value = opportunities.value.map((opportunity) =>
+        opportunity.id === 2
+          ? {
+              ...opportunity,
+              nextAction: "确认远山数据一面复盘草稿",
+              stages: opportunity.stages.map((stage) =>
+                stage.id === 205
+                  ? { ...stage, status: "active" as const, note: "已生成复盘草稿，等待确认" }
+                  : stage
+              )
+            }
+          : opportunity
       );
     }
   }
@@ -484,9 +732,73 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     addTrace("简历事实确认", `本地简历条目：${resumeDraft.bullet.slice(0, 18)}...`, "用户确认事实后才能锁定简历版本");
   }
 
-  function confirmSync(item: ApplicationItem) {
-    applications.value = applications.value.map((application) =>
-      application.id === item.id ? { ...application, synced: true } : application
+  function setProcessStageStatus(
+    opportunityId: number,
+    stageId: number,
+    status: Exclude<ProcessStageStatus, "offer">
+  ) {
+    const opportunity = opportunities.value.find((item) => item.id === opportunityId);
+    const stage = opportunity?.stages.find((item) => item.id === stageId);
+    if (!opportunity || !stage) return;
+
+    stage.status = status;
+    addTrace(
+      "面试流程状态更新",
+      `${opportunity.company} · ${stage.name}`,
+      `用户手工标记为${processStatusLabel(status)}，Agent 不自动改写结果`
+    );
+  }
+
+  function markProcessStageOffer(opportunityId: number, stageId: number) {
+    const opportunity = opportunities.value.find((item) => item.id === opportunityId);
+    const stage = opportunity?.stages.find((item) => item.id === stageId);
+    if (!opportunity || !stage) return;
+
+    stage.status = "offer";
+    stage.encouragement = "Offer 拿下了，这一路的每一步都算数。";
+    addTrace(
+      "Offer 确认",
+      `${opportunity.company} · ${stage.name}`,
+      "用户手工确认 Offer，流程树进入成功终端节点"
+    );
+  }
+
+  function addProcessStage(opportunityId: number, name: string) {
+    const opportunity = opportunities.value.find((item) => item.id === opportunityId);
+    const stageName = name.trim();
+    if (!opportunity || !stageName) return;
+
+    opportunity.stages.push({
+      id: processStageId++,
+      name: stageName,
+      status: "todo",
+      note: "人工添加的节点，可按实际情况补充说明",
+      skillKey: "agent-assist",
+      skillName: "Agent 协助",
+      encouragement: "流程树跟着真实情况走，不用硬套模板。"
+    });
+    addTrace(
+      "面试流程节点新增",
+      `${opportunity.company} · ${stageName}`,
+      "用户手工添加节点，适配不固定的面试轮次"
+    );
+  }
+
+  function processStatusLabel(status: ProcessStageStatus) {
+    return (
+      {
+        todo: "待开始",
+        active: "进行中",
+        waiting: "等待中",
+        passed: "已通过",
+        failed: "未通过",
+        offer: "Offer"
+      })[status];
+  }
+
+  function confirmSync(item: CompanyOpportunity) {
+    opportunities.value = opportunities.value.map((opportunity) =>
+      opportunity.id === item.id ? { ...opportunity, synced: true } : opportunity
     );
     lastSyncTime.value = "刚刚";
     addTrace(
@@ -524,8 +836,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     resumeAssets,
     resumeDraft,
     careerStages,
-    interviewStages,
-    applications,
+    opportunities,
     traceEvents,
     messages,
     bindingLabel,
@@ -538,6 +849,10 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     submitMessage,
     detectIntent,
     confirmResumeFact,
+    setProcessStageStatus,
+    markProcessStageOffer,
+    addProcessStage,
+    processStatusLabel,
     confirmSync
   };
 });
