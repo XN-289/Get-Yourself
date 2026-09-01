@@ -100,7 +100,7 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
         <span><Bot :size="21" /></span>
         <div>
           <strong>GY Agent</strong>
-          <small>~/get-yourself/job-search</small>
+          <small>求职任务 · 本地工位</small>
         </div>
       </div>
 
@@ -230,16 +230,16 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 
 <style scoped>
 .agent-console {
-  width: min(960px, 100%);
+  width: min(980px, 100%);
   min-height: calc(100vh - 188px);
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   margin: 0 auto;
-  border: 1px solid #263a3d;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #172124;
-  color: #e8f0ef;
-  box-shadow: 0 20px 54px rgba(23, 33, 36, 0.16);
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 18px 44px rgba(32, 44, 47, 0.08);
   overflow: hidden;
 }
 
@@ -250,8 +250,8 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: #223336;
+  border-bottom: 1px solid var(--line);
+  background: #fbfdfc;
 }
 
 .console-title {
@@ -267,8 +267,8 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   display: grid;
   place-items: center;
   border-radius: 7px;
-  background: rgba(86, 191, 175, 0.2);
-  color: #8fd6c8;
+  background: #e8f6f1;
+  color: var(--teal-dark);
 }
 
 .console-title div {
@@ -282,8 +282,7 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 
 .console-title small {
   overflow: hidden;
-  color: #9fb5b2;
-  font-family: Consolas, "Courier New", monospace;
+  color: var(--muted);
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -302,23 +301,24 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   align-items: center;
   gap: 6px;
   padding: 0 9px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--line);
   border-radius: 7px;
-  color: #b9cbc8;
+  background: #fff;
+  color: var(--muted);
   font-size: 11px;
   font-weight: 850;
 }
 
 .connection-state.is-bound {
-  border-color: rgba(86, 191, 175, 0.46);
-  background: rgba(20, 123, 115, 0.28);
-  color: #b7e5da;
+  border-color: rgba(20, 123, 115, 0.28);
+  background: #edf7f3;
+  color: var(--teal-dark);
 }
 
 .connection-state.is-pending {
-  border-color: rgba(199, 144, 37, 0.48);
-  background: rgba(199, 144, 37, 0.18);
-  color: #f0d69b;
+  border-color: rgba(199, 144, 37, 0.32);
+  background: #fff8e9;
+  color: #8a5f14;
 }
 
 .console-tools button,
@@ -328,10 +328,10 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   align-items: center;
   gap: 5px;
   padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--line);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.07);
-  color: #dcebe8;
+  background: #fff;
+  color: var(--ink);
   font-size: 11px;
   font-weight: 850;
   cursor: pointer;
@@ -339,7 +339,8 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 
 .console-tools button:hover,
 .connect-bar button:hover {
-  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(20, 123, 115, 0.36);
+  color: var(--teal-dark);
 }
 
 .connect-bar {
@@ -348,9 +349,9 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
-  background: #1c2c2f;
-  color: #8fd6c8;
+  border-bottom: 1px solid var(--line);
+  background: #f7fbf9;
+  color: var(--teal-dark);
 }
 
 .connect-command {
@@ -362,12 +363,12 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 
 .connect-command code {
   overflow-wrap: anywhere;
-  color: #dcebe8;
+  color: var(--ink);
   font-size: 12px;
 }
 
 .connect-command small {
-  color: #9fb5b2;
+  color: var(--muted);
   font-size: 10px;
 }
 
@@ -379,9 +380,9 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 
 .device-error {
   padding: 7px 14px;
-  border-bottom: 1px solid rgba(180, 72, 58, 0.42);
-  background: rgba(180, 72, 58, 0.18);
-  color: #f1b8ae;
+  border-bottom: 1px solid rgba(180, 72, 58, 0.28);
+  background: #fdf3f1;
+  color: #9a3c30;
   font-size: 11px;
 }
 
@@ -424,31 +425,40 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   min-height: 320px;
   display: grid;
   align-content: start;
-  gap: 10px;
-  padding: 18px;
+  gap: 15px;
+  padding: 22px clamp(16px, 3vw, 30px);
+  background: #fff;
   overflow: auto;
 }
 
 .message-stream article {
-  max-width: min(720px, 94%);
+  max-width: min(760px, 100%);
   display: grid;
   gap: 7px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.055);
+  padding: 0;
+  color: var(--ink);
   line-height: 1.65;
 }
 
 .message-stream article.is-user {
   justify-self: end;
-  border-color: rgba(20, 123, 115, 0.58);
-  background: rgba(20, 123, 115, 0.25);
+  max-width: min(660px, 94%);
+  padding: 11px 14px;
+  border: 1px solid #cfe9e1;
+  border-radius: 8px;
+  background: #edf7f3;
 }
 
 .message-stream article.is-system {
-  border-color: rgba(199, 144, 37, 0.42);
-  background: rgba(199, 144, 37, 0.14);
+  padding: 11px 14px;
+  border: 1px solid rgba(199, 144, 37, 0.3);
+  border-radius: 8px;
+  background: #fff8e9;
+}
+
+.message-stream article.is-assistant {
+  padding-left: 13px;
+  border-left: 2px solid #d9e2df;
 }
 
 .message-stream header {
@@ -464,7 +474,7 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 
 .message-stream header span {
   overflow: hidden;
-  color: #a9c1be;
+  color: var(--muted);
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -483,9 +493,10 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   align-items: center;
   gap: 5px;
   padding: 7px 10px;
-  border: 1px solid rgba(86, 191, 175, 0.48);
+  border: 1px solid rgba(20, 123, 115, 0.28);
   border-radius: 7px;
-  color: #b7e5da;
+  background: #fff;
+  color: var(--teal-dark);
   font-size: 12px;
   font-weight: 850;
 }
@@ -508,8 +519,8 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 
 .console-footer {
   display: grid;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: #1d2e30;
+  border-top: 1px solid var(--line);
+  background: #fbfdfc;
 }
 
 .quick-prompts {
@@ -521,10 +532,10 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 
 .quick-prompts button {
   min-height: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--line);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #d6e5e3;
+  background: #fff;
+  color: #4f5a5e;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
@@ -532,9 +543,9 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 
 .quick-prompts button:hover:not(:disabled),
 .quick-prompts button.is-active {
-  border-color: rgba(86, 191, 175, 0.7);
-  background: rgba(20, 123, 115, 0.36);
-  color: #fff;
+  border-color: rgba(20, 123, 115, 0.38);
+  background: #edf7f3;
+  color: var(--teal-dark);
 }
 
 .quick-prompts button:disabled {
@@ -554,10 +565,10 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   min-height: 58px;
   max-height: 130px;
   resize: vertical;
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  border: 1px solid #d7dbd8;
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #eef5f4;
+  background: #fff;
+  color: var(--ink);
   font: inherit;
   font-size: 13px;
   line-height: 1.6;
@@ -565,11 +576,12 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 }
 
 .composer textarea::placeholder {
-  color: #91a8a6;
+  color: #8b959a;
 }
 
 .composer textarea:focus-visible {
-  border-color: rgba(86, 191, 175, 0.75);
+  border-color: rgba(20, 123, 115, 0.62);
+  box-shadow: 0 0 0 3px rgba(20, 123, 115, 0.12);
 }
 
 .composer > button {
@@ -595,14 +607,14 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   align-items: center;
   gap: 9px;
   padding: 7px 14px 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  color: #8fa9a6;
+  border-top: 1px solid #eef1ef;
+  color: var(--muted);
   font-size: 11px;
 }
 
 .trace-strip span {
   flex: 0 0 auto;
-  color: #b7e5da;
+  color: var(--teal-dark);
   font-weight: 900;
 }
 

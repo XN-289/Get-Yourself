@@ -55,7 +55,8 @@ const renderedContent = computed(() =>
 .agent-markdown :deep(code) {
   padding: 2px 4px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.12);
+  background: #eef2f0;
+  color: #173b38;
   font-family: Consolas, "Courier New", monospace;
   font-size: 12px;
 }
@@ -64,18 +65,19 @@ const renderedContent = computed(() =>
   overflow: auto;
   padding: 10px;
   border-radius: 7px;
-  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid #e3e7e4;
+  background: #f7f8f7;
 }
 
 .agent-markdown :deep(blockquote) {
   margin: 0;
   padding-left: 10px;
-  border-left: 2px solid rgba(143, 214, 200, 0.7);
-  color: #c6d7d4;
+  border-left: 2px solid rgba(20, 123, 115, 0.32);
+  color: var(--muted);
 }
 
 .agent-markdown :deep(a) {
-  color: #9fd9cb;
+  color: var(--teal-dark);
   text-decoration: underline;
 }
 </style>
