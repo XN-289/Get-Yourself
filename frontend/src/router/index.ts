@@ -4,15 +4,8 @@ import { useAuthStore } from "@/stores/auth";
 import type { UserRole } from "@/types/auth";
 import AuthView from "@/views/AuthView.vue";
 import FrozenAccountView from "@/views/FrozenAccountView.vue";
-import StudentAchievementsView from "@/views/StudentAchievementsView.vue";
-import StudentChallengesView from "@/views/StudentChallengesView.vue";
-import StudentCoachView from "@/views/StudentCoachView.vue";
-import StudentGrowthTimelineView from "@/views/StudentGrowthTimelineView.vue";
-import StudentJournalView from "@/views/StudentJournalView.vue";
 import StudentLayout from "@/views/StudentLayout.vue";
-import StudentLocalWorkbenchDemoView from "@/views/StudentLocalWorkbenchDemoView.vue";
-import StudentModulePlaceholder from "@/views/StudentModulePlaceholder.vue";
-import StudentScheduleView from "@/views/StudentScheduleView.vue";
+import StudentAgentWorkbenchDemoView from "@/views/StudentAgentWorkbenchDemoView.vue";
 import WorkspacePlaceholder from "@/views/WorkspacePlaceholder.vue";
 
 declare module "vue-router" {
@@ -26,46 +19,24 @@ declare module "vue-router" {
   }
 }
 
+const studentWorkbenchRedirect = { path: "/student/workbench", query: { focus: "assets" } };
 const studentChildren: RouteRecordRaw[] = [
-  ["growth/timeline", "student-growth-timeline", "成长时间线", "成长"],
-  ["growth/journal", "student-growth-journal", "成长日记", "成长"],
-  ["schedule", "student-schedule", "日程", "行动管理"],
-  ["challenges", "student-challenges", "挑战", "行动管理"],
-  ["coach", "student-coach", "教练", "成长复盘"],
-  ["achievements", "student-achievements", "能力档案", "成长档案"]
-].map(([path, name, title, section]) => ({
-  path,
-  name,
-  component:
-    path === "growth/timeline"
-      ? StudentGrowthTimelineView
-      : path === "growth/journal"
-        ? StudentJournalView
-        : path === "achievements"
-          ? StudentAchievementsView
-          : path === "schedule"
-            ? StudentScheduleView
-            : path === "challenges"
-              ? StudentChallengesView
-              : path === "coach"
-                ? StudentCoachView
-              : StudentModulePlaceholder,
-  meta: { title, section }
-}));
-
-studentChildren.push(
   {
     path: "workbench",
-    name: "student-local-workbench",
-    component: StudentLocalWorkbenchDemoView,
-    meta: { title: "本地工作台", section: "求职执行" }
+    name: "student-agent-workbench",
+    component: StudentAgentWorkbenchDemoView,
+    meta: { title: "Agent 工作台", section: "Agent 主入口" }
   },
-  ...([
-    { path: "events", redirect: "/student/growth/timeline" },
-    { path: "reservations", redirect: "/student/growth/timeline" },
-    { path: "follows", redirect: "/student/growth/timeline" }
-  ] as RouteRecordRaw[])
-);
+  { path: "growth/timeline", redirect: studentWorkbenchRedirect },
+  { path: "growth/journal", redirect: studentWorkbenchRedirect },
+  { path: "achievements", redirect: studentWorkbenchRedirect },
+  { path: "schedule", redirect: "/student/workbench" },
+  { path: "challenges", redirect: "/student/workbench" },
+  { path: "coach", redirect: "/student/workbench" },
+  { path: "events", redirect: "/student/workbench" },
+  { path: "reservations", redirect: "/student/workbench" },
+  { path: "follows", redirect: "/student/workbench" }
+];
 
 const router = createRouter({
   history: createWebHistory(),
@@ -94,7 +65,7 @@ const router = createRouter({
     {
       path: "/student",
       component: StudentLayout,
-      redirect: "/student/growth/timeline",
+      redirect: "/student/workbench",
       meta: { requiresAuth: true, roles: ["STUDENT"] },
       children: studentChildren
     },

@@ -1,11 +1,8 @@
 import {
   Award,
-  BookOpen,
-  CalendarDays,
-  Flag,
-  History,
-  MessagesSquare,
-  MonitorSmartphone,
+  Bot,
+  FileText,
+  ListChecks,
   type LucideIcon
 } from "@lucide/vue";
 
@@ -23,33 +20,21 @@ export interface StudentNavigationGroup {
 
 export const studentNavigationGroups: StudentNavigationGroup[] = [
   {
-    label: "成长",
+    label: "主入口",
     items: [
-      { to: "/student/growth/timeline", label: "成长时间线", shortLabel: "时间线", icon: History },
-      { to: "/student/growth/journal", label: "成长日记", shortLabel: "日记", icon: BookOpen },
-      { to: "/student/coach", label: "教练", icon: MessagesSquare },
-      { to: "/student/achievements", label: "能力档案", shortLabel: "档案", icon: Award }
+      { to: "/student/workbench", label: "Agent 工作台", shortLabel: "Agent", icon: Bot }
     ]
   },
   {
-    label: "行动",
+    label: "求职对象",
     items: [
-      { to: "/student/schedule", label: "日程", icon: CalendarDays },
-      { to: "/student/challenges", label: "挑战", icon: Flag },
-      { to: "/student/workbench", label: "本地工作台", shortLabel: "工位", icon: MonitorSmartphone }
+      { to: "/student/workbench?focus=assets", label: "能力资产", shortLabel: "资产", icon: Award },
+      { to: "/student/workbench?focus=resume", label: "简历管理", shortLabel: "简历", icon: FileText },
+      { to: "/student/workbench?focus=interview", label: "面试管理", shortLabel: "面试", icon: ListChecks }
     ]
   }
 ];
 
 export const studentNavigationItems = studentNavigationGroups.flatMap((group) => group.items);
 
-export const studentMobilePrimaryItems = [
-  studentNavigationItems.find((item) => item.to === "/student/growth/timeline"),
-  studentNavigationItems.find((item) => item.to === "/student/growth/journal"),
-  studentNavigationItems.find((item) => item.to === "/student/coach"),
-  studentNavigationItems.find((item) => item.to === "/student/challenges")
-].filter((item): item is StudentNavigationItem => Boolean(item));
-
-export const studentMobileMoreItems = studentNavigationItems.filter(
-  (item) => !studentMobilePrimaryItems.some((primary) => primary.to === item.to)
-);
+export const studentMobilePrimaryItems = studentNavigationItems;

@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import {
-  BookOpen,
-  CalendarPlus,
+  Bot,
   ChevronDown,
   ChevronRight,
   CirclePlus,
-  Flag,
+  FileText,
+  FolderTree,
+  ListChecks,
   LogOut,
-  Menu,
-  MessagesSquare,
   Search,
   X
 } from "@lucide/vue";
@@ -16,7 +15,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 
 import {
-  studentMobileMoreItems,
   studentMobilePrimaryItems,
   studentNavigationGroups,
   studentNavigationItems,
@@ -32,14 +30,10 @@ const commandQuery = ref("");
 const commandInput = ref<HTMLInputElement | null>(null);
 const quickMenuOpen = ref(false);
 const userMenuOpen = ref(false);
-const mobileMoreOpen = ref(false);
 
 const initial = computed(() => authStore.user?.username.slice(0, 1).toUpperCase() ?? "G");
 const currentTitle = computed(() => String(route.meta.title ?? "学生端"));
 const currentSection = computed(() => String(route.meta.section ?? "成长工作台"));
-const mobileMoreActive = computed(() =>
-  studentMobileMoreItems.some((item) => route.path.startsWith(item.to))
-);
 const filteredNavigation = computed(() => {
   const query = commandQuery.value.trim().toLowerCase();
   if (!query) {
@@ -47,17 +41,11 @@ const filteredNavigation = computed(() => {
   }
   return studentNavigationItems.filter((item) => item.label.toLowerCase().includes(query));
 });
-const todayLabel = new Intl.DateTimeFormat("zh-CN", {
-  month: "long",
-  day: "numeric",
-  weekday: "short"
-}).format(new Date());
-
 const quickActions = [
-  { label: "写日记", to: "/student/growth/journal", icon: BookOpen },
-  { label: "问教练", to: "/student/coach", icon: MessagesSquare },
-  { label: "创建挑战", to: "/student/challenges?action=create", icon: Flag },
-  { label: "添加日程", to: "/student/schedule?action=create", icon: CalendarPlus }
+  { label: "打开 Agent", to: "/student/workbench", icon: Bot },
+  { label: "整理经历", to: "/student/workbench?focus=assets", icon: FolderTree },
+  { label: "生成简历", to: "/student/workbench?focus=resume", icon: FileText },
+  { label: "面试复盘", to: "/student/workbench?focus=interview", icon: ListChecks }
 ];
 
 watch(
@@ -65,7 +53,6 @@ watch(
   () => {
     quickMenuOpen.value = false;
     userMenuOpen.value = false;
-    mobileMoreOpen.value = false;
     commandOpen.value = false;
   }
 );
@@ -79,7 +66,14 @@ watch(commandOpen, async (open) => {
 });
 
 function isActive(item: StudentNavigationItem) {
-  return route.path.startsWith(item.to);
+  const [basePath, query] = item.to.split("?");
+  if (!route.path.startsWith(basePath)) {
+    return false;
+  }
+  if (query) {
+    return route.fullPath === item.to;
+  }
+  return route.path === basePath && !route.query.focus;
 }
 
 function toggleQuickMenu() {
@@ -96,7 +90,6 @@ async function navigate(to: string) {
   commandOpen.value = false;
   quickMenuOpen.value = false;
   userMenuOpen.value = false;
-  mobileMoreOpen.value = false;
   await router.push(to);
 }
 
@@ -119,7 +112,6 @@ function handleGlobalKeydown(event: KeyboardEvent) {
     commandOpen.value = false;
     quickMenuOpen.value = false;
     userMenuOpen.value = false;
-    mobileMoreOpen.value = false;
   }
 }
 
@@ -130,11 +122,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleGlobalKeydown)
 <template>
   <div class="student-shell" @click="closeFloatingMenus">
     <aside class="student-sidebar">
-      <RouterLink class="student-brand" to="/student/growth/timeline">
+      <RouterLink class="student-brand" to="/student/workbench">
         <span class="brand-mark">GY</span>
         <span>
           <strong>Get Yourself</strong>
-          <small>学生成长工作台</small>
+          <small>大学生求职工作台</small>
         </span>
       </RouterLink>
 
@@ -162,11 +154,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleGlobalKeydown)
         </section>
       </nav>
 
-      <RouterLink class="student-today-link" to="/student/schedule">
-        <CalendarPlus :size="19" />
+      <RouterLink class="student-agent-link" to="/student/workbench">
+        <Bot :size="19" />
         <span>
-          <small>今天</small>
-          <strong>{{ todayLabel }}</strong>
+          <small>主入口</small>
+          <strong>和 GY Agent 对话</strong>
         </span>
         <ChevronRight :size="15" />
       </RouterLink>
@@ -174,7 +166,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleGlobalKeydown)
 
     <section class="student-workspace">
       <header class="student-topbar">
-        <RouterLink class="student-mobile-brand" to="/student/growth/timeline">
+        <RouterLink class="student-mobile-brand" to="/student/workbench">
           <span class="brand-mark">GY</span>
           <strong>Get Yourself</strong>
         </RouterLink>
@@ -235,7 +227,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleGlobalKeydown)
       <main class="student-main">
         <RouterView v-slot="{ Component, route: activeRoute }">
           <Transition name="student-page" mode="out-in">
-            <component :is="Component" :key="activeRoute.fullPath" />
+            <component :is="Component" :key="String(activeRoute.name)" />
           </Transition>
         </RouterView>
       </main>
@@ -251,14 +243,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleGlobalKeydown)
         <component :is="item.icon" :size="20" />
         <span>{{ item.shortLabel ?? item.label }}</span>
       </RouterLink>
-      <button
-        type="button"
-        :class="{ 'is-active': mobileMoreActive || mobileMoreOpen }"
-        @click="mobileMoreOpen = true"
-      >
-        <Menu :size="20" />
-        <span>更多</span>
-      </button>
     </nav>
 
     <Teleport to="body">
@@ -289,40 +273,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleGlobalKeydown)
         </div>
       </Transition>
 
-      <Transition name="mobile-sheet">
-        <div v-if="mobileMoreOpen" class="student-mobile-sheet-layer" @click.self="mobileMoreOpen = false">
-          <section class="student-mobile-sheet">
-            <header>
-              <strong>更多</strong>
-              <button type="button" title="关闭" @click="mobileMoreOpen = false">
-                <X :size="20" />
-              </button>
-            </header>
-            <div class="student-mobile-quick-actions">
-              <button
-                v-for="action in quickActions"
-                :key="action.to"
-                type="button"
-                @click="navigate(action.to)"
-              >
-                <component :is="action.icon" :size="20" />
-                <span>{{ action.label }}</span>
-              </button>
-            </div>
-            <nav>
-              <RouterLink v-for="item in studentMobileMoreItems" :key="item.to" :to="item.to">
-                <component :is="item.icon" :size="20" />
-                <span>{{ item.label }}</span>
-                <ChevronRight :size="16" />
-              </RouterLink>
-            </nav>
-            <button class="student-mobile-logout" type="button" @click="logout">
-              <LogOut :size="19" />
-              <span>退出登录</span>
-            </button>
-          </section>
-        </div>
-      </Transition>
     </Teleport>
   </div>
 </template>
