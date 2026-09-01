@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-Updated: 2026-09-01 19:05
+Updated: 2026-09-01 19:20
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出与 Stage 3 最小设备绑定闭环已实现；前端 Demo、`gy` Stage 1、证据包闭环与设备绑定仍待用户统一验收，自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出与 Stage 3 最小设备绑定闭环已实现；PRD 已完成目标校准并明确整体目标不变；前端 Demo、`gy` Stage 1、证据包闭环与设备绑定仍待用户统一验收，自动同步尚未开始。
 
 ## 已接受事实
 
@@ -63,6 +63,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - Stage 3 真实链路回归 — 2026-09-01 在 `demo_student` 账号完成网页生成绑定码、CLI `connect`、网页 3 秒轮询 pending→active、网页解绑、同安装 `connect --replace` 与 CLI `disconnect`；CLI 断开后网页自动回落“未绑定”，本地 `device-binding.json` 被删除、`device-installation.json` 保留且整个 `cli/data/` 保持 ignored。回归中发现并修复绑定成功后网页停止轮询、旧绑定码残留两个状态问题。
 - Agent 对话区亮色工具台改造 — `frontend/src/views/StudentAgentConsoleView.vue` 与 `frontend/src/components/agent/AgentMarkdown.vue`；深色控制台改为白底轻边框，Assistant 消息改为开放式轻左线段落，用户消息保留浅绿气泡，设备绑定、快捷任务、输入区与 Agent Trace 统一降为辅助层级，Markdown 代码块/引用同步亮色化。
 - Agent 对话区视觉验证 — 2026-09-01 1280px 桌面与 390px 窄屏检查通过，页面均无横向溢出；桌面截图平均亮度 247/255、深色像素占比 0.4%；`frontend/` 下 `npm run build` 通过。
+- PRD 目标校准 — `docs/PRODUCT_DESIGN_V0.1.md`；明确战略目标不变，记录 Agent-first、独立模块、面试实践闭环、授权-only、显式证据包和亮色工具台等实现校准，补充 Stage 0-6 当前状态，并把已决的绑定码、证据包与多设备问题移入决策记录。
 
 ## 已验收
 
@@ -101,3 +102,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 2026-09-01 — 面试流程树收敛为横向流程轨 + 右侧节点抽屉 — 影响面试管理信息密度、状态确认边界和后续 skill 挂载入口；仍待用户验收。
 - 2026-09-01 — 完成 Stage 3 最小设备绑定闭环与真实网页/CLI 冒烟 — 影响账号授权、本地凭证边界和后续数据协同；仍待用户验收，未开始自动同步。
 - 2026-09-01 — Agent 对话区从深色终端风调整为亮色 Codex 式工具台 — 影响主入口的长期使用氛围与信息层级；仍待用户验收。
+- 2026-09-01 — PRD 完成实现校准修订 — 明确整体目标不变、当前阶段状态、Stage 5 前端/后端边界与前端技术底座决策；仍待产品与技术评审和用户统一验收。
