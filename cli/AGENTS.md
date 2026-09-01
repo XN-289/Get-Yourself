@@ -23,6 +23,14 @@
 - **User Layer（永不自动更新；个性化写这里）：** `cv.md`、`config/profile.yml`、`modes/_profile.md`、`modes/_custom.md`、`portals.yml`、`data/*`、`documents/*`、`reports/*`、`output/*`、`interview-prep/*`
 - **System Layer（可自动更新；不要放用户数据）：** `modes/_shared.md` 及所有模式、`AGENTS.md`、`*.mjs`、`templates/*`、`scripts/*`、`providers/*`、`tests/*`
 
+### 当前本地闭环边界
+
+- `gy --status` 只读报告能力证据、简历素材、定稿、渲染、岗位分析、面试准备和面试复盘的就绪状态。
+- 已落地链路：能力证据导入 -> 简历素材 / 定稿 / 渲染 -> 岗位分析 -> 面试准备 / 复盘；每个写入合同都要求 dry-run、`--apply` 和覆盖时 `--replace`。
+- offer-toolkit 已吸收为本地契约、系统模板和方法文档，不创建并行 skill 运行时，不输出到外部目录。
+- 面试复盘候选、岗位分析结论和 JD 线索都不会自动写入能力资产、投递进度表、简历素材或云端。
+- 能力资产反哺、tracker 自动闭环、网页同步和页面内 skill 执行仍是后续工作。
+
 ### 设备绑定（CRITICAL）
 
 - 契约：仓库根 `docs/DEVICE_BINDING_CONTRACT.md`。

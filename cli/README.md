@@ -30,10 +30,13 @@ node evidence-package.mjs import ../path/to/evidence-package.json
 node evidence-package.mjs import ../path/to/evidence-package.json --apply
 node resume-materials.mjs check ../path/to/resume-materials.json
 node resume-final.mjs check ../path/to/resume-final-plan.json
+node resume-render.mjs check ../path/to/resume-render.json
+node job-analysis.mjs check ../path/to/job-analysis.json
 node interview-prep.mjs check ../path/to/interview-prep.json
+node interview-review.mjs check ../path/to/interview-review.json
 ```
 
-当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。`gy` 本身不假装调用 LLM，也不直接写简历、tracker 或个人材料；素材导入、简历定稿和面试准备由用户确认后调用对应契约工具完成，实际任务由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。
+当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。`gy` 本身不假装调用 LLM，也不直接写简历、tracker 或个人材料；素材导入、简历定稿与渲染、岗位分析、面试准备和面试复盘由用户确认后调用对应契约工具完成，实际任务由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。
 
 ## 它解决什么问题
 
@@ -88,8 +91,8 @@ claude   # 或 codex / qwen / kimi
 │ A-G 评估          │  匹配度·方向·平台培养·待遇·城市户口·红线·真实性
 │ (读取 cv.md)      │  G 真实性独立：🔴 一票否决（防骗）
 └────────┬─────────┘
-         ▼
-   报告 md + tracker 登记 + (可选) PDF 简历
+        ▼
+   岗位分析 JSON + 本地报告；tracker 登记必须后续显式确认
 ```
 
 ## 技术架构
@@ -109,7 +112,10 @@ get-yourself-cli/
 ├── evidence-package.mjs   # 能力证据包校验与显式导入
 ├── resume-materials.mjs   # 简历素材包与 STAR 故事库
 ├── resume-final.mjs       # cv.md 定稿审批
+├── resume-render.mjs      # 11 套结构化简历 HTML 模板渲染
+├── job-analysis.mjs       # JD 拆解、证据匹配与本地报告
 ├── interview-prep.mjs     # 面试准备包与清单
+├── interview-review.mjs   # 面试复盘包与会话记录
 ├── lib/intent-router.mjs  # 确定性意图路由
 ├── AGENTS.md              # AI 指令（规范来源）
 ├── CLAUDE.md / QWEN.md / KIMI.md / CODEX.md   # 各 CLI 入口

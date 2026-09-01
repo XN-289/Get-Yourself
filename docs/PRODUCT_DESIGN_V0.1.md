@@ -32,8 +32,8 @@
 | Stage 1 | 已实现，待用户统一验收 | 前端四模块路由与 `gy` 确定性对话入口已落地 |
 | Stage 2 | 已实现，待用户统一验收 | 网页显式导出与本地显式导入已形成文件闭环 |
 | Stage 3 | 已实现，待用户统一验收 | 10 分钟一次性绑定码、设备管理与解绑已落地 |
-| Stage 4 | 进行中 | Stage 4a 简历素材包、Stage 4b 简历定稿审批与面试准备清单已实现；复盘结构化和能力资产反哺尚未完成 |
-| Stage 5 | 前端交互部分已实现 | 公司机会流程轨已落地；JD 分析、报告、tracker 持久化和 skill 执行未完成 |
+| Stage 4 | 进行中 | Stage 4a 简历素材包、Stage 4b 简历定稿审批与面试准备清单、Stage 4c 面试复盘和结构化简历渲染已实现；能力资产反哺尚未完成 |
+| Stage 5 | 进行中 | 公司机会流程轨与本地 JD 分析合同 / 报告已落地；防骗核查闭环、tracker 持久化、真实产物挂载和页面内 skill 执行未完成 |
 | Stage 6 | 未开始 | 求职摘要同步、网页进度摘要与 Trace 汇总尚未实现 |
 
 Get Yourself 本地工作台不是一个独立的求职工具，也不是把网页功能复制到终端里。它是把两个已有产品改造成一个连续系统：
@@ -1112,7 +1112,7 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 
 - 每条进入简历的内容都有来源，未确认推断不会进入定稿。
 
-当前实现边界：Stage 4a 已落地本地简历素材包契约与导入器。Agent 可以生成结构化候选草稿，用户确认后通过 `resume-materials.mjs` 写入 `data/resume-materials.json`，并派生 `interview-prep/story-bank.md`；导入器不修改 `cv.md`、不上传网页、不执行 LLM 抽取。Stage 4b 已落地简历定稿审批与面试准备清单：`resume-final.mjs` 只允许当前素材哈希匹配的 `verified` / `user_confirmed` 条目进入 `cv.md`，并保留用户手工维护的非托管章节；`interview-prep.mjs` 生成绑定当前素材的清单与 STAR 复盘，JD 全程只作为数据。复盘结构化和能力资产反哺仍未完成。契约细节见 `docs/RESUME_MATERIALS_CONTRACT.md`、`docs/RESUME_FINAL_CONTRACT.md` 与 `docs/INTERVIEW_PREP_CONTRACT.md`。
+当前实现边界：Stage 4a 已落地本地简历素材包契约与导入器。Agent 可以生成结构化候选草稿，用户确认后通过 `resume-materials.mjs` 写入 `data/resume-materials.json`，并派生 `interview-prep/story-bank.md`；导入器不修改 `cv.md`、不上传网页、不执行 LLM 抽取。Stage 4b 已落地简历定稿审批与面试准备清单：`resume-final.mjs` 只允许当前素材哈希匹配的 `verified` / `user_confirmed` 条目进入 `cv.md`，并保留用户手工维护的非托管章节；`interview-prep.mjs` 生成绑定当前素材的清单与 STAR 复盘，JD 全程只作为数据。Stage 4c 已落地面试复盘合同：`interview-review.mjs` 写入本地复盘 JSON 与会话 Markdown，差距和故事候选不直接修改任何下游事实源。结构化简历渲染也已通过 `resume-render.mjs` 落地，提供 11 套本地 HTML 模板和确定性输出。能力资产反哺仍未完成。契约细节见 `docs/RESUME_MATERIALS_CONTRACT.md`、`docs/RESUME_FINAL_CONTRACT.md`、`docs/INTERVIEW_PREP_CONTRACT.md`、`docs/INTERVIEW_REVIEW_CONTRACT.md` 与 `docs/RESUME_RENDER_CONTRACT.md`。
 
 ### Stage 5：岗位评估与 tracker 闭环
 
@@ -1132,7 +1132,7 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 - 用户能手工调整同一公司机会内的节点顺序，节点元数据在重排后保持不变。
 - Agent 产物能落到对应节点，但结果状态不由 Agent 自动改写。
 
-当前实现边界：公司机会、横向流程轨、右侧节点抽屉、人工节点扩展、人工排序和人工状态确认已在前端 Demo 落地。JD 解析、岗位评估报告、防骗核查、tracker 持久化、真实产物挂载和 skill 执行仍未完成，因此 Stage 5 不能记录为产品完成。
+当前实现边界：公司机会、横向流程轨、右侧节点抽屉、人工节点扩展、人工排序和人工状态确认已在前端 Demo 落地。本地侧已通过 `job-analysis.mjs` 落地 JD 解析、证据绑定、确定性匹配分和本地 Markdown 报告；JD 与公司内容只作为数据，分析不写 tracker。防骗核查闭环、公司机会写入、tracker 持久化、真实产物挂载和页面内 skill 执行仍未完成，因此 Stage 5 不能记录为产品完成。契约细节见 `docs/JOB_ANALYSIS_CONTRACT.md`。
 
 ### Stage 6：同步与 Trace 闭环
 

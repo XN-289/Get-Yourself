@@ -215,11 +215,11 @@ Use `feat: add job analysis contract`.
 **Interfaces:**
 - Produces the unified acceptance state and product-stage boundary.
 
-- [ ] Update Stage 4/5 status without claiming unsupported capability-asset feedback, tracker automation, or cloud sync.
-- [ ] Run complete CLI verification and syntax checks.
-- [ ] Review the full diff and untracked user files.
-- [ ] Confirm no task-authored files remain uncommitted.
-- [ ] Commit `docs: update offer toolkit absorption status`.
+- [x] Update Stage 4/5 status without claiming unsupported capability-asset feedback, tracker automation, or cloud sync.
+- [x] Run complete CLI verification and syntax checks.
+- [x] Review the full diff and untracked user files.
+- [x] Confirm no task-authored files remain uncommitted.
+- [x] Commit `docs: update offer toolkit absorption status`.
 
 ## Execution Notes
 
