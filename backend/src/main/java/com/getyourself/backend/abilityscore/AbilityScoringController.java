@@ -19,6 +19,7 @@ public class AbilityScoringController {
     private final AbilityScoreAppealService appealService;
     private final AbilityHacClusteringService clusteringService;
     private final AbilityEvidenceTimelineService evidenceTimelineService;
+    private final EvidencePackageExportService evidencePackageExportService;
     private final CurrentUser currentUser;
 
     public AbilityScoringController(EvidenceAssessmentAgentService assessmentAgentService,
@@ -27,6 +28,7 @@ public class AbilityScoringController {
                                     AbilityScoreAppealService appealService,
                                     AbilityHacClusteringService clusteringService,
                                     AbilityEvidenceTimelineService evidenceTimelineService,
+                                    EvidencePackageExportService evidencePackageExportService,
                                     CurrentUser currentUser) {
         this.assessmentAgentService = assessmentAgentService;
         this.stateRepository = stateRepository;
@@ -34,6 +36,7 @@ public class AbilityScoringController {
         this.appealService = appealService;
         this.clusteringService = clusteringService;
         this.evidenceTimelineService = evidenceTimelineService;
+        this.evidencePackageExportService = evidencePackageExportService;
         this.currentUser = currentUser;
     }
 
@@ -68,6 +71,18 @@ public class AbilityScoringController {
         return resultRepository.findTop50ByUserIdOrderByCreatedAtDesc(currentUser.id(request)).stream()
                 .map(AbilityScoreResultResponse::from)
                 .toList();
+    }
+
+    @PostMapping("/evidence-package/export")
+    public EvidencePackageExportDtos.EvidencePackageResponse exportEvidencePackage(
+            @Valid @RequestBody EvidencePackageExportDtos.ExportRequest body,
+            HttpServletRequest request
+    ) {
+        return evidencePackageExportService.export(
+                currentUser.id(request),
+                body.graduationYear(),
+                body.targetRoles()
+        );
     }
 
     @PostMapping("/results/{resultId}/appeals")

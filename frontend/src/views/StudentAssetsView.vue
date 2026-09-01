@@ -1,19 +1,77 @@
 <script setup lang="ts">
-import { ArrowUpRight, FolderTree, Repeat, ShieldCheck } from "@lucide/vue";
+import { ArrowUpRight, Download, FolderTree, Repeat, ShieldCheck } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { storeToRefs } from "pinia";
 
+import { achievementsApi } from "@/api/achievements";
 import StudentWorkbenchModule from "@/components/student/StudentWorkbenchModule.vue";
 import { modulePath, useStudentWorkbenchStore } from "@/stores/studentWorkbench";
 
 const store = useStudentWorkbenchStore();
 const { careerStages, evidenceAbilities, evidenceVersion } = storeToRefs(store);
 const selectedStageId = ref("asset");
+const graduationYear = ref("");
+const targetRoleText = ref("");
+const exporting = ref(false);
+const exportError = ref("");
+const exportedAt = ref("");
 
 const selectedStage = computed(
   () => careerStages.value.find((stage) => stage.id === selectedStageId.value) ?? careerStages.value[1]
 );
+
+const canExport = computed(() =>
+  /^\d{4}$/.test(graduationYear.value)
+  && Number(graduationYear.value) >= 2000
+  && Number(graduationYear.value) <= 2100
+  && targetRoleText.value.trim().length > 0
+  && !exporting.value
+);
+
+async function exportEvidencePackage() {
+  if (!canExport.value) return;
+
+  const targetRoles = targetRoleText.value
+    .split(/[,，、]/)
+    .map(role => role.trim())
+    .filter(Boolean)
+  if (targetRoles.length > 10) {
+    exportError.value = "目标方向最多 10 个";
+    return;
+  }
+  if (targetRoles.some(role => role.length > 40)) {
+    exportError.value = "单个目标方向不能超过 40 字";
+    return;
+  }
+  if (!targetRoles.length) {
+    exportError.value = "请填写目标方向";
+    return;
+  }
+
+  exporting.value = true;
+  exportError.value = "";
+  try {
+    const evidencePackage = await achievementsApi.exportEvidencePackage(
+      Number(graduationYear.value),
+      targetRoles
+    );
+    const blob = new Blob([JSON.stringify(evidencePackage, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `get-yourself-evidence-package-${evidencePackage.packageId}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    exportedAt.value = new Date().toLocaleTimeString();
+  } catch (error) {
+    exportError.value = error instanceof Error ? error.message : "能力证据包导出失败";
+  } finally {
+    exporting.value = false;
+  }
+}
 </script>
 
 <template>
@@ -68,6 +126,34 @@ const selectedStage = computed(
           </div>
           <ShieldCheck :size="19" />
         </header>
+
+        <div class="export-panel">
+          <label>
+            毕业年份
+            <input
+              v-model="graduationYear"
+              inputmode="numeric"
+              maxlength="4"
+              placeholder="2027"
+              type="text"
+            >
+          </label>
+          <label>
+            目标方向
+            <input
+              v-model="targetRoleText"
+              maxlength="400"
+              placeholder="Java 后端开发"
+              type="text"
+            >
+          </label>
+          <button :disabled="!canExport" type="button" @click="exportEvidencePackage">
+            <Download :size="15" />
+            {{ exporting ? "导出中" : "导出证据包" }}
+          </button>
+          <small v-if="exportError" class="export-error">{{ exportError }}</small>
+          <small v-else-if="exportedAt" class="export-success">已导出 {{ exportedAt }}</small>
+        </div>
 
         <div v-if="!evidenceAbilities.length" class="empty-state">
           <ShieldCheck :size="25" />
@@ -288,6 +374,75 @@ const selectedStage = computed(
   align-content: start;
 }
 
+.export-panel {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-soft);
+}
+
+.export-panel label {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.export-panel input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.export-panel button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 108px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--teal);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.export-panel button:disabled {
+  background: #a9c6c2;
+  cursor: not-allowed;
+}
+
+.export-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #b23b32;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.export-success {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .asset-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -372,6 +527,15 @@ const selectedStage = computed(
 }
 
 @media (max-width: 560px) {
+  .export-panel {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .export-panel button {
+    justify-self: start;
+  }
+
   .asset-card {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;

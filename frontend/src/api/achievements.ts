@@ -3,6 +3,7 @@ import type {
   AbilityAppeal,
   AbilityCluster,
   AbilityEvidenceTimeline,
+  EvidencePackage,
   AbilityScoreResult,
   AbilityState,
   AchievementRecord,
@@ -53,6 +54,12 @@ export const achievementsApi = {
   },
   abilityResults() {
     return api.get<AbilityScoreResult[]>("/api/ability-scoring/results");
+  },
+  exportEvidencePackage(graduationYear: number, targetRoles: string[]) {
+    return api.post<EvidencePackage>("/api/ability-scoring/evidence-package/export", {
+      graduationYear,
+      targetRoles
+    });
   },
   appeals() {
     return api.get<AbilityAppeal[]>("/api/ability-scoring/appeals");

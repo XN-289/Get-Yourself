@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-Updated: 2026-09-01 13:35
+Updated: 2026-09-01 14:05
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、Stage 1 `gy` 本地对话入口与 Stage 2a 能力证据包离线导入契约已实现；前端 Demo 与 `gy` Stage 1 仍未获得用户明确验收，账号绑定与后端同步尚未开始。
+Agent-first 前端 Demo、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入与 Stage 2b 网页显式导出已实现；前端 Demo、`gy` Stage 1 与证据包闭环仍未获得用户明确验收，账号绑定与自动同步尚未开始。
 
 ## 已接受事实
 
@@ -17,12 +17,14 @@ Agent-first 前端 Demo、Stage 1 `gy` 本地对话入口与 Stage 2a 能力证�
 - 每个完成的改动必须提交 git — `AGENT.md`。
 - Stage 1 `gy` 采用确定性意图路由，不伪装 LLM 调用，不持久化用户原句，不写用户层文件 — `decisions.md` 与 `cli/lib/intent-router.mjs`。
 - Stage 2a 先做离线能力证据包导入，不做账号绑定、token 存储、后端 API 变更或自动同步 — `decisions.md` 与 `docs/EVIDENCE_PACKAGE_CONTRACT.md`。
+- Stage 2b 先做网页显式证据包导出，毕业年份与目标方向只在导出请求中使用，不持久化；不做账号绑定、token 存储、自动下载契约或自动同步 — `decisions.md`。
 
 ## 决策索引
 
 - 2026-09-01 — Agent-first 信息架构、模块边界、教练/日程收缩、面试主流程、冻结边界、git 纪律 — `decisions.md`。
 - 2026-09-01 — Stage 1 确定性路由、只读状态检查、简历模式审批边界 — `decisions.md`。
 - 2026-09-01 — Stage 2a 离线证据包、显式导入/替换、规范化存储与数据非指令边界 — `decisions.md`。
+- 2026-09-01 — Stage 2b 网页显式导出、导出输入不落库、语义内容 `packageId` 与评分结果溯源指针 — `decisions.md`。
 
 ## 已实现
 
@@ -36,6 +38,8 @@ Agent-first 前端 Demo、Stage 1 `gy` 本地对话入口与 Stage 2a 能力证�
 - Stage 2a 验证结果 — `cli/` 下 `npm test` 15 pass / 0 fail；`node --check` 通过；示例包 check、dry-run、apply、幂等导入与 `gy --status` 冒烟通过。
 - `gy --status` 能力证据包状态 — `data/evidence-package.json` 缺失 / 可用 / 无效均只读展示。
 - “导入能力证据包”意图路由到能力资产模块，并指向 `evidence-package.mjs`。
+- Stage 2b 网页能力证据包导出 — `POST /api/ability-scoring/evidence-package/export`、`EvidencePackageExportService` 与能力资产页显式导出表单；输出 v1 契约 JSON 并由浏览器保存本地文件。
+- Stage 2b 验证结果 — `backend/` 下 `mvn test` 35 pass / 0 fail；`frontend/` 下 `npm run build` 通过；`cli/` 下 `npm test` 15 pass / 0 fail；能力资产页导出表单在桌面与 390px 窄屏完成布局检查。
 
 ## 已验收
 
@@ -43,15 +47,14 @@ Agent-first 前端 Demo、Stage 1 `gy` 本地对话入口与 Stage 2a 能力证�
 
 ## 未决问题
 
-- P1 — 前端 Demo 与 Stage 1 `gy` 入口是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由和 `node gy.mjs`。
+- P1 — 前端 Demo、Stage 1 `gy` 入口与 Stage 2 证据包文件闭环是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs` 和证据包导出/导入。
 - P1 — “能力资产”最终命名 — 用户 — 不阻塞实现 — 继续使用暂名。
 - P1 — 产品与技术评审未完成 — 项目组 — 不阻塞 Stage 1 入口实现 — 修订 PRD 后提交评审。
 
 ## 下一步
 
-1. 用户检查 Agent-first 前端路由 — Agent 工作台不混排模块对象，能力资产、简历、面试为独立模块。
-2. 用户试用 `gy` Stage 1 — 一句自然语言能识别意图、落点模块、后台模式、补充信息和审批边界。
-3. 设计并实现网页端能力证据包导出 — 继续避开账号绑定和自动同步，输出同一 v1 契约。
+1. 用户统一验收前端 Demo、`gy` Stage 1、Stage 2a 本地导入与 Stage 2b 网页导出。
+2. 验收通过后再评估是否进入 Stage 3 账号与设备绑定；在此之前不实现自动同步。
 
 ## 恢复上下文
 
@@ -66,3 +69,4 @@ Agent-first 前端 Demo、Stage 1 `gy` 本地对话入口与 Stage 2a 能力证�
 - 2026-09-01 — 新增项目状态台账与决策留痕；完成 PRD Agent-first、四模块、无独立教练/日程口径修订 — 影响产品文档与后续实现范围。
 - 2026-09-01 — 实现 Stage 1 `gy` 确定性对话入口、只读状态检查、简历模式映射与 CLI 测试运行器 — 影响 CLI 入口、用户层写入边界和后续 Stage 2 节奏。
 - 2026-09-01 — 实现 Stage 2a 能力证据包契约、严格校验、显式导入/替换、状态展示与路由 — 影响能力资产模块、简历证据引用边界和后续网页导出。
+- 2026-09-01 — 实现 Stage 2b 网页能力证据包显式导出 — 影响能力资产页、后端只读导出接口与本地 v1 契约闭环。

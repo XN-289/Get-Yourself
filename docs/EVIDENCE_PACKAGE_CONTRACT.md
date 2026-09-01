@@ -1,6 +1,6 @@
 # 能力证据包契约 v1
 
-本文定义 Get Yourself 网页平台导给本地工作台的只读能力证据包。Stage 2a 先支持离线文件导入；账号绑定、凭证存储、自动下载和自动同步都不属于本契约。
+本文定义 Get Yourself 网页平台导给本地工作台的只读能力证据包。Stage 2a 支持离线文件导入，Stage 2b 支持网页显式导出；账号绑定、凭证存储、自动下载和自动同步都不属于当前契约。
 
 ## 目标与边界
 
@@ -25,6 +25,43 @@
 - 与求职无关的隐私。
 
 导出端负责敏感字段脱敏和用户授权。本地导入端负责结构校验、大小限制、规范化、幂等写入和替换审批。
+
+## 网页导出（Stage 2b）
+
+网页端提供 `POST /api/ability-scoring/evidence-package/export`。该接口只服务已登录学生账号，并从既有数据读取：
+
+- `UserAbilityState`：能力维度、分数、稳定排序。
+- `AbilityScoreResult`：能力与成长记录的关联、验证状态和评分结果标识。
+- `GrowthTagEvidence`：成长证据标题、摘要、时间与来源类型。
+
+毕业年份和目标岗位方向是导出表单的显式输入，不从后端推测，也不因导出而持久化。目标岗位方向会 trim 并去重，保留 1 到 10 个、每个最多 40 字符。
+
+导出是只读事务：
+
+- 不绑定账号与本地设备。
+- 不存储 token、cookie 或设备信息。
+- 不把导出记录写入数据库。
+- 不自动下载、不上传本地文件、不自动同步。
+- 前端只把接口返回的 JSON 保存为用户本机文件。
+
+`packageId` 由最终导出的语义内容计算，包含学生求职输入、能力、证据和长期记忆摘要；不包含 `generatedAt`。同一语义内容重复导出会得到稳定 `packageId`，后台自增 ID 和账号 ID 不会进入包内。当前 v1 无签名，离线文件的来源信任仍由用户选择文件这个动作承担。
+
+平台枚举映射固定如下：
+
+| 平台值 | 证据包值 |
+|---|---|
+| `EVENT` / 成长记录来源 | `growth_record` |
+| `CHALLENGE` | `challenge` |
+| 其他或缺失 | `manual` |
+
+| 评分结果状态 | 证据包验证状态 |
+|---|---|
+| `VERIFIED` | `verified` |
+| `REVIEW_REQUIRED` | `platform_reviewed` |
+| `PROVISIONAL` | `user_confirmed` |
+| 其他或缺失 | `unverified` |
+
+`evidence[].sourceId` 使用 `record-{achievementRecordId}`。`traceId` 当前使用 `trace.ability-score-{abilityScoreResultId}`，表示可回到平台能力评分结果的溯源指针；它还不是完整的 Agent Trace Run ID。账号绑定阶段补服务端签名或下载校验时，再统一升级 Trace 解析，不改变 v1 字段名。
 
 ## 文件格式
 

@@ -90,6 +90,54 @@ export interface AbilityState {
   rank: string;
 }
 
+export interface EvidencePackageStudent {
+  graduationYear: number;
+  targetRoles: string[];
+}
+
+export interface EvidencePackageAbility {
+  id: string;
+  name: string;
+  score: number;
+  summary: string;
+  evidenceRefs: string[];
+}
+
+export interface EvidencePackageEvidence {
+  id: string;
+  title: string;
+  summary: string;
+  occurredAt: string;
+  sourceType:
+    | "growth_record"
+    | "achievement"
+    | "challenge"
+    | "reflection"
+    | "interview_review"
+    | "jd_analysis"
+    | "external_resume"
+    | "manual";
+  sourceId: string;
+  verification: "verified" | "platform_reviewed" | "user_confirmed" | "unverified";
+  abilityIds: string[];
+  traceId: string;
+}
+
+export interface EvidencePackage {
+  schema: "get-yourself.evidence-package";
+  schemaVersion: 1;
+  packageId: string;
+  generatedAt: string;
+  student: EvidencePackageStudent;
+  abilities: EvidencePackageAbility[];
+  evidence: EvidencePackageEvidence[];
+  memorySummary: {
+    summary: string;
+    strengths: string[];
+    gapFocus: string[];
+  };
+}
+
 export interface AbilityClusterMember {
   abilityStateId: number;
   dimension: string;

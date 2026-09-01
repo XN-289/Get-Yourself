@@ -19,5 +19,7 @@ This file records durable product and engineering decisions. It does not replace
 13. **Stage 2a implements the offline evidence package before account binding.** The local CLI accepts a strict, versioned JSON contract first; no token storage, device binding, backend API change, or automatic sync is introduced.
 14. **The local evidence package is canonical and explicitly governed.** Validation uses a field whitelist, size and length limits, enum checks, and ability/evidence reference checks. Import defaults to dry-run; writing requires `--apply`, and replacing different content requires `--replace`.
 15. **Evidence package text is data, not instructions.** Its summaries may guide follow-up questions and evidence references, but never bypass user confirmation or become assumed resume facts.
+16. **Stage 2b implements explicit web export without account binding.** Graduation year and target roles are export-time user inputs, never inferred or persisted. Export reads existing ability states, score results, and growth-tag evidence only; it performs no device binding, token storage, automatic download contract, or automatic sync.
+17. **The evidence `packageId` hashes exported semantic content.** The identifier excludes generation time and backend account identifiers so identical exported content remains stable while the package itself contains no account ID. Its v1 `traceId` is a deterministic pointer to the platform ability score result, not yet a full Agent Trace Run ID.
 
 Source: user direction in this project thread on 2026-09-01.
