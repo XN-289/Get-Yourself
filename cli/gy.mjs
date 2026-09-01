@@ -8,6 +8,7 @@ import { inspectEvidencePackage } from './evidence-package.mjs';
 import { inspectResumeMaterials } from './resume-materials.mjs';
 import { inspectResumeFinal } from './resume-final.mjs';
 import { inspectInterviewPrep } from './interview-prep.mjs';
+import { inspectInterviewReview } from './interview-review.mjs';
 import { connectDevice, disconnectDevice, inspectDeviceBinding } from './device-binding.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { formatRoute, routeIntent } from './lib/intent-router.mjs';
@@ -29,6 +30,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     resumeMaterials: inspectResumeMaterials(root),
     resumeFinal: inspectResumeFinal(root),
     interviewPrep: inspectInterviewPrep(root),
+    interviewReview: inspectInterviewReview(root),
     deviceBinding: inspectDeviceBinding(root),
     suggestions: [
       '整理经历 / 更新简历',
@@ -99,6 +101,17 @@ function printStatus({ json = false, root } = {}) {
     console.log('面试准备：等待素材包导入');
   } else {
     console.log('面试准备：未生成');
+  }
+  const interviewReview = payload.interviewReview;
+  if (interviewReview.state === 'ready') {
+    const currentCount = interviewReview.reviews.filter(item => item.markdownState === 'current').length;
+    console.log(`面试复盘：${interviewReview.reviewCount} 份（${currentCount} 份记录一致）`);
+  } else if (interviewReview.state === 'invalid') {
+    console.log(`面试复盘：本地文件无效（${interviewReview.error}）`);
+  } else if (interviewReview.state === 'blocked') {
+    console.log('面试复盘：等待素材包导入');
+  } else {
+    console.log('面试复盘：未生成');
   }
   const binding = payload.deviceBinding;
   if (binding.state === 'ready') {

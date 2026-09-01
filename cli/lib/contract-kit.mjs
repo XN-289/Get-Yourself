@@ -32,6 +32,30 @@ export function requireObject(value, path, fields, ErrorClass = ContractToolErro
   }
 }
 
+export function requireObjectWithOptional(
+  value,
+  path,
+  requiredFields,
+  optionalFields = [],
+  ErrorClass = ContractToolError,
+  errorCode = 'invalid-contract',
+) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ErrorClass(`${path} must be an object`, errorCode, { path });
+  }
+  const allowed = [...requiredFields, ...optionalFields];
+  const keys = new Set(Object.keys(value));
+  const unknown = [...keys].filter(key => !allowed.includes(key));
+  if (unknown.length > 0) {
+    throw new ErrorClass(`${path} has unknown field(s): ${unknown.join(', ')}`, errorCode, { path, unknown });
+  }
+  for (const field of requiredFields) {
+    if (!keys.has(field)) {
+      throw new ErrorClass(`${path}.${field} is required`, errorCode, { path: `${path}.${field}` });
+    }
+  }
+}
+
 export function requireString(value, path, { min = 1, max = 240 } = {}, ErrorClass = ContractToolError, errorCode = 'invalid-contract') {
   if (typeof value !== 'string') throw new ErrorClass(`${path} must be a string`, errorCode, { path });
   const text = value.trim();

@@ -30,6 +30,18 @@ const ROUTES = {
     fallbackPrompt: '告诉我公司、岗位、面试/笔试时间，以及你已经被问过或担心被追问的问题。',
     securityNotes: [EXTERNAL_CONTENT_NOTE],
   },
+  interviewReview: {
+    intent: 'review_interview',
+    displayName: '复盘面试或笔试',
+    moduleDestination: 'interview-management',
+    modeFile: 'interview-review.mjs',
+    suggestedAction: '先逐题确认事实、表现和缺口，生成复盘 JSON；用户确认后先 check 和 dry-run，再显式 --apply。',
+    needsConfirmation: true,
+    fallbackPrompt: '告诉我公司、岗位、轮次、时间，以及你记得的题目和当时怎么回答的。',
+    securityNotes: [
+      '复盘记录不是能力证据；差距和 STAR 故事只是本地候选，不得直接写入素材包、故事库、cv.md、进度表或平台能力资产。',
+    ],
+  },
   tracker: {
     intent: 'manage_application',
     displayName: '管理投递进度',
@@ -112,6 +124,7 @@ const ROUTES = {
 const ROUTING_RULES = [
   ['evidenceImport', /导入.*证据包|证据包.*导入|能力证据包/i],
   ['materials', /pdf|扫描件|证书|成绩单|材料/i],
+  ['interviewReview', /复盘|面试记录|笔试记录|面经复盘/i],
   ['interview', /面试|笔试|复盘|hr\s*面|技术面|群面|一面|二面|明天.*准备|准备.*明天/i],
   ['tracker', /投递|进度|状态|跟进|已投|网申|申请/i],
   ['scan', /扫描|找岗|找岗位|岗位信息|校招信息|信息源/i],

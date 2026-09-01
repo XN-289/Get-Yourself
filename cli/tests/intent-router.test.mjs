@@ -36,6 +36,12 @@ test('routes resume finalization and interview preparation to their contract too
   assert.equal(prep.intent, 'prepare_interview');
   assert.equal(prep.modeFile, 'interview-prep.mjs');
   assert.ok(prep.suggestedAction.includes('dry-run'));
+
+  const review = routeIntent('复盘今天的技术面试');
+  assert.equal(review.intent, 'review_interview');
+  assert.equal(review.modeFile, 'interview-review.mjs');
+  assert.ok(review.suggestedAction.includes('dry-run'));
+  assert.ok(review.securityNotes.some((note) => note.includes('不是能力证据')));
 });
 
 test('only routes to mode files that exist in this repository', () => {
@@ -48,6 +54,7 @@ test('only routes to mode files that exist in this repository', () => {
     '把我这段实习整理成简历条目',
     '把这份简历定稿',
     '帮我准备明天的技术面试',
+    '复盘今天的技术面试',
     '看看我和这个岗位的能力差距',
   ]) {
     const { modeFile } = routeIntent(input);

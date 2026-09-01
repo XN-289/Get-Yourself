@@ -57,7 +57,7 @@
 - `importInterviewReview(filePath, options)`
 - Schema: `get-yourself.interview-review`, version `1`.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create tests for:
 
@@ -71,21 +71,21 @@ test('routes interview review to its contract tool', () => {});
 
 Cover unknown fields, enums, duplicate IDs, story and entry references, prep provenance, semantic-hash stability, dry-run no-write, apply, idempotence, replacement, Markdown drift, and read-only status.
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run: `npm test`
 
 Expected: new `interview-review.test.mjs` tests fail because the module and schema do not exist.
 
-- [ ] **Step 3: Implement minimally**
+- [x] **Step 3: Implement minimally**
 
 Implement the schema, validation, rendering, backup, status, import, and CLI arguments using `lib/contract-kit.mjs` and the existing interview-prep pattern.
 
-- [ ] **Step 4: Verify green**
+- [x] **Step 4: Verify green**
 
 Run: `npm test` and `node --check interview-review.mjs`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Use `feat: add interview review contract`.
 
