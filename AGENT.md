@@ -24,7 +24,7 @@ Student records or imports experience
 - Serve technical college students first in v0.1.
 - The planned local entry is a `gy` wrapper that launches a Codex-style session.
 - The web account binds to a local device through a browser-issued device code.
-- Job evaluation reports and application tracker data sync by default.
+- Job evaluation summaries and application tracker states may sync only after the user explicitly confirms each outbound sync.
 - Resume full text, STAR stories, and raw personal documents stay local unless the user explicitly opts in to upload.
 - Company, organization, activity publishing, activity review, reservations, check-in, activity recommendation, and the social-side console are frozen. Do not add features to them in v0.1.
 - The agent never automatically submits applications, sends external messages, signs documents, or performs another irreversible external action.
