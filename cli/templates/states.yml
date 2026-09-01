@@ -1,0 +1,73 @@
+# get-yourself-cli — 规范状态
+# 状态机真相来源（writer 和 dashboard 共同使用）。
+#
+# 规则：applications.md 的状态字段必须恰好是这些值之一（大小写不敏感）。
+# 无加粗（**）、无日期、无额外文字。日期放日期列。
+#
+# `terminal: true` 表示终态。非终态按列表顺序决定生命周期顺序。
+
+states:
+  - id: evaluated
+    label: Evaluated
+    aliases: [已评估, 评估, 待决定]
+    description: 已评估并有报告，待决定
+    dashboard_group: evaluated
+
+  - id: applied
+    label: Applied
+    aliases: [已投递, 网申, 投递, 已申请]
+    description: 已提交申请（网申/内推/投递）
+    dashboard_group: applied
+
+  - id: responded
+    label: Responded
+    aliases: [已回复, 回应, 收到回复]
+    description: 公司已回复（尚未到笔试/面试）
+    dashboard_group: responded
+
+  - id: interview
+    label: Interview
+    aliases: [面试中, 笔试, 一面, 二面, 三面, HR面, 群面, 技术面]
+    description: 笔试/面试流程中
+    dashboard_group: interview
+
+  - id: offer
+    label: Offer
+    aliases: [offer, 录用, 拿到offer, 口头offer]
+    description: 已收到 offer
+    dashboard_group: offer
+    terminal: true
+
+  - id: signed
+    label: Signed
+    aliases: [已签三方, 三方已签, 签三方, 已签约]
+    description: 已签三方协议（校招专属终态前站）
+    dashboard_group: signed
+
+  - id: hired
+    label: Hired
+    aliases: [入职, 已入职, 上岸, accepted]
+    description: 已入职，求职结束
+    dashboard_group: hired
+    terminal: true
+
+  - id: rejected
+    label: Rejected
+    aliases: [被拒, 拒信, 未通过]
+    description: 被公司拒绝（简历挂/笔试挂/面试挂）
+    dashboard_group: rejected
+    terminal: true
+
+  - id: discarded
+    label: Discarded
+    aliases: [放弃, 已放弃, 关闭, 失效]
+    description: 候选人放弃或岗位关闭
+    dashboard_group: discarded
+    terminal: true
+
+  - id: skip
+    label: SKIP
+    aliases: [不投, 跳过, 不合适, 监控]
+    description: 不匹配，不投
+    dashboard_group: skip
+    terminal: true

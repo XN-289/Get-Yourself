@@ -2,9 +2,9 @@
 
 # 🌱 Get Yourself
 
-**让真实经历沉淀为可解释的成长**
+**让真实经历沉淀为可解释的成长，让成长兑现为配得上的 offer**
 
-*A personal growth recording & ability development platform for college students*
+*A personal growth & career development system for college students*
 
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-6DB33F?style=flat-square&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
@@ -34,7 +34,12 @@
 - 🤖 **配备专属 AI 教练** —— 基于你的成长背景进行对话，帮你复盘、发现盲区、制定下一步计划
 - 🎯 **智能推荐适合你的活动** —— 不是随机推荐，而是基于你已有能力的缺口来匹配
 
-**一句话总结：让「我做了什么」变成「我能证明什么」。**
+**一句话总结：让「我做了什么」变成「我能证明什么」，再变成「我拿到了什么」。**
+
+> 📦 本仓库是**一个系统**，两部分：
+> - `backend/` + `frontend/` — 成长记录与能力发展平台（记录 → 证明）
+> - `cli/` — Get Yourself CLI 求职作战指挥中心（证明 → 拿到 offer）
+> 成长平台沉淀的能力证据，就是求职 CLI 写简历、评估岗位匹配度的弹药。闭环：**记录 → 证明 → 兑现**。
 
 ---
 
@@ -210,7 +215,7 @@ npm run dev
 
 ```
 get-yourself/
-├── backend/
+├── backend/                  # 成长记录平台后端（Spring Boot）
 │   ├── src/main/java/com/getyourself/backend/
 │   │   ├── abilityscore/    # 能力评分：证据抽取 → 计算引擎 → Judge 验证 → HAC 聚类
 │   │   ├── achievement/     # 成就记录与成长标签
@@ -237,7 +242,7 @@ get-yourself/
 │   │   └── application.yml
 │   ├── docker-compose.yml   # 本地中间件一键启动
 │   └── Dockerfile           # 多阶段构建
-├── frontend/
+├── frontend/                 # 成长记录平台前端（Vue 3）
 │   ├── src/
 │   │   ├── views/           # 17 个页面组件
 │   │   ├── components/      # 通用组件
@@ -246,7 +251,13 @@ get-yourself/
 │   │   └── router/          # 路由 + 鉴权守卫
 │   ├── Dockerfile           # Nginx 生产构建
 │   └── index.html
-└── docs/                    # 架构设计文档
+├── cli/                      # Get Yourself CLI 求职作战指挥中心
+│   ├── modes/               # AI 模式文件（领域模型 + 评分系统）
+│   ├── providers/           # 校招信息源模块（腾讯/阿里/美团）
+│   ├── templates/           # 简历模板、状态机、配置模板
+│   ├── *.mjs                # 工具脚本（doctor/tracker/merge/scan）
+│   └── README.md            # CLI 独立文档
+└── docs/                    # 架构设计文档 + 重构规范
 ```
 
 ---

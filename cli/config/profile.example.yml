@@ -1,0 +1,32 @@
+# get-yourself-cli — 个人档案模板
+# 复制为 config/profile.yml 并填写。这是用户层文件，系统更新永不覆盖。
+
+# 基本信息
+name: ""                # 姓名
+school: ""              # 学校
+major: ""               # 专业
+degree: ""              # 本科 / 硕士
+graduation: ""          # 毕业年月，如 2027-06
+gpa: ""                 # 如 3.7/4.0 或留空
+rank: ""                # 专业排名，如 前10% 或留空
+
+# 求职目标
+target_roles: []        # 如 [后端开发, Java开发]
+target_industries: []   # 如 [互联网, 国企] 或留空=不限
+target_cities: []       # 如 [杭州, 深圳] 或留空=不限
+
+# 模型档位：economy / standard / premium（默认 standard）
+spend_tier: standard
+
+# 语言：输出语言（默认 zh）
+language:
+  output: zh
+
+# 红线（写进 modes/_profile.md 更详细，这里放精简版）
+red_lines: []           # 如 ["不去996公司", "不去外包"]
+
+# 时间预算（离毕业还有多久，用于 gap 计划）
+months_to_graduation: ""  # 如 12
+
+# 双线作战（求职版 v1：仅检测提醒）
+parallel_path: ""       # 如 考研 / 考公 / 保研 / 留空=只求职

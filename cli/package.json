@@ -1,0 +1,28 @@
+{
+  "name": "get-yourself-cli",
+  "version": "0.1.0",
+  "description": "AI-powered job search pipeline for Chinese college students — works with any AI coding CLI",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "doctor": "node doctor.mjs",
+    "verify": "node verify-pipeline.mjs",
+    "normalize": "node normalize-statuses.mjs",
+    "dedup": "node dedup-tracker.mjs",
+    "merge": "node merge-tracker.mjs",
+    "set-status": "node set-status.mjs",
+    "stats": "node stats.mjs",
+    "scan": "node scan.mjs",
+    "test": "node test-all.mjs"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "dotenv": "^16.4.5"
+  },
+  "optionalDependencies": {
+    "playwright": "^1.48.0"
+  }
+}

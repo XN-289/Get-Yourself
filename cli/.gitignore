@@ -1,0 +1,36 @@
+# 依赖
+node_modules/
+# package-lock.json 应提交（锁定依赖版本）
+
+# 用户层数据（个人隐私，绝不提交）
+cv.md
+config/profile.yml
+config/cv-facts.json
+config/local-paths.txt
+modes/_profile.md
+modes/_custom.md
+voice-dna.md
+article-digest.md
+portals.yml
+data/
+reports/
+output/
+documents/
+jds/
+interview-prep/sessions/
+*.tsv
+
+# 环境
+.env
+.env.local
+
+# 系统
+.get-yourself-cli-data
+batch/logs/
+batch/tracker-additions/merged/
+
+# 编辑器/OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

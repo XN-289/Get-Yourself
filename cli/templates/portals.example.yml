@@ -1,0 +1,38 @@
+# get-yourself-cli — 校招信息源配置模板
+# 复制为 portals.yml 并填写。这是用户层文件。
+# 扫描器读取此文件，对每个入口调用对应 providers/ 模块。
+
+# 目标公司（校招官网，零 token 扫描）
+# careers_url: 公司校招官网
+# keywords: 关键词（如 ["后端", "大模型"]），空=拉全部
+tracked_companies:
+  - name: 腾讯
+    careers_url: https://careers.tencent.com
+    keywords: []
+  - name: 阿里巴巴
+    careers_url: https://talent.alibaba.com
+    keywords: []
+  - name: 美团
+    careers_url: https://zhaopin.meituan.com
+    keywords: []
+  # 添加更多公司...
+
+# 标题过滤（正向：必须包含；负向：排除）
+title_filter:
+  positive: []    # 如 [开发, 工程师, 产品]
+  negative: []    # 如 [外包, 派遣]
+
+# 地点过滤
+location_filter: []
+
+# 学校就业信息网（手动输入，宣讲会/双选会）
+school_portal:
+  url: ""         # 你的学校就业信息网
+  note: "宣讲会/双选会公告从这里手动粘贴"
+
+# 手动渠道（需登录的平台，用户手动粘贴）
+manual_sources:
+  - 牛客网 (校招日历/面经)
+  - BOSS直聘 (校招)
+  - 实习僧
+  - 学校就业群/微信群

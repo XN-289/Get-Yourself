@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  /* get-yourself-cli 学生简历模板 — 中文 A4 一页 */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    font-size: 12px;
+    color: #1a1a1a;
+    width: 210mm;
+    min-height: 297mm;
+    padding: 18mm 20mm;
+    line-height: 1.6;
+  }
+  h1 { font-size: 22px; text-align: center; margin-bottom: 4px; }
+  .contact { text-align: center; font-size: 11px; color: #444; margin-bottom: 14px; }
+  .contact span { margin: 0 8px; }
+  h2 {
+    font-size: 14px;
+    border-bottom: 1.5px solid #1a1a1a;
+    padding-bottom: 3px;
+    margin: 14px 0 8px;
+    letter-spacing: 1px;
+  }
+  .entry { margin-bottom: 8px; }
+  .entry-head { display: flex; justify-content: space-between; font-weight: bold; }
+  .entry-head .right { font-weight: normal; color: #444; }
+  ul { padding-left: 18px; }
+  li { margin-bottom: 2px; }
+  .edu-line { margin-bottom: 4px; }
+  .highlight { color: #c0392b; font-weight: bold; }
+</style>
+</head>
+<body>
+  <h1>{{NAME}}</h1>
+  <div class="contact">
+    <span>📞 {{PHONE}}</span>
+    <span>✉️ {{EMAIL}}</span>
+    <span>📍 {{CITY}}</span>
+    {{GITHUB_BLOCK}}
+  </div>
+
+  <h2>教育背景</h2>
+  <div class="entry">
+    <div class="entry-head">
+      <span>{{SCHOOL}} · {{MAJOR}} · {{DEGREE}}</span>
+      <span class="right">{{DATES}}</span>
+    </div>
+    <div class="edu-line">GPA: {{GPA}} <span class="highlight">{{RANK}}</span></div>
+    <div class="edu-line">主修课程: {{COURSES}}</div>
+  </div>
+
+  <h2>实习经历</h2>
+  {{INTERNSHIPS}}
+
+  <h2>项目经历</h2>
+  {{PROJECTS}}
+
+  <h2>竞赛获奖</h2>
+  {{AWARDS}}
+
+  <h2>技能证书</h2>
+  {{SKILLS}}
+
+  <h2>学生工作</h2>
+  {{ACTIVITIES}}
+
+  <h2>自我评价</h2>
+  <div>{{SUMMARY}}</div>
+</body>
+</html>

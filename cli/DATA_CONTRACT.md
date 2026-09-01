@@ -1,0 +1,64 @@
+# Data Contract
+
+定义哪些文件属于**系统层**（可自动更新）和**用户层**（更新永不触碰）。
+
+## 用户层（NEVER auto-updated）
+
+这些文件包含你的个人数据、定制和工作产物。更新流程**永不修改**它们。
+
+| 文件 | 用途 |
+|------|------|
+| `cv.md` | 学生简历（markdown 权威） |
+| `config/profile.yml` | 身份、目标岗位、城市、GPA、毕业时间 |
+| `modes/_profile.md` | 你的亮点、叙事、红线（如"不去 996"） |
+| `modes/_custom.md` | 你的流程规则、输出偏好（程序性，跨会话存活） |
+| `portals.yml` | 校招信息源配置（目标公司/平台） |
+| `data/applications.md` | 求职进度表（真相来源） |
+| `data/pipeline.md` | 待评估 URL inbox |
+| `data/offers.md` | offer 对比表 |
+| `data/scan-history.tsv` | 扫描去重历史 |
+| `data/scan-runs.tsv` | 每次扫描计数 |
+| `data/blacklist.md` | 不投名单（opt-in，绝不自动填充） |
+| `data/status-log.tsv` | 状态流转日志（追加式） |
+| `reports/*` | 评估报告 |
+| `output/*` | 生成的 PDF |
+| `documents/*` | 原始材料（成绩单/证书，仅 intake 读） |
+| `interview-prep/story-bank.md` | 积累的 STAR 故事 |
+| `interview-prep/{公司}-{岗位}.md` | 公司特定面试准备 |
+| `interview-prep/sessions/*.md` | 面试记录（敏感，gitignore） |
+
+### Fork-local paths
+
+`config/local-paths.txt` 声明本 clone 自有的、上游没有的文件路径（每行一个，相对仓库根）。被 `update-system.mjs` 的安全检查读取，合并进用户层。缺失 = 无额外路径。
+
+## 系统层（safe to auto-update）
+
+| 文件 | 用途 |
+|------|------|
+| `modes/_shared.md` | 领域模型 + 评分系统 |
+| `modes/*.md` | 各模式指令（eval/cv/scan/tracker/compare/prep/gap/scam-check/contract/outcome） |
+| `AGENTS.md` | 规范 Agent 指令（CLI 包装引用它） |
+| `CLAUDE.md` / `QWEN.md` / `KIMI.md` / `CODEX.md` | 各 CLI 入口（引用 AGENTS.md） |
+| `*.mjs` | 工具脚本 |
+| `providers/` | 校招信息源模块（零 token 扫描器） |
+| `scripts/` | 辅助脚本 |
+| `templates/*` | 基础模板（简历 HTML、states.yml、portals.example.yml、profile.example.yml） |
+| `tests/` | 测试套件（`{module}.test.mjs`） |
+| `docs/*` | 文档 |
+| `VERSION` | 版本号 |
+| `DATA_CONTRACT.md` | 本文件 |
+| `.get-yourself-cli-data` | 数据目录标记（系统种子） |
+
+## 规则
+
+**如果文件在用户层，任何更新流程不得读取、修改或删除它。**
+**如果文件在系统层，它可以用上游最新版本安全替换。**
+
+## 自定义数据目录
+
+默认用户层文件在仓库根。可用以下方式指定外部目录：
+1. 环境变量 `GET_YOURSELF_ROOT` 或 `GET_YOURSELF_DATA_DIR`
+2. 仓库根 `.get-yourself-cli-data` 标记文件
+3. 默认仓库根
+
+解析后，所有用户层文件相对该路径解析；系统层始终相对仓库根——代码与个人数据完全分离。
