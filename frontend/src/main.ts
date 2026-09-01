@@ -1,5 +1,6 @@
 import { createPinia } from "pinia";
 import { createApp } from "vue";
+import { VueQueryPlugin } from "@tanstack/vue-query";
 
 import App from "@/App.vue";
 import { AUTH_UNAUTHORIZED_EVENT } from "@/api/client";
@@ -12,6 +13,7 @@ const pinia = createPinia();
 
 app.use(pinia);
 app.use(router);
+app.use(VueQueryPlugin);
 
 const authStore = useAuthStore(pinia);
 window.addEventListener(AUTH_UNAUTHORIZED_EVENT, () => {

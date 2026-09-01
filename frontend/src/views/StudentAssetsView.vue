@@ -3,9 +3,13 @@ import { ArrowUpRight, Download, FolderTree, Repeat, ShieldCheck } from "@lucide
 import { computed, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { storeToRefs } from "pinia";
+import { useMutation } from "@tanstack/vue-query";
 
 import { achievementsApi } from "@/api/achievements";
 import StudentWorkbenchModule from "@/components/student/StudentWorkbenchModule.vue";
+import WorkbenchButton from "@/components/ui/WorkbenchButton.vue";
+import WorkbenchPanel from "@/components/ui/WorkbenchPanel.vue";
+import WorkbenchStatus from "@/components/ui/WorkbenchStatus.vue";
 import { modulePath, useStudentWorkbenchStore } from "@/stores/studentWorkbench";
 
 const store = useStudentWorkbenchStore();
@@ -13,49 +17,17 @@ const { careerStages, evidenceAbilities, evidenceVersion } = storeToRefs(store);
 const selectedStageId = ref("asset");
 const graduationYear = ref("");
 const targetRoleText = ref("");
-const exporting = ref(false);
-const exportError = ref("");
+const validationError = ref("");
 const exportedAt = ref("");
 
 const selectedStage = computed(
   () => careerStages.value.find((stage) => stage.id === selectedStageId.value) ?? careerStages.value[1]
 );
 
-const canExport = computed(() =>
-  /^\d{4}$/.test(graduationYear.value)
-  && Number(graduationYear.value) >= 2000
-  && Number(graduationYear.value) <= 2100
-  && targetRoleText.value.trim().length > 0
-  && !exporting.value
-);
-
-async function exportEvidencePackage() {
-  if (!canExport.value) return;
-
-  const targetRoles = targetRoleText.value
-    .split(/[,，、]/)
-    .map(role => role.trim())
-    .filter(Boolean)
-  if (targetRoles.length > 10) {
-    exportError.value = "目标方向最多 10 个";
-    return;
-  }
-  if (targetRoles.some(role => role.length > 40)) {
-    exportError.value = "单个目标方向不能超过 40 字";
-    return;
-  }
-  if (!targetRoles.length) {
-    exportError.value = "请填写目标方向";
-    return;
-  }
-
-  exporting.value = true;
-  exportError.value = "";
-  try {
-    const evidencePackage = await achievementsApi.exportEvidencePackage(
-      Number(graduationYear.value),
-      targetRoles
-    );
+const exportEvidencePackage = useMutation({
+  mutationFn: (input: { graduationYear: number; targetRoles: string[] }) =>
+    achievementsApi.exportEvidencePackage(input.graduationYear, input.targetRoles),
+  onSuccess: (evidencePackage) => {
     const blob = new Blob([JSON.stringify(evidencePackage, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -66,11 +38,51 @@ async function exportEvidencePackage() {
     link.remove();
     URL.revokeObjectURL(url);
     exportedAt.value = new Date().toLocaleTimeString();
-  } catch (error) {
-    exportError.value = error instanceof Error ? error.message : "能力证据包导出失败";
-  } finally {
-    exporting.value = false;
   }
+});
+
+const exporting = computed(() => exportEvidencePackage.isPending.value);
+const exportError = computed(() => {
+  if (validationError.value) return validationError.value;
+  if (!exportEvidencePackage.isError.value) return "";
+  return exportEvidencePackage.error.value instanceof Error
+    ? exportEvidencePackage.error.value.message
+    : "能力证据包导出失败";
+});
+
+const canExport = computed(() =>
+  /^\d{4}$/.test(graduationYear.value)
+  && Number(graduationYear.value) >= 2000
+  && Number(graduationYear.value) <= 2100
+  && targetRoleText.value.trim().length > 0
+  && !exporting.value
+);
+
+function submitEvidenceExport() {
+  if (!canExport.value) return;
+
+  const targetRoles = targetRoleText.value
+    .split(/[,，、]/)
+    .map(role => role.trim())
+    .filter(Boolean);
+  if (targetRoles.length > 10) {
+    validationError.value = "目标方向最多 10 个";
+    return;
+  }
+  if (targetRoles.some(role => role.length > 40)) {
+    validationError.value = "单个目标方向不能超过 40 字";
+    return;
+  }
+  if (!targetRoles.length) {
+    validationError.value = "请填写目标方向";
+    return;
+  }
+
+  validationError.value = "";
+  exportEvidencePackage.mutate({
+    graduationYear: Number(graduationYear.value),
+    targetRoles
+  });
 }
 </script>
 
@@ -83,15 +95,12 @@ async function exportEvidencePackage() {
     :status="evidenceVersion"
   >
     <div class="assets-layout">
-      <section class="tree-panel" aria-label="职业成长树">
-        <header>
-          <div>
-            <p>Career Tree</p>
-            <h3>职业成长树</h3>
-          </div>
-          <FolderTree :size="19" />
-        </header>
-        <p class="tree-principle">成长经历可以非线性；求职主线按资产、交付、实践、反哺推进。</p>
+      <WorkbenchPanel
+        eyebrow="Career Tree"
+        title="职业成长树"
+        :icon="FolderTree"
+        description="成长经历可以非线性；求职主线按资产、交付、实践、反哺推进。"
+      >
         <div class="growth-tree">
           <button
             v-for="stage in careerStages"
@@ -107,27 +116,29 @@ async function exportEvidencePackage() {
             </span>
           </button>
         </div>
+
         <div class="stage-detail">
           <strong>{{ selectedStage.title }}的产物</strong>
           <div>
-            <RouterLink v-for="artifact in selectedStage.artifacts" :key="artifact" :to="modulePath(selectedStage.module)">
+            <RouterLink
+              v-for="artifact in selectedStage.artifacts"
+              :key="artifact"
+              :to="modulePath(selectedStage.module)"
+            >
               {{ artifact }}
               <ArrowUpRight :size="14" />
             </RouterLink>
           </div>
         </div>
-      </section>
+      </WorkbenchPanel>
 
-      <section class="ability-panel" aria-label="能力资产清单">
-        <header>
-          <div>
-            <p>Evidence</p>
-            <h3>能力证据</h3>
-          </div>
-          <ShieldCheck :size="19" />
-        </header>
-
-        <div class="export-panel">
+      <WorkbenchPanel
+        eyebrow="Evidence"
+        title="能力证据"
+        :icon="ShieldCheck"
+        description="证据来自成长记录、面试复盘和 JD 差距，先确认再参与评分。"
+      >
+        <form class="export-panel" @submit.prevent="submitEvidenceExport">
           <label>
             毕业年份
             <input
@@ -147,13 +158,13 @@ async function exportEvidencePackage() {
               type="text"
             >
           </label>
-          <button :disabled="!canExport" type="button" @click="exportEvidencePackage">
+          <WorkbenchButton type="submit" variant="primary" :disabled="!canExport">
             <Download :size="15" />
             {{ exporting ? "导出中" : "导出证据包" }}
-          </button>
-          <small v-if="exportError" class="export-error">{{ exportError }}</small>
-          <small v-else-if="exportedAt" class="export-success">已导出 {{ exportedAt }}</small>
-        </div>
+          </WorkbenchButton>
+          <small v-if="exportError" class="export-message is-error">{{ exportError }}</small>
+          <small v-else-if="exportedAt" class="export-message">已导出 {{ exportedAt }}</small>
+        </form>
 
         <div v-if="!evidenceAbilities.length" class="empty-state">
           <ShieldCheck :size="25" />
@@ -167,7 +178,9 @@ async function exportEvidencePackage() {
               <small>{{ ability.evidence }}</small>
             </div>
             <span>{{ ability.score }}</span>
-            <em>
+            <WorkbenchStatus
+              :tone="ability.source === 'growth' ? 'accent' : ability.source === 'interview' ? 'warning' : 'neutral'"
+            >
               {{
                 ability.source === "interview"
                   ? "面试反哺"
@@ -175,14 +188,14 @@ async function exportEvidencePackage() {
                     ? "JD 差距"
                     : "成长记录"
               }}
-            </em>
+            </WorkbenchStatus>
           </article>
           <article class="feedback-source">
             <Repeat :size="17" />
             <span>面试复盘与 JD 差距会作为候选证据进入这里，用户确认后参与评分。</span>
           </article>
         </template>
-      </section>
+      </WorkbenchPanel>
     </div>
   </StudentWorkbenchModule>
 </template>
@@ -193,66 +206,6 @@ async function exportEvidencePackage() {
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   gap: 14px;
   align-items: start;
-}
-
-.tree-panel,
-.ability-panel,
-.asset-card,
-.feedback-source,
-.empty-state {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-}
-
-.tree-panel,
-.ability-panel {
-  display: grid;
-  gap: 13px;
-  padding: 17px;
-}
-
-.tree-panel > header,
-.ability-panel > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.tree-panel > header > div,
-.ability-panel > header > div {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.tree-panel > header svg,
-.ability-panel > header svg {
-  color: var(--teal);
-}
-
-.tree-panel p:first-child,
-.ability-panel p:first-child {
-  margin: 0;
-  color: var(--teal);
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.tree-panel h3,
-.ability-panel h3 {
-  margin: 0;
-  color: var(--ink);
-  font-size: 18px;
-}
-
-.tree-principle {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
 }
 
 .growth-tree {
@@ -267,7 +220,7 @@ async function exportEvidencePackage() {
   grid-template-columns: 20px minmax(0, 1fr);
   gap: 9px;
   align-items: center;
-  padding: 11px 12px;
+  padding: 10px 11px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--surface-soft);
@@ -278,7 +231,7 @@ async function exportEvidencePackage() {
 
 .growth-tree button::after {
   position: absolute;
-  top: 31px;
+  top: 30px;
   bottom: -7px;
   left: 21px;
   width: 2px;
@@ -293,7 +246,7 @@ async function exportEvidencePackage() {
 .growth-tree button:hover,
 .growth-tree button.is-selected {
   border-color: rgba(39, 155, 137, 0.44);
-  background: #e8f6f1;
+  background: #edf7f4;
 }
 
 .stage-marker {
@@ -310,11 +263,11 @@ async function exportEvidencePackage() {
 }
 
 .stage-marker.is-delivering {
-  border-color: #3a75bf;
+  border-color: var(--blue);
 }
 
 .stage-marker.is-practicing {
-  border-color: #c79025;
+  border-color: var(--gold);
 }
 
 .stage-marker.is-feeding-back {
@@ -370,10 +323,6 @@ async function exportEvidencePackage() {
   font-weight: 800;
 }
 
-.ability-panel {
-  align-content: start;
-}
-
 .export-panel {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr) auto;
@@ -397,7 +346,8 @@ async function exportEvidencePackage() {
 .export-panel input {
   width: 100%;
   min-width: 0;
-  padding: 8px 9px;
+  min-height: 38px;
+  padding: 0 9px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fff;
@@ -406,36 +356,7 @@ async function exportEvidencePackage() {
   font-size: 12px;
 }
 
-.export-panel button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-width: 108px;
-  padding: 9px 10px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--teal);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 850;
-  cursor: pointer;
-}
-
-.export-panel button:disabled {
-  background: #a9c6c2;
-  cursor: not-allowed;
-}
-
-.export-error {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: #b23b32;
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.export-success {
+.export-message {
   grid-column: 1 / -1;
   margin: 0;
   color: var(--muted);
@@ -443,12 +364,24 @@ async function exportEvidencePackage() {
   line-height: 1.4;
 }
 
+.export-message.is-error {
+  color: #b23b32;
+}
+
+.asset-card,
+.feedback-source,
+.empty-state {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
 .asset-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
-  padding: 13px;
+  padding: 12px;
 }
 
 .asset-card div {
@@ -472,17 +405,6 @@ async function exportEvidencePackage() {
   color: var(--teal-dark);
   font-size: 12px;
   font-weight: 900;
-  white-space: nowrap;
-}
-
-.asset-card em {
-  padding: 5px 7px;
-  border-radius: 6px;
-  background: #e8f6f1;
-  color: var(--teal-dark);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 850;
   white-space: nowrap;
 }
 
@@ -532,17 +454,13 @@ async function exportEvidencePackage() {
     align-items: start;
   }
 
-  .export-panel button {
-    justify-self: start;
-  }
-
   .asset-card {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
 
   .asset-card > span,
-  .asset-card em {
+  .asset-card > :last-child {
     justify-self: start;
   }
 }

@@ -11,10 +11,14 @@ import {
   Terminal,
   Trash2
 } from "@lucide/vue";
-import { nextTick, onBeforeUnmount, ref } from "vue";
+import { nextTick, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { storeToRefs } from "pinia";
+import { useClipboard, useTimeoutFn } from "@vueuse/core";
 
+import AgentMarkdown from "@/components/agent/AgentMarkdown.vue";
+import WorkbenchButton from "@/components/ui/WorkbenchButton.vue";
+import WorkbenchDialog from "@/components/ui/WorkbenchDialog.vue";
 import { modulePath, useStudentWorkbenchStore } from "@/stores/studentWorkbench";
 
 const store = useStudentWorkbenchStore();
@@ -34,7 +38,10 @@ const {
 const messageStream = ref<HTMLElement | null>(null);
 const copied = ref(false);
 const unbindOpen = ref(false);
-let copyTimer: ReturnType<typeof setTimeout> | undefined;
+const { copy } = useClipboard({ source: connectCommand });
+const { start: startCopyReset, stop: stopCopyReset } = useTimeoutFn(() => {
+  copied.value = false;
+}, 2000);
 
 const quickPrompts = [
   { intent: "experience", label: "整理经历" },
@@ -46,10 +53,10 @@ const quickPrompts = [
 async function copyConnectCommand() {
   if (!connectCommand.value) return;
   try {
-    await navigator.clipboard.writeText(connectCommand.value);
+    await copy(connectCommand.value);
     copied.value = true;
-    if (copyTimer) clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => (copied.value = false), 2000);
+    stopCopyReset();
+    startCopyReset();
   } catch {
     copied.value = false;
   }
@@ -73,10 +80,6 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   }[prompt.intent];
   void submit(text);
 }
-
-onBeforeUnmount(() => {
-  if (copyTimer) clearTimeout(copyTimer);
-});
 </script>
 
 <template>
@@ -123,7 +126,7 @@ onBeforeUnmount(() => {
           <strong>{{ message.title }}</strong>
           <span v-if="message.tags.length">{{ message.tags.join(" · ") }}</span>
         </header>
-        <p v-for="(line, index) in message.lines" :key="index">{{ line }}</p>
+        <AgentMarkdown :content="message.lines.join('\n\n')" />
         <RouterLink v-if="message.target" :to="modulePath(message.target)">
           {{ message.resultLabel ?? "打开模块" }}
           <ArrowUpRight :size="15" />
@@ -176,26 +179,25 @@ onBeforeUnmount(() => {
       </footer>
     </div>
 
-    <Transition name="overlay">
-      <div v-if="unbindOpen" class="confirm-layer" @click.self="unbindOpen = false">
-        <section class="confirm-dialog" role="dialog" aria-modal="true" aria-label="确认解绑设备">
-          <h3>解绑本地设备</h3>
-          <p>解绑后云端停止接收这台设备的摘要，本地简历、报告和投递明细会保留。</p>
-          <footer>
-            <button type="button" @click="unbindOpen = false">取消</button>
-            <button
-              type="button"
-              @click="
-                unbindOpen = false;
-                store.unbind()
-              "
-            >
-              确认解绑
-            </button>
-          </footer>
-        </section>
-      </div>
-    </Transition>
+    <WorkbenchDialog
+      v-model:open="unbindOpen"
+      title="解绑本地设备"
+      description="解绑后云端停止接收这台设备的摘要，本地简历、报告和投递明细会保留。"
+    >
+      <template #footer>
+        <WorkbenchButton size="sm" @click="unbindOpen = false">取消</WorkbenchButton>
+        <WorkbenchButton
+          size="sm"
+          variant="danger"
+          @click="
+            unbindOpen = false;
+            store.unbind()
+          "
+        >
+          确认解绑
+        </WorkbenchButton>
+      </template>
+    </WorkbenchDialog>
   </section>
 </template>
 
@@ -537,70 +539,6 @@ onBeforeUnmount(() => {
   font-family: Consolas, "Courier New", monospace;
 }
 
-.confirm-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  background: rgba(23, 33, 36, 0.48);
-}
-
-.confirm-dialog {
-  width: min(420px, 100%);
-  display: grid;
-  gap: 14px;
-  padding: 20px;
-  border-radius: 8px;
-  background: #fff;
-  color: var(--ink);
-}
-
-.confirm-dialog h3 {
-  margin: 0;
-}
-
-.confirm-dialog p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.6;
-}
-
-.confirm-dialog footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.confirm-dialog button {
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: transparent;
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 850;
-  cursor: pointer;
-}
-
-.confirm-dialog footer button:last-child {
-  border-color: #b4483a;
-  background: #b4483a;
-  color: #fff;
-}
-
-.overlay-enter-active,
-.overlay-leave-active {
-  transition: opacity 0.16s ease;
-}
-
-.overlay-enter-from,
-.overlay-leave-to {
-  opacity: 0;
-}
-
 @media (max-width: 760px) {
   .agent-console {
     min-height: calc(100vh - 178px);
@@ -617,6 +555,16 @@ onBeforeUnmount(() => {
 
   .quick-prompts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trace-strip {
+    align-items: flex-start;
+  }
+
+  .trace-strip p {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .message-stream {

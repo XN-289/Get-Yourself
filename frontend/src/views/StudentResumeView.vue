@@ -3,6 +3,9 @@ import { CircleCheck, FileText, Lock } from "@lucide/vue";
 import { storeToRefs } from "pinia";
 
 import StudentWorkbenchModule from "@/components/student/StudentWorkbenchModule.vue";
+import WorkbenchButton from "@/components/ui/WorkbenchButton.vue";
+import WorkbenchPanel from "@/components/ui/WorkbenchPanel.vue";
+import WorkbenchStatus from "@/components/ui/WorkbenchStatus.vue";
 import { useStudentWorkbenchStore } from "@/stores/studentWorkbench";
 
 const store = useStudentWorkbenchStore();
@@ -18,46 +21,47 @@ const { confirmedFactCount, resumeAssets, resumeDraft } = storeToRefs(store);
     status="本地文件优先"
   >
     <div class="resume-layout">
-      <section class="resume-versions" aria-label="简历版本">
-        <header>
-          <div>
-            <p>Versions</p>
-            <h3>简历版本</h3>
-          </div>
-          <FileText :size="19" />
-        </header>
+      <WorkbenchPanel
+        eyebrow="Versions"
+        title="简历版本"
+        :icon="FileText"
+        description="同一份能力资产面向不同岗位生成版本。"
+      >
         <article v-for="asset in resumeAssets" :key="asset.id" class="resume-version">
           <div>
             <strong>{{ asset.name }} {{ asset.version }}</strong>
             <small>{{ asset.coverage }}</small>
           </div>
-          <span :class="{ 'is-locked': asset.status === '已锁定' }">
+          <WorkbenchStatus :tone="asset.status === '已锁定' ? 'success' : 'warning'">
             <Lock v-if="asset.status === '已锁定'" :size="13" />
             {{ asset.status }}
-          </span>
+          </WorkbenchStatus>
         </article>
-      </section>
+      </WorkbenchPanel>
 
-      <section class="resume-draft" aria-label="候选简历条目">
-        <header>
-          <div>
-            <p>Candidate Bullet</p>
-            <h3>候选简历条目</h3>
-          </div>
-          <span>{{ confirmedFactCount }} / {{ resumeDraft.facts.length }} 事实已确认</span>
-        </header>
+      <WorkbenchPanel
+        eyebrow="Candidate Bullet"
+        title="候选简历条目"
+        description="候选 bullet 中的事实逐条确认，未确认内容不会进入锁定版本。"
+      >
+        <template #actions>
+          <WorkbenchStatus tone="accent">
+            {{ confirmedFactCount }} / {{ resumeDraft.facts.length }} 事实已确认
+          </WorkbenchStatus>
+        </template>
+
         <p class="draft-bullet">{{ resumeDraft.bullet }}</p>
-        <ul>
+        <ul class="fact-list">
           <li v-for="fact in resumeDraft.facts" :key="fact.id">
             <span>{{ fact.label }} · {{ fact.source }}</span>
-            <button v-if="!fact.confirmed" type="button" @click="store.confirmResumeFact(fact.id)">
+            <CircleCheck v-if="fact.confirmed" class="fact-done" :size="17" />
+            <WorkbenchButton v-else size="sm" variant="dark" @click="store.confirmResumeFact(fact.id)">
               确认事实
-            </button>
-            <CircleCheck v-else :size="17" />
+            </WorkbenchButton>
           </li>
         </ul>
         <p class="local-note">简历全文和事实确认记录保留在本机；未确认事实不会进入锁定版本。</p>
-      </section>
+      </WorkbenchPanel>
     </div>
   </StudentWorkbenchModule>
 </template>
@@ -70,72 +74,15 @@ const { confirmedFactCount, resumeAssets, resumeDraft } = storeToRefs(store);
   align-items: start;
 }
 
-.resume-versions,
-.resume-draft,
-.resume-version {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-}
-
-.resume-versions,
-.resume-draft {
-  display: grid;
-  gap: 12px;
-  padding: 17px;
-}
-
-.resume-versions > header,
-.resume-draft > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.resume-versions > header > div,
-.resume-draft > header > div {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.resume-versions > header svg {
-  color: var(--teal);
-}
-
-.resume-versions p:first-child,
-.resume-draft p:first-child {
-  margin: 0;
-  color: var(--teal);
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.resume-versions h3,
-.resume-draft h3 {
-  margin: 0;
-  color: var(--ink);
-  font-size: 18px;
-}
-
-.resume-draft > header > span {
-  flex: 0 0 auto;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: #e8f6f1;
-  color: var(--teal-dark);
-  font-size: 11px;
-  font-weight: 850;
-}
-
 .resume-version {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 13px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
 }
 
 .resume-version div {
@@ -154,24 +101,6 @@ const { confirmedFactCount, resumeAssets, resumeDraft } = storeToRefs(store);
   font-size: 11px;
 }
 
-.resume-version span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: #f4f7f7;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 850;
-  white-space: nowrap;
-}
-
-.resume-version span.is-locked {
-  background: #e8f6f1;
-  color: var(--teal-dark);
-}
-
 .draft-bullet {
   margin: 0;
   padding: 13px;
@@ -183,7 +112,7 @@ const { confirmedFactCount, resumeAssets, resumeDraft } = storeToRefs(store);
   line-height: 1.7;
 }
 
-.resume-draft ul {
+.fact-list {
   display: grid;
   gap: 7px;
   margin: 0;
@@ -191,41 +120,28 @@ const { confirmedFactCount, resumeAssets, resumeDraft } = storeToRefs(store);
   list-style: none;
 }
 
-.resume-draft li {
-  min-height: 44px;
+.fact-list li {
+  min-height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 9px 11px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--surface-soft);
 }
 
-.resume-draft li > span {
+.fact-list li > span {
   min-width: 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
 
-.resume-draft li > svg {
+.fact-done {
   flex: 0 0 auto;
   color: var(--teal);
-}
-
-.resume-draft li button {
-  flex: 0 0 auto;
-  min-height: 31px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--ink);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 850;
-  cursor: pointer;
 }
 
 .local-note {
@@ -247,11 +163,7 @@ const { confirmedFactCount, resumeAssets, resumeDraft } = storeToRefs(store);
     align-items: start;
   }
 
-  .resume-version span {
-    justify-self: start;
-  }
-
-  .resume-draft li {
+  .fact-list li {
     align-items: flex-start;
     flex-direction: column;
   }

@@ -11,7 +11,8 @@ import {
   Search,
   X
 } from "@lucide/vue";
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
+import { useEventListener } from "@vueuse/core";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 
 import {
@@ -109,8 +110,7 @@ function handleGlobalKeydown(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => window.addEventListener("keydown", handleGlobalKeydown));
-onBeforeUnmount(() => window.removeEventListener("keydown", handleGlobalKeydown));
+useEventListener(window, "keydown", handleGlobalKeydown);
 </script>
 
 <template>

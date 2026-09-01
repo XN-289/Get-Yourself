@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Bot } from "@lucide/vue";
-import { RouterLink } from "vue-router";
+
+import WorkbenchButton from "@/components/ui/WorkbenchButton.vue";
+import WorkbenchStatus from "@/components/ui/WorkbenchStatus.vue";
 
 withDefaults(
   defineProps<{
@@ -27,11 +29,11 @@ withDefaults(
         <p>{{ description }}</p>
       </div>
       <div class="module-actions">
-        <span v-if="status">{{ status }}</span>
-        <RouterLink :to="agentTo">
+        <WorkbenchStatus v-if="status" tone="accent">{{ status }}</WorkbenchStatus>
+        <WorkbenchButton :to="agentTo" variant="dark">
           <Bot :size="17" />
           {{ agentAction }}
-        </RouterLink>
+        </WorkbenchButton>
       </div>
     </header>
     <slot />
@@ -93,31 +95,6 @@ withDefaults(
   white-space: nowrap;
 }
 
-.module-actions > span {
-  max-width: 260px;
-  overflow: hidden;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 750;
-  text-overflow: ellipsis;
-}
-
-.module-actions a {
-  min-height: 38px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 12px;
-  border-radius: 7px;
-  background: var(--ink);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 850;
-}
-
 @media (max-width: 760px) {
   .module-header {
     align-items: stretch;
@@ -129,13 +106,9 @@ withDefaults(
     overflow: hidden;
   }
 
-  .module-actions > span {
+  .module-actions > :first-child {
     flex: 1;
     min-width: 0;
-  }
-
-  .module-actions a {
-    flex: 0 0 auto;
   }
 }
 </style>
