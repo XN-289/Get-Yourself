@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import {
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
   CircleCheck,
   CircleX,
+  GripVertical,
   ListTree,
   Plus,
   ShieldCheck,
   Sparkles,
   Trophy
 } from "@lucide/vue";
-import { computed, ref } from "vue";
+import Sortable from "sortablejs";
+import { computed, onBeforeUnmount, onMounted, ref, type ComponentPublicInstance } from "vue";
 import { storeToRefs } from "pinia";
 
 import StudentWorkbenchModule from "@/components/student/StudentWorkbenchModule.vue";
@@ -28,6 +32,8 @@ const addCandidate = ref<CompanyOpportunity | null>(null);
 const presetStageName = ref("二面");
 const customStageName = ref("");
 const presetStages = ["二面", "三面", "HR 面", "加面", "Offer", "自定义节点"];
+const stageTreeElements = new Map<number, HTMLElement>();
+const stageSortables: Sortable[] = [];
 
 const syncDialogOpen = computed({
   get: () => syncCandidate.value !== null,
@@ -109,6 +115,46 @@ function addStage() {
   store.addProcessStage(addCandidate.value.id, newStageName.value);
   closeAddDialog();
 }
+
+function moveStageByStep(opportunity: CompanyOpportunity, stageIndex: number, direction: -1 | 1) {
+  const stage = opportunity.stages[stageIndex];
+  if (!stage) return;
+  store.moveProcessStage(opportunity.id, stage.id, stageIndex + direction);
+}
+
+function registerStageTree(element: Element | ComponentPublicInstance | null, opportunityId: number) {
+  if (element instanceof HTMLElement) stageTreeElements.set(opportunityId, element);
+  else stageTreeElements.delete(opportunityId);
+}
+
+onMounted(() => {
+  for (const [opportunityId, element] of stageTreeElements) {
+    stageSortables.push(
+      Sortable.create(element, {
+        animation: 150,
+        chosenClass: "is-sort-chosen",
+        dragClass: "is-sort-dragging",
+        fallbackOnBody: true,
+        forceFallback: true,
+        ghostClass: "is-sort-ghost",
+        handle: ".stage-order",
+        onEnd: (event) => {
+          const opportunity = opportunities.value.find((item) => item.id === opportunityId);
+          const stage = opportunity?.stages[event.oldIndex ?? -1];
+          const targetIndex = event.newIndex;
+          if (!opportunity || !stage || targetIndex === undefined || targetIndex === event.oldIndex) return;
+          store.moveProcessStage(opportunityId, stage.id, targetIndex);
+        }
+      })
+    );
+  }
+});
+
+onBeforeUnmount(() => {
+  stageSortables.forEach((sortable) => sortable.destroy());
+  stageSortables.length = 0;
+  stageTreeElements.clear();
+});
 </script>
 
 <template>
@@ -172,15 +218,51 @@ function addStage() {
             </div>
           </header>
 
-          <ol class="stage-tree">
-            <li v-for="stage in opportunity.stages" :key="stage.id" :class="`is-${stage.status}`">
+          <ol
+            :ref="(element) => registerStageTree(element, opportunity.id)"
+            class="stage-tree"
+          >
+            <li
+              v-for="(stage, stageIndex) in opportunity.stages"
+              :key="stage.id"
+              :class="`is-${stage.status}`"
+            >
               <span class="stage-marker"></span>
               <div class="stage-body">
                 <div class="stage-title">
+                  <span class="stage-order" title="拖动节点排序" aria-hidden="true">
+                    <GripVertical :size="14" />
+                  </span>
                   <strong>{{ stage.name }}</strong>
-                  <WorkbenchStatus :tone="statusTone(stage.status)">
-                    {{ statusText[stage.status] }}
-                  </WorkbenchStatus>
+                  <div class="stage-title-side">
+                    <WorkbenchStatus :tone="statusTone(stage.status)">
+                      {{ statusText[stage.status] }}
+                    </WorkbenchStatus>
+                    <div class="stage-move-actions">
+                      <WorkbenchButton
+                        class="stage-move"
+                        size="sm"
+                        variant="ghost"
+                        title="上移节点"
+                        aria-label="上移节点"
+                        :disabled="stageIndex === 0"
+                        @click="moveStageByStep(opportunity, stageIndex, -1)"
+                      >
+                        <ChevronUp :size="14" />
+                      </WorkbenchButton>
+                      <WorkbenchButton
+                        class="stage-move"
+                        size="sm"
+                        variant="ghost"
+                        title="下移节点"
+                        aria-label="下移节点"
+                        :disabled="stageIndex === opportunity.stages.length - 1"
+                        @click="moveStageByStep(opportunity, stageIndex, 1)"
+                      >
+                        <ChevronDown :size="14" />
+                      </WorkbenchButton>
+                    </div>
+                  </div>
                 </div>
                 <p>
                   <span v-if="stage.nextAction">{{ stage.nextAction }}</span>
@@ -328,7 +410,7 @@ function addStage() {
             type="text"
           />
         </template>
-        <p>节点会追加到该公司流程树末尾。面试轮次和真实流程由你定义，Agent 只提供建议和产物。</p>
+        <p>节点会追加到该公司流程树末尾，随后可拖拽调整顺序。面试轮次和真实流程由你定义，Agent 只提供建议和产物。</p>
       </div>
       <template #footer>
         <WorkbenchButton size="sm" @click="closeAddDialog">取消</WorkbenchButton>
@@ -441,6 +523,7 @@ function addStage() {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
   gap: 10px;
+  touch-action: manipulation;
 }
 
 .stage-tree li::after {
@@ -476,6 +559,15 @@ function addStage() {
   border: 1px solid var(--line);
   border-radius: 7px;
   background: #fff;
+  cursor: grab;
+  transition:
+    border-color 130ms ease,
+    box-shadow 130ms ease,
+    opacity 130ms ease;
+}
+
+.stage-body :is(button, a, input, select, textarea) {
+  cursor: pointer;
 }
 
 .stage-title {
@@ -485,8 +577,53 @@ function addStage() {
   gap: 9px;
 }
 
+.stage-order {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  touch-action: none;
+  color: #9aabaa;
+  cursor: grab;
+}
+
+.stage-order:hover {
+  background: rgba(20, 123, 115, 0.08);
+  color: var(--teal-dark);
+}
+
 .stage-title strong {
+  min-width: 0;
+  flex: 1 1 auto;
   font-size: 13px;
+}
+
+.stage-title-side {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.stage-move-actions {
+  display: flex;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 130ms ease;
+}
+
+.stage-tree li:hover .stage-move-actions,
+.stage-tree li:focus-within .stage-move-actions {
+  opacity: 1;
+}
+
+.stage-move {
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
 }
 
 .stage-body > p {
@@ -582,6 +719,20 @@ function addStage() {
   border-color: #b4483a;
 }
 
+.stage-tree li.is-sort-ghost {
+  opacity: 0.42;
+}
+
+.stage-tree li.is-sort-ghost .stage-body,
+.stage-tree li.is-sort-dragging .stage-body {
+  border-style: dashed;
+}
+
+.stage-tree li.is-sort-chosen .stage-body {
+  border-color: rgba(20, 123, 115, 0.42);
+  box-shadow: 0 8px 20px rgba(23, 33, 36, 0.09);
+}
+
 .stage-tree li.is-offer .stage-body {
   border-color: rgba(199, 144, 37, 0.35);
 }
@@ -645,14 +796,22 @@ function addStage() {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .opportunity-list article > header,
-  .stage-title {
+  .opportunity-list article > header {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .stage-title {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
   .opportunity-list article > header > div:last-child {
     justify-content: flex-start;
+  }
+
+  .stage-move-actions {
+    opacity: 1;
   }
 
   .stage-tree li {

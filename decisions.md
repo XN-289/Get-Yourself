@@ -26,5 +26,6 @@ This file records durable product and engineering decisions. It does not replace
 20. **Interview outcome states are user-owned.** Agent may suggest the next node or generate its artifacts, but passed, failed, and Offer must be manually confirmed by the user.
 21. **Process nodes reserve skill associations without implementing skill execution in v0.1.** JD analysis, resume writing, interview preparation, review, and related skills are modeled as `skillKey` metadata and display labels first.
 22. **Encouragement is part of the interview process, not only the Offer terminal.** Copy is concise, factual, and tied to the real completed action; failure copy explicitly preserves the value of review and evidence.
+23. **Process node order is user-owned and manually draggable.** Reordering is scoped to the same company opportunity, preserves node metadata, and is traceable; Agent may suggest an order but cannot silently rewrite a user-confirmed process history. The demo uses SortableJS for each company opportunity list and keeps adjacent-move controls for narrow screens.
 
 Source: user direction in this project thread on 2026-09-01.

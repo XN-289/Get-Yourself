@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-01 16:33
+Updated: 2026-09-01 17:12
 Current phase: implementation
 
 ## 一句话现状
@@ -20,6 +20,7 @@ Agent-first 前端 Demo、公司机会流程树版面试管理、学生端工具
 - Stage 2b 先做网页显式证据包导出，毕业年份与目标方向只在导出请求中使用，不持久化；不做账号绑定、token 存储、自动下载契约或自动同步 — `decisions.md`。
 - 学生端前端采用可组合小组件与 headless primitives，不引入整套后台组件库；Agent 输出 Markdown 禁 raw HTML 并做 sanitize — `decisions.md`。
 - 面试管理以公司机会为主对象，流程轮次由用户手工扩展；通过、未通过与 Offer 状态由用户确认，Agent 不自动改写 — `decisions.md`。
+- 面试流程节点顺序由用户手工管理；拖拽只在同一公司机会内生效，Agent 可以建议但不能静默重排用户确认过的流程历史 — `decisions.md`。
 
 ## 决策索引
 
@@ -29,6 +30,7 @@ Agent-first 前端 Demo、公司机会流程树版面试管理、学生端工具
 - 2026-09-01 — Stage 2b 网页显式导出、导出输入不落库、语义内容 `packageId` 与评分结果溯源指针 — `decisions.md`。
 - 2026-09-01 — 学生端工具台 UI 基座：Reka UI、VueUse、Vue Query 与安全 Markdown 渲染的技术边界 — `decisions.md`。
 - 2026-09-01 — 公司机会流程树、人工状态确认、skill 关联预留与流程内鼓励反馈 — `decisions.md`。
+- 2026-09-01 — 面试流程节点手工拖拽排序与重排保真边界 — `decisions.md`。
 
 ## 已实现
 
@@ -36,8 +38,8 @@ Agent-first 前端 Demo、公司机会流程树版面试管理、学生端工具
 - Agent 工作台与能力资产、简历、面试等模块路由分离 — commit `8ff4130`。
 - 学生端工具台 UI 基座 — `frontend/src/components/ui/`、`frontend/src/components/agent/AgentMarkdown.vue` 与四个学生端模块页；统一面板、按钮、状态胶囊与确认弹窗，Agent 消息改为安全 Markdown 渲染，证据包导出接入 Vue Query mutation。
 - 学生端 UI 基座验证 — `frontend/` 下 `npm run build` 通过，`npm audit --json` 0 vulnerabilities；`/student/workbench`、`/student/assets`、`/student/resume`、`/student/interview` 在 1440px 桌面与 390px 窄屏完成布局检查，确认弹窗在窄屏完成居中、焦点、Esc 关闭与滚动锁定恢复检查，Agent Markdown 完成 raw HTML 禁用与 sanitize 冒烟。
-- 公司机会流程树版面试管理 — `frontend/src/stores/studentWorkbench.ts` 与 `frontend/src/views/StudentInterviewView.vue`；支持公司机会、可扩展流程节点、人工通过/未通过/Offer 标记、skill 关联展示、流程内鼓励文案和 Offer 庆祝反馈。
-- 面试流程树验证 — `frontend/` 下 `npm run build` 通过；390px 窄屏无横向溢出，人工追加“交叉面”、进入处理、标记通过与添加节点弹窗 Esc 关闭检查通过，Offer 节点庆祝反馈可见。
+- 公司机会流程树版面试管理 — `frontend/src/stores/studentWorkbench.ts`、`frontend/src/views/StudentInterviewView.vue` 与 `frontend/package.json`；支持公司机会、可扩展流程节点、SortableJS 同公司内拖拽排序、窄屏上移/下移、人工通过/未通过/Offer 标记、skill 关联展示、流程内鼓励文案和 Offer 庆祝反馈。
+- 面试流程树验证 — `frontend/` 下 `npm run build` 与 `npm audit --json` 通过（0 vulnerabilities）；1000x900 Playwright 实测“JD 分析”从上向下拖拽、窄屏上移/下移按钮排序，顺序变化且状态、备注保留；390px 窄屏无横向溢出，移动按钮可见，添加节点弹窗 Esc 关闭与 Offer 节点庆祝反馈检查通过。
 - v0.1 Agent-first 产品设计修订 — `docs/PRODUCT_DESIGN_V0.1.md`，commit `d153802`。
 - Stage 1 `gy` 本地入口 — `cli/gy.mjs`、`cli/lib/intent-router.mjs`、`cli/modes/cv.md`；`npm test` 结果 9 pass / 0 fail，`node gy.mjs --status` 与自然语言路由人工检查通过。
 - CLI 测试运行器 — `cli/test-all.mjs`、`cli/tests/*.test.mjs`；自动发现 Node 内置 test runner 用例，修复原 `npm test` 无法执行的问题。
@@ -83,3 +85,4 @@ Agent-first 前端 Demo、公司机会流程树版面试管理、学生端工具
 - 2026-09-01 — 完成 Stage 2 后端真实数据导出到本地 CLI 导入的端到端回归 — 影响用户验收准备；未进入 Stage 3 账号绑定或自动同步。
 - 2026-09-01 — 建立学生端工具台 UI 基座并完成桌面/窄屏、弹窗与安全 Markdown 验证 — 影响后续学生端前端实现的一致性；仍待用户统一验收。
 - 2026-09-01 — 面试管理重构为公司机会流程树 — 影响后续 JD 分析、简历适配、面试准备和复盘 skill 的节点挂载方式；仍待用户验收。
+- 2026-09-01 — 面试流程节点支持同公司内手工拖拽排序 — 影响后续流程树保存契约与 Agent 建议排序的确认边界；仍待用户验收。

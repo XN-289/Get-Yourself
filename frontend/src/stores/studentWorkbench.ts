@@ -784,6 +784,23 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     );
   }
 
+  function moveProcessStage(opportunityId: number, stageId: number, targetIndex: number) {
+    const opportunity = opportunities.value.find((item) => item.id === opportunityId);
+    const fromIndex = opportunity?.stages.findIndex((item) => item.id === stageId) ?? -1;
+    if (!opportunity || fromIndex < 0) return;
+
+    const clampedIndex = Math.max(0, Math.min(targetIndex, opportunity.stages.length - 1));
+    if (fromIndex === clampedIndex) return;
+
+    const [stage] = opportunity.stages.splice(fromIndex, 1);
+    opportunity.stages.splice(clampedIndex, 0, stage);
+    addTrace(
+      "面试流程节点排序",
+      `${opportunity.company} · ${stage.name}`,
+      "用户手工调整节点顺序，节点状态和产物信息保持不变"
+    );
+  }
+
   function processStatusLabel(status: ProcessStageStatus) {
     return (
       {
@@ -852,6 +869,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     setProcessStageStatus,
     markProcessStageOffer,
     addProcessStage,
+    moveProcessStage,
     processStatusLabel,
     confirmSync
   };
