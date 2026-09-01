@@ -117,6 +117,9 @@ If a required command cannot run, record the exact blocker in the final response
 
 Every change made by an agent must end in a git commit. This is a project requirement, not a preference.
 
+- The canonical remote is the existing GitHub repository configured as `origin`:
+  `git@github.com:XN-289/Get-Yourself.git`. Do not create, replace, or switch to
+  another remote repository unless the user explicitly requests that change.
 - Before starting, confirm whether the worktree is clean.
 - If unrelated uncommitted changes exist, stage only files belonging to the current task.
 - Use a concise conventional-commit subject, for example `docs: add root agent contract`, `feat: add device binding`, or `fix: stabilize tracker sync`.
