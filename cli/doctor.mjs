@@ -24,34 +24,16 @@ const REQUIRED_FILES = [
   { path: 'portals.yml', label: '校招信息源', template: 'templates/portals.example.yml' },
 ];
 
-function checkOnboarding(root) {
+export function inspectOnboarding(root) {
   const missing = [];
   const unpersonalized = [];
   const warnings = [];
-  const autoCopied = [];
 
   // 用户层必需文件
   for (const f of REQUIRED_FILES) {
     const full = join(root, f.path);
     if (!existsSync(full)) {
-      if (f.template && existsSync(join(__dirname, f.template))) {
-        // 自动从模板复制（只有 config/profile.example.yml 的拷贝是安全的；
-        // _profile.md 需要个性化引导，不自动复制）
-        if (f.path === 'config/profile.yml') {
-          try {
-            mkdirSync(dirname(full), { recursive: true });
-            copyFileSync(join(__dirname, f.template), full);
-            autoCopied.push(f.path);
-            missing.push(f.path); // 仍标记缺失：内容还是模板
-          } catch {
-            missing.push(f.path);
-          }
-        } else {
-          missing.push(f.path);
-        }
-      } else {
-        missing.push(f.path);
-      }
+      missing.push(f.path);
     }
   }
 
@@ -80,6 +62,29 @@ function checkOnboarding(root) {
     missing,
     unpersonalized,
     warnings,
+  };
+}
+
+function checkOnboarding(root) {
+  const result = inspectOnboarding(root);
+  const autoCopied = [];
+
+  // 保持 doctor 原有引导行为：只复制 profile 模板，且仍标记为待个性化。
+  // gy 使用 inspectOnboarding()，不会触发这里任何写入。
+  if (result.missing.includes('config/profile.yml')) {
+    const full = join(root, 'config/profile.yml');
+    const template = join(__dirname, 'config/profile.example.yml');
+    try {
+      mkdirSync(dirname(full), { recursive: true });
+      copyFileSync(template, full);
+      autoCopied.push('config/profile.yml');
+    } catch {
+      // 缺失状态保留，由人类可读输出引导用户处理。
+    }
+  }
+
+  return {
+    ...result,
     autoCopied,
   };
 }

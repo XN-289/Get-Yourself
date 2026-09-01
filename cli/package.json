@@ -8,6 +8,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "gy": "node gy.mjs",
     "doctor": "node doctor.mjs",
     "verify": "node verify-pipeline.mjs",
     "normalize": "node normalize-statuses.mjs",

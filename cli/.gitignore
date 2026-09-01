@@ -4,6 +4,7 @@ node_modules/
 
 # 用户层数据（个人隐私，绝不提交）
 cv.md
+!modes/cv.md
 config/profile.yml
 config/cv-facts.json
 config/local-paths.txt

@@ -55,15 +55,17 @@
 
 ## 首次运行（Onboarding）
 
-**每个会话第一条消息，先跑：**
+**每个会话第一条消息，先跑只读状态检查：**
 
 ```bash
-node doctor.mjs --json
+node gy.mjs --status --json
 ```
 
-输出 `{"onboardingNeeded": <bool>, "missing": [...], "unpersonalized": [...], ...}`。
+输出 `{"status": "...", "onboardingNeeded": <bool>, "missing": [...], "unpersonalized": [...], ...}`。这一步不会写入用户层。
 
 如果 `onboardingNeeded` 为 true，**进入引导模式**，不要先做评估/扫描：
+
+### Agent 入口
 
 #### Step 0: 免费档检查（仅当用户提到费用/预算）
 > "get-yourself-cli 完全可以用免费模型跑（DeepSeek / Qwen / Kimi 的免费档，或本地 Ollama）。不需要 API key 或付费订阅。"
@@ -119,12 +121,16 @@ node doctor.mjs --json
 
 #### Step 6: 就绪
 > "全部就绪！你现在可以：
-> - 粘贴一个校招岗位链接或 JD 来评估
-> - 运行 `scan` 模式扫描校招信息源
-> - 运行 `tracker` 查看进度
-> - 运行 `gap` 分析你与目标岗位的能力差距
+> - 直接告诉我“帮我整理这段经历 / 这家公司值得投吗 / 准备明天面试”
+> - 让我扫描校招信息源
+> - 查看投递进度
+> - 分析能力差距
 >
 > 一切可定制——直接告诉我改什么就行。"
+
+### 路由规则
+
+用户用自然语言提出任务时，先调用 `node gy.mjs --json "<用户输入>"` 获取意图、落点模块、后台模式和安全边界，再按对应 `modes/*.md` 执行。不要把路由结果当成已完成任务；Agent 仍需追问事实、生成草稿并请求写入确认。
 
 ## 主要文件
 
@@ -214,3 +220,4 @@ node doctor.mjs --json
 - 系统更新：`node update-system.mjs check` / `apply` / `rollback`
 - 测试：`node test-all.mjs`（tests/ 自动发现 `*.test.mjs`）
 - 质量门：每次 PR 跑 `test-all.mjs` + 语法检查
+- Agent 入口：`node gy.mjs`；路由测试在 `tests/intent-router.test.mjs` 与 `tests/gy-entry.test.mjs`

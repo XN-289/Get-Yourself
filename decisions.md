@@ -13,5 +13,8 @@ This file records durable product and engineering decisions. It does not replace
 7. **Enterprise and activity surfaces remain frozen.** Do not add product features to them in v0.1.
 8. **Implementation advances gradually.** The frontend demo is inspected before deeper backend integration; user acceptance must be explicit before it is recorded as accepted.
 9. **Every completed change must end in a git commit.** The canonical remote remains the existing `origin` at `git@github.com:XN-289/Get-Yourself.git`.
+10. **Stage 1 uses a deterministic Agent router before any LLM or backend integration.** `gy` maps natural language to a module destination and an existing background mode; it does not pretend to complete the task, persist the raw query, or write user-layer files.
+11. **`gy --status` is read-only.** Onboarding inspection reports missing and unpersonalized user files without copying templates or changing local data.
+12. **Resume experience structuring is governed by `cli/modes/cv.md`.** Drafting and STAR-story extraction may happen there, but writes to `cv.md`, resume material, the story bank, or PDF outputs require explicit user confirmation.
 
 Source: user direction in this project thread on 2026-09-01.

@@ -1,7 +1,26 @@
-# 🌱 Get Yourself CLI — 中国大学生求职作战指挥中心
+# 🌱 Get Yourself Agent — 中国大学生求职作战指挥中心
 
 > 对标 [career-ops](https://github.com/santifer/career-ops) 的架构哲学，专为中国校招场景设计。
-> **让 AI 帮你从海量校招信息里筛出真正值得投的岗位，管理从网申到三方的全过程。你负责最终决定。**
+> **用一句人话进入 Agent，让 AI 帮你筛岗位、整理简历、准备面试并管理从网申到三方的全过程。你负责最终决定。**
+
+## Agent 入口
+
+```bash
+npm install
+
+# 默认进入交互式对话
+npm run gy
+
+# 一句话路由
+npm run gy -- "把我这段实习整理成简历条目"
+npm run gy -- "这家公司值得投吗"
+npm run gy --json "帮我准备明天的面试"
+
+# 只读检查资料是否就绪（不会写入用户层）
+npm run gy -- --status --json
+```
+
+当前 `gy` 是 Stage 1 的确定性对话入口：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界。它不假装调用 LLM，也不写简历、tracker 或个人材料；实际执行由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。
 
 ## 它解决什么问题
 
@@ -27,7 +46,7 @@
 | `contract` | 三方协议/劳动合同解读 |
 | `outcome` | 记录结果（offer/拒信，沉淀经验） |
 
-## 快速开始
+## 高级命令入口
 
 ```bash
 # 1. 安装依赖
@@ -73,6 +92,8 @@ claude   # 或 codex / qwen / kimi
 
 ```
 get-yourself-cli/
+├── gy.mjs                 # Agent 统一入口与只读状态检查
+├── lib/intent-router.mjs  # 确定性意图路由
 ├── AGENTS.md              # AI 指令（规范来源）
 ├── CLAUDE.md / QWEN.md / KIMI.md / CODEX.md   # 各 CLI 入口
 ├── modes/                 # 模式文件（AI 的"大脑"）
