@@ -7,6 +7,7 @@ import { inspectOnboarding } from './doctor.mjs';
 import { inspectEvidencePackage } from './evidence-package.mjs';
 import { inspectResumeMaterials } from './resume-materials.mjs';
 import { inspectResumeFinal } from './resume-final.mjs';
+import { inspectResumeRender } from './resume-render.mjs';
 import { inspectInterviewPrep } from './interview-prep.mjs';
 import { inspectInterviewReview } from './interview-review.mjs';
 import { connectDevice, disconnectDevice, inspectDeviceBinding } from './device-binding.mjs';
@@ -29,6 +30,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     evidencePackage: inspectEvidencePackage(root),
     resumeMaterials: inspectResumeMaterials(root),
     resumeFinal: inspectResumeFinal(root),
+    resumeRender: inspectResumeRender(root),
     interviewPrep: inspectInterviewPrep(root),
     interviewReview: inspectInterviewReview(root),
     deviceBinding: inspectDeviceBinding(root),
@@ -90,6 +92,15 @@ function printStatus({ json = false, root } = {}) {
     console.log('简历定稿：等待素材包导入');
   } else {
     console.log('简历定稿：未生成');
+  }
+  const resumeRender = payload.resumeRender;
+  if (resumeRender.state === 'ready') {
+    const currentCount = resumeRender.renders.filter(item => item.htmlState === 'current').length;
+    console.log(`简历渲染：${resumeRender.renderCount} 份（${currentCount} 份 HTML 一致）`);
+  } else if (resumeRender.state === 'invalid') {
+    console.log(`简历渲染：本地文件无效（${resumeRender.error}）`);
+  } else {
+    console.log('简历渲染：未生成');
   }
   const interviewPrep = payload.interviewPrep;
   if (interviewPrep.state === 'ready') {

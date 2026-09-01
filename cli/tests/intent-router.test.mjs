@@ -53,6 +53,7 @@ test('only routes to mode files that exist in this repository', () => {
     '这家公司值不值得投',
     '把我这段实习整理成简历条目',
     '把这份简历定稿',
+    '用 modern-sidebar 模板渲染这份简历',
     '帮我准备明天的技术面试',
     '复盘今天的技术面试',
     '看看我和这个岗位的能力差距',

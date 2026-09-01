@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; color: #22303a; background: #fff; }
+.page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 14mm 15mm; }
+header { background: #eef5f3; padding: 5mm; border-left: 5px solid #178f78; }
+h1 { font-size: 20pt; }
+.headline { color: #17796b; margin-top: 1mm; font-size: 10.5pt; }
+.contact { display: flex; flex-wrap: wrap; gap: 1.5mm 5mm; margin-top: 2.5mm; font-size: 9.2pt; color: #48575f; }
+a { color: #17796b; text-decoration: none; }
+section { margin-top: 5mm; padding-left: 8mm; position: relative; }
+section::before { content: ""; position: absolute; left: 2.2mm; top: 0; bottom: 0; width: 1px; background: #c8d6d1; }
+h2 { font-size: 10.5pt; color: #17796b; }
+.summary { margin-top: 1mm; line-height: 1.45; }
+.entry { margin-top: 2.5mm; position: relative; padding-left: 5mm; }
+.entry::before { content: ""; position: absolute; left: -6.4mm; top: 1.4mm; width: 2.4mm; height: 2.4mm; border-radius: 50%; background: #178f78; }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 4mm; }
+.org { color: #17796b; }
+.org::before { content: " · "; }
+.date { color: #5d6b72; font-size: 9pt; }
+ul { list-style: none; margin-top: .8mm; }
+li { padding-left: 3.5mm; line-height: 1.38; margin-top: .5mm; }
+li::before { content: "-"; margin-right: 1.2mm; color: #178f78; }
+.skill-group, .line, .entry p { margin-top: .8mm; line-height: 1.4; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body data-template="timeline">
+<main class="page"><!--GY:RESUME_CONTENT--></main>
+</body>
+</html>

@@ -115,7 +115,7 @@ Use `feat: add interview review contract`.
 - Schema: `get-yourself.resume-render`, version `1`.
 - Eleven template IDs listed in the design document.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create tests for:
 
@@ -129,21 +129,21 @@ test('routes resume rendering to its contract tool', () => {});
 
 Cover strict fields, HTML escaping, sample-data removal, empty-section removal, template allowlist, deterministic output, dry-run no-write, apply, idempotence, replacement, and status.
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run: `npm test`
 
 Expected: resume-render tests fail because the module and template contract do not exist.
 
-- [ ] **Step 3: Implement minimally**
+- [x] **Step 3: Implement minimally**
 
 Create eleven system-layer templates and metadata, then implement canonicalization and deterministic HTML rendering without external browser dependencies.
 
-- [ ] **Step 4: Verify green**
+- [x] **Step 4: Verify green**
 
 Run: `npm test`, `node --check resume-render.mjs`, and inspect every generated template ID in tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Use `feat: add structured resume rendering`.
 

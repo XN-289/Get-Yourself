@@ -67,6 +67,15 @@
 - 计划必须绑定当前素材包 ID 和内容哈希；`missing` / `external` 素材不得进入定稿。
 - Agent 必须先展示章节选择、条目来源和期望 diff，用户确认后才能执行写入。
 
+### 简历渲染包（CRITICAL）
+
+- 契约：仓库根 `docs/RESUME_RENDER_CONTRACT.md`。
+- 校验：`node resume-render.mjs check <render.json>`，只读。
+- 导入：默认 dry-run；写入必须 `--apply`；覆盖不同渲染包或手工修改过的 HTML 必须 `--apply --replace`。
+- 产物：`data/resume-render/{renderId}.json` 与 `output/resume/{renderId}.html`。
+- 渲染包是唯一事实来源；可选素材溯源必须匹配当前素材包。模板只提供 11 套版式，不提供示例事实。
+- 输出是自包含本地 HTML；不得自动打开浏览器、上传内容或调用外部渲染服务。
+
 ### 面试准备包（CRITICAL）
 
 - 契约：仓库根 `docs/INTERVIEW_PREP_CONTRACT.md`。
@@ -200,6 +209,7 @@ node gy.mjs --status --json
 | `cv.md` | 学生简历（唯一权威） |
 | `data/resume-materials.json` | 用户确认后的简历素材与 STAR 故事候选 |
 | `data/resume-final-plan.json` | 当前用户确认的简历定稿章节选择计划 |
+| `data/resume-render/*.json` | 用户确认后的简历渲染溯源包 |
 | `data/interview-prep/*.json` | 用户确认后的面试准备溯源包 |
 | `data/interview-review/*.json` | 用户确认后的面试复盘溯源包 |
 | `portals.yml` | 校招信息源配置 |

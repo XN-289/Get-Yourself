@@ -1,0 +1,73 @@
+{
+  "schema": "get-yourself.resume-render",
+  "schemaVersion": 1,
+  "renderId": "demo-java-backend-classic",
+  "generatedAt": "2026-09-02T08:00:00.000Z",
+  "traceId": "trace.resume-render-demo",
+  "templateId": "classic-ats",
+  "confirmation": "user_confirmed",
+  "resume": {
+    "header": {
+      "name": "李雷",
+      "headline": "Java 后端开发",
+      "location": "上海",
+      "email": "lilei@example.com",
+      "phone": "13800000000",
+      "links": [
+        { "name": "GitHub", "url": "https://github.com/lilei" }
+      ]
+    },
+    "summary": "后端实习经历覆盖接口设计、前端联调和宿舍试用落地。",
+    "experience": [
+      {
+        "company": "校园技术团队",
+        "role": "后端开发实习生",
+        "location": "上海",
+        "start": "2026-03",
+        "end": "2026-06",
+        "bullets": [
+          "设计宿舍报修接口，支撑报修流程进入宿舍试用。",
+          "与前端约定接口契约，减少接口理解偏差。"
+        ]
+      }
+    ],
+    "projects": [
+      {
+        "name": "宿舍报修小程序",
+        "role": "后端负责人",
+        "link": "https://github.com/lilei/repair",
+        "date": "2026-04 - 2026-05",
+        "bullets": ["完成报修创建、状态更新和查询接口。"]
+      }
+    ],
+    "education": [
+      {
+        "school": "示例大学",
+        "degree": "计算机科学与技术 本科",
+        "location": "上海",
+        "start": "2022-09",
+        "end": "2026-06",
+        "detail": "相关课程：数据结构、操作系统"
+      }
+    ],
+    "skills": [
+      { "group": "语言", "items": ["Java", "SQL"] },
+      { "group": "工具", "items": ["Git", "MySQL"] }
+    ],
+    "certifications": [
+      { "name": "数据库系统认证", "issuer": "示例机构", "date": "2025-12" }
+    ],
+    "awards": [
+      { "title": "校园技术奖学金", "date": "2025-10", "note": "院级" }
+    ],
+    "languages": [
+      { "language": "英语", "level": "CET-4" }
+    ],
+    "publications": [
+      { "title": "宿舍报修系统设计", "venue": "课程报告", "date": "2026-05" }
+    ],
+    "volunteer": [
+      { "organization": "技术社团", "role": "志愿者", "bullets": ["组织技术分享活动。"] }
+    ]
+  }
+}

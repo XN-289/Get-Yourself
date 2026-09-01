@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Times New Roman", Georgia, serif; color: #171c22; background: #fff; }
+.page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 14mm 16mm; }
+header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px double #171c22; padding-bottom: 3mm; }
+h1 { font-size: 19pt; }
+.headline { font-size: 10.5pt; margin-top: 1mm; }
+.contact { text-align: right; font-size: 9.5pt; color: #39434d; max-width: 65mm; }
+.contact span { display: inline-block; }
+a { color: inherit; text-decoration: none; }
+section { margin-top: 5mm; break-inside: avoid; }
+h2 { font-size: 10pt; background: #eef1f4; padding: .8mm 2mm; border-left: 3px solid #171c22; }
+.summary { margin-top: 1.5mm; text-align: justify; line-height: 1.42; }
+.entry { margin-top: 2.5mm; }
+.row { display: grid; grid-template-columns: 1fr auto; border-bottom: 1px dotted #a7b0b8; padding-bottom: .8mm; }
+.org::before { content: " · "; }
+.date { color: #4c5761; font-size: 9.5pt; }
+ul { list-style: none; margin-top: 1mm; }
+li { line-height: 1.38; margin-top: .7mm; padding-left: 4mm; position: relative; }
+li::before { content: "-"; position: absolute; left: 0; }
+.skill-group, .line, .entry p { margin-top: 1mm; line-height: 1.42; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body data-template="ledger">
+<main class="page"><!--GY:RESUME_CONTENT--></main>
+</body>
+</html>

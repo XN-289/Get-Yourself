@@ -1,0 +1,17 @@
+{
+  "schema": "get-yourself.resume-templates",
+  "schemaVersion": 1,
+  "templates": [
+    { "id": "classic-ats", "name": "Classic ATS", "atsPosture": "friendly", "readableFloorPt": 9.5 },
+    { "id": "ledger", "name": "Ledger", "atsPosture": "friendly", "readableFloorPt": 9.5 },
+    { "id": "tech-compact", "name": "Tech Compact", "atsPosture": "acceptable", "readableFloorPt": 9 },
+    { "id": "modern-sidebar", "name": "Modern Sidebar", "atsPosture": "limited", "readableFloorPt": 9 },
+    { "id": "pillar", "name": "Pillar", "atsPosture": "limited", "readableFloorPt": 9 },
+    { "id": "elegant-serif", "name": "Elegant Serif", "atsPosture": "limited", "readableFloorPt": 9.5 },
+    { "id": "atelier", "name": "Atelier", "atsPosture": "limited", "readableFloorPt": 9.5 },
+    { "id": "timeline", "name": "Timeline", "atsPosture": "limited", "readableFloorPt": 9 },
+    { "id": "swiss", "name": "Swiss", "atsPosture": "limited", "readableFloorPt": 9 },
+    { "id": "executive", "name": "Executive", "atsPosture": "limited", "readableFloorPt": 9.5 },
+    { "id": "colorblock", "name": "Colorblock", "atsPosture": "limited", "readableFloorPt": 9 }
+  ]
+}

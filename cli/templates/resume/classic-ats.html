@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Georgia, "Times New Roman", serif; color: #17212b; background: #fff; }
+.page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 16mm 15mm; }
+header { text-align: center; border-bottom: 2px solid #17212b; padding-bottom: 5mm; }
+h1 { font-size: 21pt; }
+.headline { font-size: 11pt; color: #48586a; margin-top: 1mm; }
+.contact { display: flex; justify-content: center; flex-wrap: wrap; gap: 2mm 4mm; font-size: 9.5pt; margin-top: 3mm; }
+.contact span, .contact a { color: #29384a; }
+a { text-decoration: none; }
+section { margin-top: 5.5mm; }
+h2 { font-size: 10.5pt; text-transform: uppercase; border-bottom: 1px solid #98a4ae; padding-bottom: 1mm; }
+.summary { margin-top: 1.5mm; line-height: 1.45; }
+.entry { margin-top: 2.5mm; }
+.row { display: flex; justify-content: space-between; gap: 5mm; align-items: baseline; }
+.org::before, .project .org::before { content: " · "; }
+.date { color: #55616d; font-size: 9.5pt; white-space: nowrap; }
+ul { list-style: none; margin-top: 1mm; }
+li { padding-left: 5mm; position: relative; line-height: 1.38; margin-top: .7mm; }
+li::before { content: "•"; position: absolute; left: 1mm; }
+.skill-group, .line, .entry p { line-height: 1.45; margin-top: 1mm; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body data-template="classic-ats">
+<main class="page"><!--GY:RESUME_CONTENT--></main>
+</body>
+</html>

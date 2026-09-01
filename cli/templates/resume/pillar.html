@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; color: #1d242d; background: #fff; }
+.page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 13mm 14mm; column-count: 2; column-gap: 8mm; }
+header { column-span: all; border-bottom: 3px solid #2b6cb0; padding-bottom: 3mm; }
+h1 { font-size: 23pt; }
+.headline { color: #2b6cb0; font-size: 11.5pt; font-weight: 700; margin-top: 1mm; }
+.contact { display: flex; flex-wrap: wrap; gap: 1.5mm 5mm; font-size: 9pt; color: #5c6873; margin-top: 2.5mm; }
+a { color: #2b6cb0; text-decoration: none; }
+section { margin-top: 4mm; break-inside: avoid; }
+h2 { font-size: 10.5pt; border-bottom: 2px solid #1d242d; padding-bottom: .8mm; }
+.summary { line-height: 1.42; margin-top: 1mm; }
+.entry { margin-top: 2.2mm; }
+.row { display: block; }
+.org { color: #2b6cb0; }
+.org::before { content: " · "; }
+.date { display: block; color: #68737d; font-size: 9pt; margin-top: .4mm; }
+ul { list-style: none; margin-top: .7mm; }
+li { padding-left: 3.5mm; position: relative; line-height: 1.35; margin-top: .5mm; }
+li::before { content: ""; border-bottom: 2px solid #2b6cb0; width: 3mm; position: absolute; left: 0; top: 1.7mm; }
+.skill-group, .line, .entry p { margin-top: .8mm; line-height: 1.4; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body data-template="pillar">
+<main class="page"><!--GY:RESUME_CONTENT--></main>
+</body>
+</html>

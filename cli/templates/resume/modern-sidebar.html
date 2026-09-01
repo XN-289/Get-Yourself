@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Helvetica Neue", Arial, sans-serif; color: #24303c; background: #fff; }
+.page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 12mm 12mm 12mm 58mm; position: relative; background: linear-gradient(90deg, #29404f 0 58mm, #fff 58mm); }
+header { position: relative; color: #fff; min-height: 30mm; }
+h1 { font-size: 21pt; color: #fff; }
+.headline { color: #c9d6e0; font-size: 10.5pt; margin-top: 1mm; }
+.contact { display: flex; flex-direction: column; gap: .8mm; font-size: 9pt; margin-top: 4mm; }
+.contact span, .contact a { color: #e5edf3; }
+a { text-decoration: none; }
+section { margin-top: 4mm; }
+h2 { color: #29404f; font-size: 10.5pt; border-bottom: 2px solid #d5a421; display: inline-block; padding-bottom: .8mm; }
+.summary { line-height: 1.42; margin-top: 1mm; }
+.entry { margin-top: 2.2mm; }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 4mm; }
+.org { color: #7a5a10; font-weight: 600; }
+.org::before { content: " · "; }
+.date { color: #61707c; font-size: 9pt; }
+ul { list-style: none; margin-top: .8mm; }
+li { padding-left: 4mm; position: relative; line-height: 1.35; margin-top: .6mm; }
+li::before { content: ""; width: 1.6mm; height: 1.6mm; border-radius: 50%; background: #d5a421; position: absolute; left: 0; top: 1.4mm; }
+.skill-group, .line, .entry p { margin-top: .8mm; line-height: 1.4; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body data-template="modern-sidebar">
+<main class="page"><!--GY:RESUME_CONTENT--></main>
+</body>
+</html>

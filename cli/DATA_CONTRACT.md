@@ -25,6 +25,8 @@
 | `data/resume-materials-backups/*` | 显式替换简历素材或派生故事库前的备份 |
 | `data/resume-final-plan.json` | 用户确认后的简历定稿章节选择计划 |
 | `data/resume-final-backups/*` | 显式替换定稿计划或 cv.md 前的备份 |
+| `data/resume-render/*.json` | 用户确认后的简历渲染溯源包 |
+| `data/resume-render-backups/*` | 显式替换渲染包或 HTML 前的备份 |
 | `data/interview-prep/*.json` | 用户确认后的面试准备溯源包 |
 | `data/interview-prep-backups/*` | 显式替换面试准备包或清单前的备份 |
 | `data/interview-review/*.json` | 用户确认后的面试复盘溯源包 |
@@ -34,6 +36,7 @@
 | `data/status-log.tsv` | 状态流转日志（追加式） |
 | `reports/*` | 评估报告 |
 | `output/*` | 生成的 PDF |
+| `output/resume/*.html` | 本地生成的打印简历 HTML |
 | `documents/*` | 原始材料（成绩单/证书，仅 intake 读） |
 | `interview-prep/story-bank.md` | 由当前简历素材包派生的 STAR 故事库 |
 | `interview-prep/*.md` | 公司 / 岗位 / 轮次特定面试准备清单 |
@@ -66,7 +69,7 @@
 **如果文件在用户层，任何更新流程不得读取、修改或删除它。** 例外仅限用户显式执行 `gy connect` / `gy disconnect` 时维护 `data/device-installation.json` 与 `data/device-binding.json`；这两个文件绝不进入 git。
 **如果文件在系统层，它可以用上游最新版本安全替换。**
 
-`gy.mjs --status` 只读取用户层做就绪检查，不创建、不复制、不修改任何文件。能力证据包导入由 `evidence-package.mjs` 独立执行：`check` 只读，`import` 默认 dry-run，写入和替换分别需要 `--apply` 与 `--replace`。简历素材导入由 `resume-materials.mjs` 独立执行，边界相同；它只写 `data/resume-materials.json` 与派生的 `interview-prep/story-bank.md`，永不修改 `cv.md`。简历定稿由 `resume-final.mjs` 独立执行，必须在用户确认计划后写入 `data/resume-final-plan.json` 与 `cv.md`。面试准备由 `interview-prep.mjs` 独立执行，只写准备 JSON 与派生 Markdown。面试复盘由 `interview-review.mjs` 独立执行，只写复盘 JSON、复盘 Markdown 和备份；其差距与故事候选不进入任何下游事实源。意图路由不持久化用户原句；后续写入必须由宿主 AI 在用户确认后按对应模式的规范执行。
+`gy.mjs --status` 只读取用户层做就绪检查，不创建、不复制、不修改任何文件。能力证据包导入由 `evidence-package.mjs` 独立执行：`check` 只读，`import` 默认 dry-run，写入和替换分别需要 `--apply` 与 `--replace`。简历素材导入由 `resume-materials.mjs` 独立执行，边界相同；它只写 `data/resume-materials.json` 与派生的 `interview-prep/story-bank.md`，永不修改 `cv.md`。简历定稿由 `resume-final.mjs` 独立执行，必须在用户确认计划后写入 `data/resume-final-plan.json` 与 `cv.md`。简历渲染由 `resume-render.mjs` 独立执行，只写渲染 JSON、本地 HTML 和备份，不上传、不自动打开浏览器、不修改定稿。面试准备由 `interview-prep.mjs` 独立执行，只写准备 JSON 与派生 Markdown。面试复盘由 `interview-review.mjs` 独立执行，只写复盘 JSON、复盘 Markdown 和备份；其差距与故事候选不进入任何下游事实源。意图路由不持久化用户原句；后续写入必须由宿主 AI 在用户确认后按对应模式的规范执行。
 
 ## 自定义数据目录
 

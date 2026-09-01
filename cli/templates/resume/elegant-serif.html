@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Songti SC", Georgia, serif; color: #26221d; background: #fffcf7; }
+.page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 20mm; }
+header { text-align: center; }
+h1 { font-size: 22pt; font-weight: 400; }
+.headline { font-size: 11pt; color: #7a5c3c; margin-top: 1.5mm; }
+.contact { justify-content: center; display: flex; flex-wrap: wrap; gap: 1.5mm 5mm; margin-top: 3mm; font-size: 9.5pt; color: #584f45; }
+a { color: #584f45; text-decoration: none; border-bottom: 1px solid #cbbcb0; }
+section { margin-top: 6mm; }
+h2 { text-align: center; font-size: 10.5pt; font-weight: 400; }
+h2::before, h2::after { content: " — "; color: #a58b74; }
+.summary { text-align: center; line-height: 1.55; font-size: 10pt; }
+.entry { margin-top: 3mm; }
+.row { display: block; text-align: center; }
+.org { font-style: italic; }
+.org::before { content: " · "; }
+.date { display: block; font-size: 9.5pt; color: #756a5f; margin-top: .5mm; }
+ul { list-style: none; margin-top: 1mm; text-align: left; }
+li { line-height: 1.48; margin-top: .8mm; text-align: justify; }
+li::before { content: "· "; color: #7a5c3c; }
+.skill-group, .line, .entry p { text-align: center; margin-top: 1mm; line-height: 1.5; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body data-template="elegant-serif">
+<main class="page"><!--GY:RESUME_CONTENT--></main>
+</body>
+</html>
