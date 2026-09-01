@@ -49,7 +49,7 @@ Allowed focus values: `technical`, `story`, `communication`, `process`, `company
 
 Fields: `id`, `capability`, `signalSource`, `description`.
 
-Allowed signal sources: `interview_question`, `user_observation`, `jd_requirement`, `other_external_clue`. These records remain local candidates until a separate future feedback contract accepts them.
+Allowed signal sources: `interview_question`, `user_observation`, `jd_requirement`, `other_external_clue`. These records remain local candidates until `capability-feedback.mjs` maps the user-confirmed subset into the local capability-feedback ledger.
 
 ### STAR Story Candidates
 
@@ -66,7 +66,7 @@ Applied packages and rendered records are:
 
 Backups are stored under `data/interview-review-backups/{reviewId}/`.
 
-The package is authoritative. The Markdown is deterministic and intended for human review. Import never modifies resume materials, the story bank, `cv.md`, capability assets, tracker state, or external systems.
+The package is authoritative. The Markdown is deterministic and intended for human review. Import never modifies resume materials, the story bank, `cv.md`, capability assets, tracker state, or external systems. Capability feedback also remains local: it may create follow-up tasks and evidence candidates in its own ledger, but it does not update this review, the current evidence package, capability scores, or platform data.
 
 ## Status
 

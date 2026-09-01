@@ -11,6 +11,7 @@ import { inspectResumeRender } from './resume-render.mjs';
 import { inspectJobAnalysis } from './job-analysis.mjs';
 import { inspectInterviewPrep } from './interview-prep.mjs';
 import { inspectInterviewReview } from './interview-review.mjs';
+import { inspectCapabilityFeedback } from './capability-feedback.mjs';
 import { connectDevice, disconnectDevice, inspectDeviceBinding } from './device-binding.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { formatRoute, routeIntent } from './lib/intent-router.mjs';
@@ -35,11 +36,13 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     jobAnalysis: inspectJobAnalysis(root),
     interviewPrep: inspectInterviewPrep(root),
     interviewReview: inspectInterviewReview(root),
+    capabilityFeedback: inspectCapabilityFeedback(root),
     deviceBinding: inspectDeviceBinding(root),
     suggestions: [
       '整理经历 / 更新简历',
       '评估岗位 / 判断是否值得投',
       '准备笔试面试 / 复盘',
+      '把复盘反哺到能力资产',
       '查看或更新投递进度',
       '分析能力资产和差距',
       '导入或查看能力证据包',
@@ -136,6 +139,17 @@ function printStatus({ json = false, root } = {}) {
     console.log('面试复盘：等待素材包导入');
   } else {
     console.log('面试复盘：未生成');
+  }
+  const capabilityFeedback = payload.capabilityFeedback;
+  if (capabilityFeedback.state === 'ready') {
+    const currentCount = capabilityFeedback.feedbacks.filter(item => item.reportState === 'current').length;
+    console.log(`能力反哺：${capabilityFeedback.feedbackCount} 份（${currentCount} 份报告一致）`);
+  } else if (capabilityFeedback.state === 'invalid') {
+    console.log(`能力反哺：本地文件无效（${capabilityFeedback.error}）`);
+  } else if (capabilityFeedback.state === 'blocked') {
+    console.log('能力反哺：等待前置能力数据');
+  } else {
+    console.log('能力反哺：未生成');
   }
   const binding = payload.deviceBinding;
   if (binding.state === 'ready') {

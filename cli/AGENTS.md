@@ -25,11 +25,11 @@
 
 ### 当前本地闭环边界
 
-- `gy --status` 只读报告能力证据、简历素材、定稿、渲染、岗位分析、面试准备和面试复盘的就绪状态。
-- 已落地链路：能力证据导入 -> 简历素材 / 定稿 / 渲染 -> 岗位分析 -> 面试准备 / 复盘；每个写入合同都要求 dry-run、`--apply` 和覆盖时 `--replace`。
+- `gy --status` 只读报告能力证据、简历素材、定稿、渲染、岗位分析、面试准备、面试复盘和能力反哺的就绪状态。
+- 已落地链路：能力证据导入 -> 简历素材 / 定稿 / 渲染 -> 岗位分析 -> 面试准备 / 复盘 -> 本地能力反哺台账；每个写入合同都要求 dry-run、`--apply` 和覆盖时 `--replace`。
 - offer-toolkit 已吸收为本地契约、系统模板和方法文档，不创建并行 skill 运行时，不输出到外部目录。
-- 面试复盘候选、岗位分析结论和 JD 线索都不会自动写入能力资产、投递进度表、简历素材或云端。
-- 能力资产反哺、tracker 自动闭环、网页同步和页面内 skill 执行仍是后续工作。
+- 面试复盘候选、岗位分析结论和 JD 线索都不会自动写入当前能力证据包、投递进度表、简历素材或云端。
+- 能力反哺只落本地台账；tracker 自动闭环、网页同步和页面内 skill 执行仍是后续工作。
 
 ### 设备绑定（CRITICAL）
 
@@ -111,6 +111,15 @@
 - 产物：`data/interview-review/{reviewId}.json` 与 `interview-prep/sessions/{reviewId}.md`。
 - 复盘包必须绑定当前素材包 ID 和内容哈希；可选 `prepId` 必须指向同一素材来源的准备包。
 - 复盘中的能力差距和 STAR 故事只是本地候选，不得直接写入能力证据、素材包、故事库、`cv.md`、进度表或平台数据。
+
+### 能力反哺台账（CRITICAL）
+
+- 契约：仓库根 `docs/CAPABILITY_FEEDBACK_CONTRACT.md`。
+- 校验：`node capability-feedback.mjs check <feedback.json>`，只读。
+- 导入：默认 dry-run；写入必须 `--apply`；覆盖不同台账或手工修改过的报告必须 `--apply --replace`。
+- 产物：`data/capability-feedback/{feedbackId}.json`、`reports/capability-feedback/{feedbackId}.md` 和备份。
+- 台账必须同时绑定当前能力证据包、简历素材包和已安装面试复盘的 ID 与内容哈希；能力映射只能使用既有能力 ID。
+- 差距反馈只生成本地跟进任务；STAR 反馈只生成 `user_confirmed` 本地证据候选。二者都不得写回当前能力证据包、素材包、故事库、`cv.md`、进度表、分数或平台数据。
 
 ## Source-of-Truth Boundary（CRITICAL）
 
@@ -232,6 +241,8 @@ node gy.mjs --status --json
 | `reports/job-analysis/*.md` | 岗位分析本地报告 |
 | `data/interview-prep/*.json` | 用户确认后的面试准备溯源包 |
 | `data/interview-review/*.json` | 用户确认后的面试复盘溯源包 |
+| `data/capability-feedback/*.json` | 用户确认后的能力反哺本地台账 |
+| `reports/capability-feedback/*.md` | 能力反哺本地报告 |
 | `portals.yml` | 校招信息源配置 |
 | `reports/` | 评估报告 `{###}-{公司}-{日期}.md` |
 | `templates/cv-template.html` | 简历 HTML 模板（中文 A4 一页） |

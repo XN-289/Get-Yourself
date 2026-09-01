@@ -442,7 +442,7 @@ function markdownPathFor(root, reviewId) {
   return join(root, REVIEW_MARKDOWN_DIR, `${reviewId}.md`);
 }
 
-function loadInstalledPreparations(root, materials) {
+export function loadInstalledPreparationPackages(root, materials) {
   const directory = join(root, 'data/interview-prep');
   let entries;
   try {
@@ -463,6 +463,11 @@ function loadInstalledPreparations(root, materials) {
     preparations.set(installed.prep.prepId, installed);
   }
   return preparations;
+}
+
+export function loadInstalledInterviewReview(root, materials, reviewId, preparations = null) {
+  const preparationPackages = preparations ?? loadInstalledPreparationPackages(root, materials);
+  return readInstalledReview(root, materials, preparationPackages, reviewId);
 }
 
 function readReviewFile(filePath, materials, preparations) {
@@ -517,7 +522,7 @@ export function inspectInterviewReview(root = getCareerOpsRoot()) {
   try {
     const materials = loadInstalledResumeMaterials(root);
     if (!materials) return { state: 'blocked', available: false, reason: 'resume-materials-missing' };
-    const preparations = loadInstalledPreparations(root, materials);
+    const preparations = loadInstalledPreparationPackages(root, materials);
     let entries;
     try {
       entries = readdirSync(packageDirFor(root), { withFileTypes: true });
@@ -562,7 +567,7 @@ export function importInterviewReview(filePath, options = {}) {
 
   const materials = loadInstalledResumeMaterials(root);
   if (!materials) throw reviewError('Import and confirm resume materials before generating an interview review.', 'materials-missing');
-  const preparations = loadInstalledPreparations(root, materials);
+  const preparations = loadInstalledPreparationPackages(root, materials);
   const incoming = readReviewFile(filePath, materials, preparations);
   const packageTarget = packagePathFor(root, incoming.review.reviewId);
   const markdownTarget = markdownPathFor(root, incoming.review.reviewId);
@@ -661,7 +666,7 @@ function main() {
     const root = getCareerOpsRoot();
     const materials = loadInstalledResumeMaterials(root);
     if (!materials) throw reviewError('Import and confirm resume materials before generating an interview review.', 'materials-missing');
-    const preparations = loadInstalledPreparations(root, materials);
+    const preparations = loadInstalledPreparationPackages(root, materials);
     if (args.command === 'check') {
       const result = readReviewFile(args.reviewFile, materials, preparations);
       const payload = { ok: true, action: 'checked', ...result.summary };

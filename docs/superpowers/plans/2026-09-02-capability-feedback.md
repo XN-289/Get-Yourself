@@ -16,23 +16,23 @@ Implement Stage 4d as a local, contract-governed capability feedback ledger that
 
 Create `cli/tests/capability-feedback.test.mjs`.
 
-- [ ] Install evidence, materials, preparation, and review fixtures in a temporary root.
-- [ ] Validate canonical mappings, hashes, and derived candidates.
-- [ ] Reject unknown fields, missing dependencies, stale hashes, duplicate IDs, and broken references.
-- [ ] Verify dry-run no-write, apply, downstream isolation, idempotence, replacement, backups, status, and routing.
-- [ ] Observe the new suite fail before production code exists.
+- [x] Install evidence, materials, preparation, and review fixtures in a temporary root.
+- [x] Validate canonical mappings, hashes, and derived candidates.
+- [x] Reject unknown fields, missing dependencies, stale hashes, duplicate IDs, and broken references.
+- [x] Verify dry-run no-write, apply, downstream isolation, idempotence, replacement, backups, status, and routing.
+- [x] Observe the new suite fail before production code exists.
 
 ## Task 2: Deterministic Importer
 
 Create `cli/capability-feedback.mjs` and `cli/templates/capability-feedback.example.json`.
 
-- [ ] Implement schema `get-yourself.capability-feedback` version `1`.
-- [ ] Load and bind the installed evidence package, materials package, and review.
-- [ ] Canonicalize selected gap and story mappings into local follow-ups and evidence candidates.
-- [ ] Render deterministic Markdown.
-- [ ] Implement check, dry-run import, apply, replacement, backups, and inspection.
-- [ ] Export a small installed-review loader from `interview-review.mjs` instead of duplicating its preparation-aware logic.
-- [ ] Make the focused suite pass.
+- [x] Implement schema `get-yourself.capability-feedback` version `1`.
+- [x] Load and bind the installed evidence package, materials package, and review.
+- [x] Canonicalize selected gap and story mappings into local follow-ups and evidence candidates.
+- [x] Render deterministic Markdown.
+- [x] Implement check, dry-run import, apply, replacement, backups, and inspection.
+- [x] Export a small installed-review loader from `interview-review.mjs` instead of duplicating its preparation-aware logic.
+- [x] Make the focused suite pass.
 
 ## Task 3: Agent And Product Integration
 
@@ -50,16 +50,16 @@ Modify:
 
 Create `docs/CAPABILITY_FEEDBACK_CONTRACT.md`.
 
-- [ ] Add read-only `capabilityFeedback` status.
-- [ ] Route capability feedback phrases to the new module.
-- [ ] Document current paths, write boundaries, commands, and Stage 4 completion.
-- [ ] Continue to mark platform sync as Stage 6 work.
+- [x] Add read-only `capabilityFeedback` status.
+- [x] Route capability feedback phrases to the new module.
+- [x] Document current paths, write boundaries, commands, and Stage 4 completion.
+- [x] Continue to mark platform sync as Stage 6 work.
 
 ## Task 4: Verification And Ship
 
-- [ ] Run `npm test` from `cli/`.
-- [ ] Run syntax checks for all touched `.mjs` files.
-- [ ] Review the full diff and preserve unrelated user files.
+- [x] Run `npm test` from `cli/`.
+- [x] Run syntax checks for all touched `.mjs` files.
+- [x] Review the full diff and preserve unrelated user files.
 - [ ] Commit implementation and integration.
 - [ ] Merge `codex/capability-feedback` into `main`.
 - [ ] Push `main` to GitHub.

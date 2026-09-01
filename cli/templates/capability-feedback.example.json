@@ -1,0 +1,31 @@
+{
+  "schema": "get-yourself.capability-feedback",
+  "schemaVersion": 1,
+  "feedbackId": "demo-review-capability-feedback",
+  "generatedAt": "2026-09-02T00:00:00.000Z",
+  "traceId": "trace.capability-feedback-demo",
+  "evidencePackageId": "demo-evidence-2026-09-01",
+  "evidenceContentHash": "sha256:15943c165a47c829c09ef39335f85a5eb8c483de85219b9544c84354378fbadb",
+  "materialsPackageId": "resume-materials-demo-2026-09-01",
+  "materialsContentHash": "sha256:538792dc67572464ae59c52bfc1afe777d1075111cb7096ae062cc8493d3125b",
+  "reviewId": "demo-backend-first-review",
+  "reviewContentHash": "sha256:1cc11698a4becbef576ddac442dafeadf832eeae462f5ce157ba953f78b10d6f",
+  "confirmation": "user_confirmed",
+  "gapFeedback": [
+    {
+      "id": "feedback-gap-database-index",
+      "reviewGapId": "gap-database-index",
+      "abilityId": "backend",
+      "followUp": "完成数据库索引章节，并把项目查询场景改写成一个可讲案例。"
+    }
+  ],
+  "storyFeedback": [
+    {
+      "id": "feedback-story-api-exception",
+      "reviewStoryId": "story-review-api-exception",
+      "evidenceId": "evidence-review-api-exception",
+      "abilityIds": ["backend", "debugging"],
+      "evidenceSummary": "面试后系统整理报修接口的失败码、重试与幂等处理说明。"
+    }
+  ]
+}

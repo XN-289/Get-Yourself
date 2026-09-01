@@ -2,7 +2,7 @@
 
 Date: 2026-09-02
 Stage: Stage 4d
-Status: approved direction, pending implementation
+Status: implemented, pending unified user acceptance
 
 ## Goal
 

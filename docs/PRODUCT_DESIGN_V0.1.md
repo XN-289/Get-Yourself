@@ -32,7 +32,7 @@
 | Stage 1 | 已实现，待用户统一验收 | 前端四模块路由与 `gy` 确定性对话入口已落地 |
 | Stage 2 | 已实现，待用户统一验收 | 网页显式导出与本地显式导入已形成文件闭环 |
 | Stage 3 | 已实现，待用户统一验收 | 10 分钟一次性绑定码、设备管理与解绑已落地 |
-| Stage 4 | 进行中 | Stage 4a 简历素材包、Stage 4b 简历定稿审批与面试准备清单、Stage 4c 面试复盘和结构化简历渲染已实现；能力资产反哺尚未完成 |
+| Stage 4 | 已实现，待用户统一验收 | 简历素材包、简历定稿审批、面试准备清单、面试复盘、结构化简历渲染和本地能力反哺台账已落地；平台同步不属于本阶段 |
 | Stage 5 | 进行中 | 公司机会流程轨与本地 JD 分析合同 / 报告已落地；防骗核查闭环、tracker 持久化、真实产物挂载和页面内 skill 执行未完成 |
 | Stage 6 | 未开始 | 求职摘要同步、网页进度摘要与 Trace 汇总尚未实现 |
 
@@ -917,7 +917,7 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 7. 岗位评估报告生成。
 8. 评估结果确认后写入投递清单。
 9. 面试全流程管理：JD、简历适配、投递、笔试、面试、复盘。
-10. 面试复盘反哺能力资产和 STAR 故事库。
+10. 面试复盘反哺本地能力资产台账，沉淀差距跟进与 STAR 证据候选。
 11. 求职摘要确认后同步回网页。
 12. 关键产出 Trace 摘要。
 13. 本地数据契约和安全权限边界。
@@ -1112,7 +1112,7 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 
 - 每条进入简历的内容都有来源，未确认推断不会进入定稿。
 
-当前实现边界：Stage 4a 已落地本地简历素材包契约与导入器。Agent 可以生成结构化候选草稿，用户确认后通过 `resume-materials.mjs` 写入 `data/resume-materials.json`，并派生 `interview-prep/story-bank.md`；导入器不修改 `cv.md`、不上传网页、不执行 LLM 抽取。Stage 4b 已落地简历定稿审批与面试准备清单：`resume-final.mjs` 只允许当前素材哈希匹配的 `verified` / `user_confirmed` 条目进入 `cv.md`，并保留用户手工维护的非托管章节；`interview-prep.mjs` 生成绑定当前素材的清单与 STAR 复盘，JD 全程只作为数据。Stage 4c 已落地面试复盘合同：`interview-review.mjs` 写入本地复盘 JSON 与会话 Markdown，差距和故事候选不直接修改任何下游事实源。结构化简历渲染也已通过 `resume-render.mjs` 落地，提供 11 套本地 HTML 模板和确定性输出。能力资产反哺仍未完成。契约细节见 `docs/RESUME_MATERIALS_CONTRACT.md`、`docs/RESUME_FINAL_CONTRACT.md`、`docs/INTERVIEW_PREP_CONTRACT.md`、`docs/INTERVIEW_REVIEW_CONTRACT.md` 与 `docs/RESUME_RENDER_CONTRACT.md`。
+当前实现边界：Stage 4a 已落地本地简历素材包契约与导入器。Agent 可以生成结构化候选草稿，用户确认后通过 `resume-materials.mjs` 写入 `data/resume-materials.json`，并派生 `interview-prep/story-bank.md`；导入器不修改 `cv.md`、不上传网页、不执行 LLM 抽取。Stage 4b 已落地简历定稿审批与面试准备清单：`resume-final.mjs` 只允许当前素材哈希匹配的 `verified` / `user_confirmed` 条目进入 `cv.md`，并保留用户手工维护的非托管章节；`interview-prep.mjs` 生成绑定当前素材的清单与 STAR 复盘，JD 全程只作为数据。Stage 4c 已落地面试复盘合同：`interview-review.mjs` 写入本地复盘 JSON 与会话 Markdown，差距和故事候选不直接修改任何下游事实源。结构化简历渲染也已通过 `resume-render.mjs` 落地，提供 11 套本地 HTML 模板和确定性输出。Stage 4d 已落地本地能力反哺台账：`capability-feedback.mjs` 将复盘差距映射为本地跟进任务、将 STAR 候选映射为 `user_confirmed` 本地证据候选，不修改当前能力证据包、分数、素材、故事库、简历或平台数据。契约细节见 `docs/RESUME_MATERIALS_CONTRACT.md`、`docs/RESUME_FINAL_CONTRACT.md`、`docs/INTERVIEW_PREP_CONTRACT.md`、`docs/INTERVIEW_REVIEW_CONTRACT.md`、`docs/RESUME_RENDER_CONTRACT.md` 与 `docs/CAPABILITY_FEEDBACK_CONTRACT.md`。
 
 ### Stage 5：岗位评估与 tracker 闭环
 
@@ -1160,7 +1160,7 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 - [ ] 用户确认后岗位写入公司机会流程树，并在面试管理中展开后续流程。
 - [ ] 用户能生成笔试和面试准备清单。
 - [ ] 用户能手工添加面试轮次节点，并标记通过、未通过或 Offer。
-- [ ] 面试复盘能沉淀 STAR 故事并反哺能力资产。
+- [ ] 面试复盘能沉淀 STAR 候选，并反哺为本地差距跟进与证据候选。
 - [ ] 用户确认后求职摘要同步回网页。
 - [ ] 网页能查看同步摘要和 Trace 入口。
 

@@ -56,6 +56,7 @@ test('only routes to mode files that exist in this repository', () => {
     '用 modern-sidebar 模板渲染这份简历',
     '帮我准备明天的技术面试',
     '复盘今天的技术面试',
+    '把复盘沉淀到能力资产',
     '看看我和这个岗位的能力差距',
   ]) {
     const { modeFile } = routeIntent(input);
