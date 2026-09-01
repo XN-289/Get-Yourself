@@ -19,13 +19,18 @@ npm run gy --json "帮我准备明天的面试"
 # 只读检查资料是否就绪（不会写入用户层）
 npm run gy -- --status --json
 
+# 绑定网页账号生成的本地工位（绑定码 10 分钟内有效）
+npm run gy -- connect GY-XXXX-XXXX
+npm run gy -- connect GY-XXXX-XXXX --server http://localhost:8080 --device-name "我的本机工位"
+npm run gy -- disconnect
+
 # 校验并导入网页导出的能力证据包
 node evidence-package.mjs check ../path/to/evidence-package.json
 node evidence-package.mjs import ../path/to/evidence-package.json
 node evidence-package.mjs import ../path/to/evidence-package.json --apply
 ```
 
-当前 `gy` 是 Stage 1 的确定性对话入口：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界。它不假装调用 LLM，也不写简历、tracker 或个人材料；实际执行由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。
+当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。它不假装调用 LLM，也不写简历、tracker 或个人材料；实际执行由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。
 
 ## 它解决什么问题
 

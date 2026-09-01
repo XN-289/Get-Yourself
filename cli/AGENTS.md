@@ -23,6 +23,16 @@
 - **User Layer（永不自动更新；个性化写这里）：** `cv.md`、`config/profile.yml`、`modes/_profile.md`、`modes/_custom.md`、`portals.yml`、`data/*`、`documents/*`、`reports/*`、`output/*`、`interview-prep/*`
 - **System Layer（可自动更新；不要放用户数据）：** `modes/_shared.md` 及所有模式、`AGENTS.md`、`*.mjs`、`templates/*`、`scripts/*`、`providers/*`、`tests/*`
 
+### 设备绑定（CRITICAL）
+
+- 契约：仓库根 `docs/DEVICE_BINDING_CONTRACT.md`。
+- 绑定：`node gy.mjs connect <绑定码>`；默认服务地址为 `http://localhost:8080`，可用 `--server` 或环境变量 `GET_YOURSELF_API_URL` 覆盖。
+- 替换：本机已有绑定时必须加 `--replace`，先撤销旧凭证再使用新绑定码。
+- 解绑：`node gy.mjs disconnect`；服务端撤销成功后才删除本地凭证。
+- 本地凭证：`data/device-installation.json` 与 `data/device-binding.json` 属于用户层，必须保持 gitignored，不得写入仓库、日志或 Trace。
+- 绑定只建立设备授权，不自动导入能力证据包，不自动上传简历、报告、STAR 故事、扫描材料或求职进度。
+- 网页端解绑不删除本地任何文件；CLI 断开只删除本地设备凭证，不删除证据包或其他用户产物。
+
 **规则：** 用户要求定制事实或目标（目标岗位、叙事、红线、城市偏好、薪资期望）→ 写 `modes/_profile.md` 或 `config/profile.yml`。用户要求流程规则、自定义工作流 → 写 `modes/_custom.md`。**永远不编辑 `modes/_shared.md` 存用户内容。**
 
 **数据根目录解析优先级：**

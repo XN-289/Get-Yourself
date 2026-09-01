@@ -31,6 +31,7 @@ Thumbs.db
 desktop.ini
 
 # Local generated files
+cli/data/
 *.zip
 *.mp4
 .tmp-docx/

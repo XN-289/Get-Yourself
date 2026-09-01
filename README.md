@@ -141,7 +141,7 @@ Query Rewrite 理解你的真实意图 → BM25 + Embedding 混合召回 → LLM
 | **状态管理** | Pinia 3 | 响应式全局状态 |
 | **路由** | Vue Router 4 | History 模式, 路由守卫鉴权 |
 | **后端** | Spring Boot 3.3 | Java 21 LTS, Spring Data JPA |
-| **数据库** | MySQL 8.4 | 21 个 Flyway 迁移脚本 |
+| **数据库** | MySQL 8.4 | 22 个 Flyway 迁移脚本 |
 | **缓存** | Redis 7.4 | 会话存储, 7天 TTL |
 | **消息队列** | RabbitMQ 3.13 | Outbox Pattern 保证最终一致性 |
 | **搜索引擎** | OpenSearch 2.15 | BM25 + Embedding 混合检索 |
@@ -238,7 +238,7 @@ get-yourself/
 │   │   ├── schedule/        # 日程管理
 │   │   └── wechat/          # 微信登录
 │   ├── src/main/resources/
-│   │   ├── db/migration/    # 21 个 Flyway SQL 迁移
+│   │   ├── db/migration/    # 22 个 Flyway SQL 迁移
 │   │   └── application.yml
 │   ├── docker-compose.yml   # 本地中间件一键启动
 │   └── Dockerfile           # 多阶段构建

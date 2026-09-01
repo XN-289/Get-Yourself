@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-Updated: 2026-09-01 17:37
+Updated: 2026-09-01 18:47
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入与 Stage 2b 网页显式导出已实现；前端 Demo、`gy` Stage 1 与证据包闭环仍未获得用户明确验收，账号绑定与自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出与 Stage 3 最小设备绑定闭环已实现；前端 Demo、`gy` Stage 1、证据包闭环与设备绑定仍待用户统一验收，自动同步尚未开始。
 
 ## 已接受事实
 
@@ -22,6 +22,9 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 面试管理以公司机会为主对象，流程轮次由用户手工扩展；通过、未通过与 Offer 状态由用户确认，Agent 不自动改写 — `decisions.md`。
 - 面试流程节点顺序由用户手工管理；拖拽只在同一公司机会内生效，Agent 可以建议但不能静默重排用户确认过的流程历史 — `decisions.md`。
 - 面试外层采用横向紧凑流程轨，节点详情与状态切换进入右侧抽屉；外部小按钮只打开切换逻辑，不直接改状态 — `decisions.md`。
+- Stage 3 设备绑定只建立本地工位授权，不复制网页登录态，不自动导入证据包，也不自动同步简历、报告、STAR 故事、原始材料或求职进度 — `docs/DEVICE_BINDING_CONTRACT.md`。
+- 一个账号最多保留 5 台活跃本地工位；绑定码 10 分钟一次性有效；服务端只保存绑定码、安装 ID 与设备 token 的 SHA-256 哈希 — `docs/DEVICE_BINDING_CONTRACT.md`。
+- 同一安装 ID 重新绑定时撤销旧设备授权；网页解绑保留所有本地文件，CLI 断开只在服务端确认后删除本地设备凭证 — `docs/DEVICE_BINDING_CONTRACT.md`。
 
 ## 决策索引
 
@@ -33,6 +36,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 2026-09-01 — 公司机会流程树、人工状态确认、skill 关联预留与流程内鼓励反馈 — `decisions.md`。
 - 2026-09-01 — 面试流程节点手工拖拽排序与重排保真边界 — `decisions.md`。
 - 2026-09-01 — 横向流程轨、右侧节点抽屉与外层状态入口只读边界 — `decisions.md`。
+- 2026-09-01 — Stage 3 显式设备绑定、授权-only 边界、设备数量上限与同安装重绑规则 — `decisions.md`。
 
 ## 已实现
 
@@ -53,6 +57,10 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - Stage 2b 网页能力证据包导出 — `POST /api/ability-scoring/evidence-package/export`、`EvidencePackageExportService` 与能力资产页显式导出表单；输出 v1 契约 JSON 并由浏览器保存本地文件。
 - Stage 2b 验证结果 — `backend/` 下 `mvn test` 35 pass / 0 fail；`frontend/` 下 `npm run build` 通过；`cli/` 下 `npm test` 15 pass / 0 fail；能力资产页导出表单在桌面与 390px 窄屏完成布局检查。
 - Stage 2 真实链路回归 — 2026-09-01 在 `demo_student` 账号创建并完成挑战、显式评估、重建成长标签后导出 v1 证据包（2 能力 / 3 证据 / `trace.ability-score-1`）；CLI 在临时数据根完成 `check`、dry-run、`--apply`、重复导入幂等与 `gy --status` 展示；当前网页登录账号 `123` 触发导出时正确返回账号隔离空态；复跑 `cli/` `npm test` 15 pass / 0 fail。
+- Stage 3 账号与设备绑定最小闭环 — `backend/src/main/java/com/getyourself/backend/workbench/`、`backend/src/main/resources/db/migration/V22__add_workbench_devices.sql`、`frontend/src/api/workbenchDevice.ts`、Agent 工作台绑定区与 `cli/device-binding.mjs`；支持网页生成 10 分钟一次性绑定码、CLI 换取仅返回一次的设备 token、设备列表轮询、网页解绑、CLI 断开、同安装 `--replace` 重绑、5 台活跃设备上限与行级锁并发绑定保护。
+- Stage 3 安全边界 — 服务端仅保存绑定码 / 安装 ID / 设备 token 哈希，撤销时清空哈希；CLI 不接触网页 bearer token；`cli/data/` 已 gitignore，`--status` 不输出设备 token；绑定不自动导入或同步任何产品数据。
+- Stage 3 验证结果 — 2026-09-01 后端 `mvn test` 44 pass / 0 fail；前端 `npm run build` 通过；CLI `npm test` 21 pass / 0 fail；`node --check device-binding.mjs`、`node --check gy.mjs` 与 `git diff --check` 通过。
+- Stage 3 真实链路回归 — 2026-09-01 在 `demo_student` 账号完成网页生成绑定码、CLI `connect`、网页 3 秒轮询 pending→active、网页解绑、同安装 `connect --replace` 与 CLI `disconnect`；CLI 断开后网页自动回落“未绑定”，本地 `device-binding.json` 被删除、`device-installation.json` 保留且整个 `cli/data/` 保持 ignored。回归中发现并修复绑定成功后网页停止轮询、旧绑定码残留两个状态问题。
 
 ## 已验收
 
@@ -60,14 +68,14 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 
 ## 未决问题
 
-- P1 — 前端 Demo、Stage 1 `gy` 入口与 Stage 2 证据包文件闭环是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs` 和证据包导出/导入。
+- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环与 Stage 3 设备绑定是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入和设备绑定/解绑。
 - P1 — “能力资产”最终命名 — 用户 — 不阻塞实现 — 继续使用暂名。
 - P1 — 产品与技术评审未完成 — 项目组 — 不阻塞 Stage 1 入口实现 — 修订 PRD 后提交评审。
 
 ## 下一步
 
-1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨与节点抽屉）、`gy` Stage 1、Stage 2a 本地导入与 Stage 2b 网页导出。
-2. 验收通过后再评估是否进入 Stage 3 账号与设备绑定；在此之前不实现自动同步。
+1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨与节点抽屉）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出与 Stage 3 设备绑定。
+2. 验收通过后再设计 Stage 4 数据协同；在任何显式同步契约落地前，不做自动上传或自动导入。
 
 ## 恢复上下文
 
@@ -89,3 +97,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 2026-09-01 — 面试管理重构为公司机会流程树 — 影响后续 JD 分析、简历适配、面试准备和复盘 skill 的节点挂载方式；仍待用户验收。
 - 2026-09-01 — 面试流程节点支持同公司内手工拖拽排序 — 影响后续流程树保存契约与 Agent 建议排序的确认边界；仍待用户验收。
 - 2026-09-01 — 面试流程树收敛为横向流程轨 + 右侧节点抽屉 — 影响面试管理信息密度、状态确认边界和后续 skill 挂载入口；仍待用户验收。
+- 2026-09-01 — 完成 Stage 3 最小设备绑定闭环与真实网页/CLI 冒烟 — 影响账号授权、本地凭证边界和后续数据协同；仍待用户验收，未开始自动同步。

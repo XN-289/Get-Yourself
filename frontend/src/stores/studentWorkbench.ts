@@ -1,6 +1,8 @@
 import { defineStore } from "pinia";
 import { computed, reactive, ref } from "vue";
 
+import { workbenchDeviceApi, type WorkbenchDevice } from "@/api/workbenchDevice";
+
 export type BindingState = "unbound" | "pending" | "bound";
 export type ModuleRoute = "assets" | "resume" | "interview";
 export type ChatRole = "assistant" | "system" | "user";
@@ -99,8 +101,13 @@ export function modulePath(module: ModuleRoute): string {
 }
 
 export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
-  const bindingState = ref<BindingState>("unbound");
+  const activeDevices = ref<WorkbenchDevice[]>([]);
+  const pendingDevices = ref<WorkbenchDevice[]>([]);
   const deviceCode = ref("");
+  const deviceCodeExpiresAt = ref("");
+  const deviceError = ref("");
+  const deviceBusy = ref(false);
+  const devicesInitialized = ref(false);
   const evidenceVersion = ref("未导入");
   const evidenceTime = ref("");
   const lastSyncTime = ref("");
@@ -477,64 +484,153 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     }
   ]);
 
+  const bindingState = computed<BindingState>(() => {
+    if (pendingDevices.value.length > 0) return "pending";
+    return activeDevices.value.length > 0 ? "bound" : "unbound";
+  });
+  const primaryDevice = computed(() => activeDevices.value[0] ?? null);
   const bindingLabel = computed(
     () =>
       ({
         unbound: "未绑定",
         pending: "待确认",
-        bound: "已绑定"
+        bound: activeDevices.value.length > 1 ? `已绑定 ${activeDevices.value.length} 台` : "已绑定"
       })[bindingState.value]
   );
   const confirmedFactCount = computed(() => resumeDraft.facts.filter((fact) => fact.confirmed).length);
-  const connectCommand = computed(() => (deviceCode.value ? `gy connect ${deviceCode.value}` : ""));
+  const connectCommand = computed(() =>
+    deviceCode.value ? `node cli/gy.mjs connect ${deviceCode.value}` : ""
+  );
   const latestTrace = computed(() => traceEvents.value.slice(0, 3));
 
   let messageId = 2;
   let traceId = 3;
   let processStageId = 500;
+  let devicePollTimer: ReturnType<typeof setInterval> | null = null;
 
-  function generateDeviceCode() {
-    const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
-    deviceCode.value = `GY-${suffix}`;
-    bindingState.value = "pending";
+  function formatDeviceTime(value: string | null) {
+    if (!value) return "暂无记录";
+    const time = new Date(value);
+    if (Number.isNaN(time.getTime())) return "暂无记录";
+    return new Intl.DateTimeFormat("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(time);
   }
 
-  function confirmBinding() {
-    bindingState.value = "bound";
-    evidenceVersion.value = "evidence-v0.1-20260901";
-    evidenceTime.value = "刚刚";
-    evidenceAbilities.value = [
-      { id: 1, name: "后端开发", score: "78 / 100", evidence: "实习项目 + 挑战交付 + 课程设计", source: "growth" },
-      { id: 2, name: "工程协作", score: "71 / 100", evidence: "接口联调记录 + 团队复盘", source: "growth" },
-      { id: 3, name: "问题定位", score: "66 / 100", evidence: "线上问题复盘 + 测试通过记录", source: "growth" }
-    ];
-    pushMessage(
-      "system",
-      "本地工位已连接",
-      [
-        `能力证据包 ${evidenceVersion.value} 已进入本地。`,
-        "简历全文、证书扫描件和面试逐字稿仍只保留在本机。"
-      ],
-      ["最小下发", "本地保留"]
-    );
-    addTrace("设备绑定与证据包导入", "网页授权码 + 本地 gy 入口", "只读证据摘要已进入本地工作台");
+  function stopDevicePolling() {
+    if (devicePollTimer === null) return;
+    clearInterval(devicePollTimer);
+    devicePollTimer = null;
   }
 
-  function unbind() {
-    bindingState.value = "unbound";
-    deviceCode.value = "";
-    evidenceVersion.value = "未导入";
-    evidenceTime.value = "";
-    lastSyncTime.value = "";
-    evidenceAbilities.value = [];
-    opportunities.value = opportunities.value.map((item) => ({ ...item, synced: false }));
-    pushMessage(
-      "system",
-      "设备已解绑",
-      ["同步授权已失效，本地产物不会被删除。", "可以重新生成绑定码连接这台或另一台设备。"],
-      ["授权撤销", "本地保留"]
-    );
-    addTrace("设备解绑", "网页端用户操作", "云端摘要连接断开，本地文件保留");
+  function startDevicePolling() {
+    if (devicePollTimer !== null) return;
+    devicePollTimer = setInterval(() => {
+      void refreshDevices();
+    }, 3000);
+  }
+
+  function applyDevices(devices: WorkbenchDevice[]) {
+    const pendingIds = new Set(pendingDevices.value.map((device) => device.id));
+    activeDevices.value = devices.filter((device) => device.status === "active");
+    pendingDevices.value = devices.filter((device) => {
+      if (device.status !== "pending" || !device.expiresAt) return false;
+      return new Date(device.expiresAt).getTime() > Date.now();
+    });
+
+    if (pendingDevices.value.length > 0 || activeDevices.value.length > 0) startDevicePolling();
+    else {
+      stopDevicePolling();
+      deviceCode.value = "";
+      deviceCodeExpiresAt.value = "";
+    }
+
+    const newlyBoundDevice = activeDevices.value.find((device) => pendingIds.has(device.id));
+    if (newlyBoundDevice) {
+      const device = newlyBoundDevice;
+      pushMessage(
+        "system",
+        "本地工位已连接",
+        [
+          `${device.deviceName} 已完成设备授权。`,
+          "本次绑定不会自动导入能力证据包，也不会上传简历全文或原始材料。"
+        ],
+        ["显式绑定", "本地保留"]
+      );
+      addTrace(
+        "设备绑定完成",
+        `本地工作台 · ${device.deviceName}`,
+        "设备 token 仅保留在本机，未自动导入证据或同步求职数据"
+      );
+    }
+  }
+
+  async function refreshDevices(force = false) {
+    if (deviceBusy.value && !force) return;
+    try {
+      deviceError.value = "";
+      applyDevices(await workbenchDeviceApi.list());
+      devicesInitialized.value = true;
+    } catch (error) {
+      deviceError.value = error instanceof Error ? error.message : "设备状态读取失败";
+    }
+  }
+
+  async function initializeDevices() {
+    if (devicesInitialized.value) return;
+    await refreshDevices();
+  }
+
+  async function generateDeviceCode() {
+    if (deviceBusy.value) return;
+    deviceBusy.value = true;
+    try {
+      const code = await workbenchDeviceApi.createCode();
+      deviceCode.value = code.deviceCode;
+      deviceCodeExpiresAt.value = code.expiresAt;
+      deviceError.value = "";
+      pendingDevices.value = [
+        {
+          id: code.id,
+          deviceName: "待确认设备",
+          status: "pending",
+          expiresAt: code.expiresAt,
+          boundAt: null,
+          lastActiveAt: null,
+          createdAt: new Date().toISOString()
+        }
+      ];
+      startDevicePolling();
+      addTrace("设备绑定码生成", "网页端用户操作", "绑定码 10 分钟内有效，只存服务端哈希");
+    } catch (error) {
+      deviceError.value = error instanceof Error ? error.message : "绑定码生成失败";
+    } finally {
+      deviceBusy.value = false;
+    }
+  }
+
+  async function unbind(deviceId: number) {
+    if (deviceBusy.value) return;
+    deviceBusy.value = true;
+    try {
+      await workbenchDeviceApi.unbind(deviceId);
+      deviceError.value = "";
+      await refreshDevices(true);
+      pushMessage(
+        "system",
+        "设备已解绑",
+        ["这台设备的云端授权已失效。", "本地简历、报告和绑定前导入的证据文件不会被删除。"],
+        ["授权撤销", "本地保留"]
+      );
+      addTrace("设备解绑", "网页端用户操作", "云端摘要连接断开，本地文件保留");
+    } catch (error) {
+      deviceError.value = error instanceof Error ? error.message : "设备解绑失败";
+    } finally {
+      deviceBusy.value = false;
+    }
   }
 
   async function submitMessage(submitted = input.value) {
@@ -841,8 +937,15 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
   }
 
   return {
+    activeDevices,
+    pendingDevices,
     bindingState,
     deviceCode,
+    deviceCodeExpiresAt,
+    deviceError,
+    deviceBusy,
+    devicesInitialized,
+    primaryDevice,
     evidenceVersion,
     evidenceTime,
     lastSyncTime,
@@ -860,9 +963,12 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     confirmedFactCount,
     connectCommand,
     latestTrace,
+    initializeDevices,
+    refreshDevices,
+    stopDevicePolling,
     generateDeviceCode,
-    confirmBinding,
     unbind,
+    formatDeviceTime,
     submitMessage,
     detectIntent,
     confirmResumeFact,

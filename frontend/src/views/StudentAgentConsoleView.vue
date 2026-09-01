@@ -11,7 +11,7 @@ import {
   Terminal,
   Trash2
 } from "@lucide/vue";
-import { nextTick, ref } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useClipboard, useTimeoutFn } from "@vueuse/core";
@@ -23,21 +23,24 @@ import { modulePath, useStudentWorkbenchStore } from "@/stores/studentWorkbench"
 
 const store = useStudentWorkbenchStore();
 const {
+  activeDevices,
   activeIntent,
   bindingLabel,
   bindingState,
+  deviceBusy,
+  deviceError,
   connectCommand,
   deviceCode,
-  evidenceVersion,
   input,
   latestTrace,
   messages,
+  primaryDevice,
   sending
 } = storeToRefs(store);
 
 const messageStream = ref<HTMLElement | null>(null);
 const copied = ref(false);
-const unbindOpen = ref(false);
+const deviceManagerOpen = ref(false);
 const { copy } = useClipboard({ source: connectCommand });
 const { start: startCopyReset, stop: stopCopyReset } = useTimeoutFn(() => {
   copied.value = false;
@@ -49,6 +52,14 @@ const quickPrompts = [
   { intent: "interview", label: "准备面试" },
   { intent: "review", label: "复盘反哺" }
 ] as const;
+
+onMounted(() => {
+  void store.initializeDevices();
+});
+
+onBeforeUnmount(() => {
+  store.stopDevicePolling();
+});
 
 async function copyConnectCommand() {
   if (!connectCommand.value) return;
@@ -98,27 +109,36 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
           <MonitorSmartphone :size="15" />
           {{ bindingLabel }}
         </span>
-        <button v-if="bindingState === 'unbound'" type="button" @click="store.generateDeviceCode()">
+        <button
+          v-if="bindingState === 'unbound'"
+          type="button"
+          :disabled="deviceBusy"
+          @click="store.generateDeviceCode()"
+        >
           <KeyRound :size="15" />
           连接工位
         </button>
-        <button v-else-if="bindingState === 'bound'" type="button" @click="unbindOpen = true">
+        <button v-else-if="bindingState === 'bound'" type="button" @click="deviceManagerOpen = true">
           <Trash2 :size="15" />
-          解绑
+          设备
         </button>
       </div>
     </header>
 
     <div v-if="bindingState === 'pending'" class="connect-bar">
       <Terminal :size="16" />
-      <code>{{ connectCommand }}</code>
+      <div class="connect-command">
+        <code>{{ connectCommand }}</code>
+        <small>绑定码 10 分钟内有效</small>
+      </div>
       <button type="button" @click="copyConnectCommand">
         <Check v-if="copied" :size="15" />
         <Copy v-else :size="15" />
         {{ copied ? "已复制" : "复制" }}
       </button>
-      <button class="confirm" type="button" @click="store.confirmBinding()">模拟本地确认</button>
     </div>
+
+    <div v-if="deviceError" class="device-error" role="alert">{{ deviceError }}</div>
 
     <div ref="messageStream" class="message-stream">
       <article v-for="message in messages" :key="message.id" :class="`is-${message.role}`">
@@ -174,28 +194,35 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
         <span>Agent Trace</span>
         <p v-if="latestTrace[0]">{{ latestTrace[0].title }} · {{ latestTrace[0].result }}</p>
         <p v-else>暂无执行记录</p>
-        <small v-if="bindingState === 'bound'">{{ evidenceVersion }}</small>
+        <small v-if="bindingState === 'bound'">{{ primaryDevice?.deviceName }}</small>
         <small v-else-if="deviceCode">{{ deviceCode }}</small>
       </footer>
     </div>
 
     <WorkbenchDialog
-      v-model:open="unbindOpen"
-      title="解绑本地设备"
-      description="解绑后云端停止接收这台设备的摘要，本地简历、报告和投递明细会保留。"
+      v-model:open="deviceManagerOpen"
+      title="已绑定设备"
+      description="解绑只撤销云端授权，本地产物和已显式导入的证据文件会保留。"
     >
+      <div class="device-list">
+        <div v-for="device in activeDevices" :key="device.id" class="device-row">
+          <div>
+            <strong>{{ device.deviceName }}</strong>
+            <small>最近活跃 {{ store.formatDeviceTime(device.lastActiveAt) }}</small>
+          </div>
+          <WorkbenchButton
+            size="sm"
+            variant="danger"
+            :disabled="deviceBusy"
+            @click="store.unbind(device.id)"
+          >
+            <Trash2 :size="14" />
+            解绑
+          </WorkbenchButton>
+        </div>
+      </div>
       <template #footer>
-        <WorkbenchButton size="sm" @click="unbindOpen = false">取消</WorkbenchButton>
-        <WorkbenchButton
-          size="sm"
-          variant="danger"
-          @click="
-            unbindOpen = false;
-            store.unbind()
-          "
-        >
-          确认解绑
-        </WorkbenchButton>
+        <WorkbenchButton size="sm" @click="deviceManagerOpen = false">关闭</WorkbenchButton>
       </template>
     </WorkbenchDialog>
   </section>
@@ -326,17 +353,71 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   color: #8fd6c8;
 }
 
-.connect-bar code {
+.connect-command {
   min-width: 0;
   flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.connect-command code {
   overflow-wrap: anywhere;
   color: #dcebe8;
   font-size: 12px;
 }
 
-.connect-bar .confirm {
-  border-color: rgba(86, 191, 175, 0.62);
-  background: rgba(20, 123, 115, 0.45);
+.connect-command small {
+  color: #9fb5b2;
+  font-size: 10px;
+}
+
+.connect-bar button:disabled,
+.console-tools button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.device-error {
+  padding: 7px 14px;
+  border-bottom: 1px solid rgba(180, 72, 58, 0.42);
+  background: rgba(180, 72, 58, 0.18);
+  color: #f1b8ae;
+  font-size: 11px;
+}
+
+.device-list {
+  display: grid;
+  gap: 9px;
+}
+
+.device-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f8fafb;
+}
+
+.device-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.device-row strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-row small {
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .message-stream {
@@ -551,6 +632,15 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
 
   .console-tools {
     justify-content: space-between;
+  }
+
+  .connect-bar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .connect-bar > button {
+    flex: 1 0 100%;
   }
 
   .quick-prompts {

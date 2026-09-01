@@ -5,12 +5,15 @@ import { stdin as input, stdout as output } from 'node:process';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { inspectOnboarding } from './doctor.mjs';
 import { inspectEvidencePackage } from './evidence-package.mjs';
+import { connectDevice, disconnectDevice, inspectDeviceBinding } from './device-binding.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { formatRoute, routeIntent } from './lib/intent-router.mjs';
 
 const USAGE = `Usage:
   node gy.mjs "帮我整理这段实习经历"
   node gy.mjs --json "这家公司值得投吗"
+  node gy.mjs connect <绑定码> [--server URL] [--device-name NAME] [--replace] [--json]
+  node gy.mjs disconnect [--json]
   node gy.mjs --status [--json]
   node gy.mjs --help`;
 
@@ -20,6 +23,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     status: inspection.onboardingNeeded ? 'onboarding-needed' : 'ready',
     ...inspection,
     evidencePackage: inspectEvidencePackage(root),
+    deviceBinding: inspectDeviceBinding(root),
     suggestions: [
       '整理经历 / 更新简历',
       '评估岗位 / 判断是否值得投',
@@ -39,8 +43,8 @@ export function parseArguments(argv) {
   return { json, status, query };
 }
 
-function printStatus({ json = false } = {}) {
-  const payload = buildStatusPayload();
+function printStatus({ json = false, root } = {}) {
+  const payload = buildStatusPayload(root);
   if (json) {
     console.log(JSON.stringify(payload, null, 2));
     return;
@@ -60,7 +64,70 @@ function printStatus({ json = false } = {}) {
   } else {
     console.log('能力证据包：未导入');
   }
+  const binding = payload.deviceBinding;
+  if (binding.state === 'ready') {
+    console.log(`本地工位：已绑定 ${binding.device.deviceName}（#${binding.device.deviceId}）`);
+  } else if (binding.state === 'invalid') {
+    console.log('本地工位：绑定凭证无效');
+  } else {
+    console.log('本地工位：未绑定');
+  }
   console.log('下一步：直接用一句中文描述求职任务，Agent 会路由到对应模式。');
+}
+
+export function parseConnectArguments(argv) {
+  const args = Array.isArray(argv) ? argv.slice(2) : [];
+  if (args[0] !== 'connect') return null;
+
+  const options = { command: 'connect', json: false, replace: false, serverUrl: undefined, deviceName: undefined };
+  const operands = [];
+  let serverFlagSeen = false;
+  let deviceNameFlagSeen = false;
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--json') {
+      options.json = true;
+    } else if (arg === '--replace') {
+      options.replace = true;
+    } else if (arg === '--server') {
+      index += 1;
+      serverFlagSeen = true;
+      options.serverUrl = args[index];
+    } else if (arg.startsWith('--server=')) {
+      options.serverUrl = arg.slice('--server='.length);
+    } else if (arg === '--device-name') {
+      index += 1;
+      deviceNameFlagSeen = true;
+      options.deviceName = args[index];
+    } else if (arg.startsWith('--device-name=')) {
+      options.deviceName = arg.slice('--device-name='.length);
+    } else if (arg.startsWith('--')) {
+      return { ...options, error: `unrecognized flag: ${arg}` };
+    } else {
+      operands.push(arg);
+    }
+  }
+
+  if (operands.length !== 1) return { ...options, error: 'connect requires exactly one binding code' };
+  if (serverFlagSeen && (options.serverUrl === undefined || options.serverUrl === '')) {
+    return { ...options, error: '--server requires a value' };
+  }
+  if (deviceNameFlagSeen && (options.deviceName === undefined || options.deviceName === '')) {
+    return { ...options, error: '--device-name requires a value' };
+  }
+  return { ...options, bindingCode: operands[0] };
+}
+
+export function parseDisconnectArguments(argv) {
+  const args = Array.isArray(argv) ? argv.slice(2) : [];
+  if (args[0] !== 'disconnect') return null;
+
+  const options = { command: 'disconnect', json: false };
+  for (const arg of args.slice(1)) {
+    if (arg === '--json') options.json = true;
+    else return { ...options, error: `unrecognized argument: ${arg}` };
+  }
+  return options;
 }
 
 async function runInteractive() {
@@ -82,8 +149,49 @@ async function runInteractive() {
   }
 }
 
-function main() {
+async function main() {
   const args = process.argv;
+  const connectCommand = parseConnectArguments(args);
+  if (connectCommand) {
+    if (connectCommand.error) {
+      console.error(`Error: ${connectCommand.error}.`);
+      console.error(USAGE);
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      const result = await connectDevice(connectCommand);
+      if (connectCommand.json) console.log(JSON.stringify(result, null, 2));
+      else console.log(`本地工位已绑定：${result.deviceName}（#${result.deviceId}）`);
+    } catch (error) {
+      if (connectCommand.json) console.log(JSON.stringify({ error: error.message }, null, 2));
+      else console.error(`Error: ${error.message}`);
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  const disconnectCommand = parseDisconnectArguments(args);
+  if (disconnectCommand) {
+    if (disconnectCommand.error) {
+      console.error(`Error: ${disconnectCommand.error}.`);
+      console.error(USAGE);
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      const result = await disconnectDevice();
+      if (disconnectCommand.json) console.log(JSON.stringify(result, null, 2));
+      else if (result.state === 'missing') console.log('本地工位未绑定，无需解绑。');
+      else console.log(`本地工位已解绑：${result.deviceName}（#${result.deviceId}）`);
+    } catch (error) {
+      if (disconnectCommand.json) console.log(JSON.stringify({ error: error.message }, null, 2));
+      else console.error(`Error: ${error.message}`);
+      process.exitCode = 1;
+    }
+    return;
+  }
+
   const unknownFlags = args.slice(2).filter((arg) => arg.startsWith('-') && !['--json', '--status', '--help', '-h'].includes(arg));
   if (unknownFlags.length > 0) {
     console.error(`Error: unrecognized flag(s): ${unknownFlags.join(', ')}.`);
@@ -124,5 +232,5 @@ function main() {
 }
 
 if (isMainModule(import.meta.url)) {
-  main();
+  void main();
 }
