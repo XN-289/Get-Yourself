@@ -6,7 +6,6 @@ import {
   Edit3,
   LoaderCircle,
   Plus,
-  SmilePlus,
   Trash2,
   X
 } from "@lucide/vue";

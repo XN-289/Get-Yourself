@@ -3,20 +3,14 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router"
 import { useAuthStore } from "@/stores/auth";
 import type { UserRole } from "@/types/auth";
 import AuthView from "@/views/AuthView.vue";
-import SocialLayout from "@/views/SocialLayout.vue";
-import SocialEventsView from "@/views/SocialEventsView.vue";
-import SocialOrganizationView from "@/views/SocialOrganizationView.vue";
-import SocialPublishView from "@/views/SocialPublishView.vue";
+import FrozenAccountView from "@/views/FrozenAccountView.vue";
 import StudentAchievementsView from "@/views/StudentAchievementsView.vue";
 import StudentChallengesView from "@/views/StudentChallengesView.vue";
 import StudentCoachView from "@/views/StudentCoachView.vue";
-import StudentEventsView from "@/views/StudentEventsView.vue";
-import StudentFollowsView from "@/views/StudentFollowsView.vue";
 import StudentGrowthTimelineView from "@/views/StudentGrowthTimelineView.vue";
 import StudentJournalView from "@/views/StudentJournalView.vue";
 import StudentLayout from "@/views/StudentLayout.vue";
 import StudentModulePlaceholder from "@/views/StudentModulePlaceholder.vue";
-import StudentReservationsView from "@/views/StudentReservationsView.vue";
 import StudentScheduleView from "@/views/StudentScheduleView.vue";
 import WorkspacePlaceholder from "@/views/WorkspacePlaceholder.vue";
 
@@ -34,12 +28,9 @@ declare module "vue-router" {
 const studentChildren: RouteRecordRaw[] = [
   ["growth/timeline", "student-growth-timeline", "成长时间线", "成长"],
   ["growth/journal", "student-growth-journal", "成长日记", "成长"],
-  ["events", "student-events", "事件", "发现机会"],
-  ["reservations", "student-reservations", "我的预约", "行动管理"],
   ["schedule", "student-schedule", "日程", "行动管理"],
   ["challenges", "student-challenges", "挑战", "行动管理"],
   ["coach", "student-coach", "教练", "成长复盘"],
-  ["follows", "student-follows", "关注", "发现机会"],
   ["achievements", "student-achievements", "能力档案", "成长档案"]
 ].map(([path, name, title, section]) => ({
   path,
@@ -49,39 +40,25 @@ const studentChildren: RouteRecordRaw[] = [
       ? StudentGrowthTimelineView
       : path === "growth/journal"
         ? StudentJournalView
-        : path === "events"
-          ? StudentEventsView
-          : path === "achievements"
-            ? StudentAchievementsView
-            : path === "reservations"
-              ? StudentReservationsView
-            : path === "schedule"
-              ? StudentScheduleView
-              : path === "challenges"
-                ? StudentChallengesView
-                : path === "coach"
-                  ? StudentCoachView
-                  : path === "follows"
-                    ? StudentFollowsView
-          : StudentModulePlaceholder,
+        : path === "achievements"
+          ? StudentAchievementsView
+          : path === "schedule"
+            ? StudentScheduleView
+            : path === "challenges"
+              ? StudentChallengesView
+              : path === "coach"
+                ? StudentCoachView
+              : StudentModulePlaceholder,
   meta: { title, section }
 }));
 
-const socialChildren: RouteRecordRaw[] = [
-  ["events", "social-events", "我的事件", "查看组织发布的事件及审核状态。"],
-  ["publish", "social-publish", "发布事件", "提交活动信息并进入质量预处理与审核流程。"],
-  ["organization", "social-organization", "组织主页", "维护组织资料与学生可见信息。"]
-].map(([path, name, title, description]) => ({
-  path,
-  name,
-  component:
-    path === "events"
-      ? SocialEventsView
-      : path === "publish"
-        ? SocialPublishView
-        : SocialOrganizationView,
-  meta: { title, description }
-}));
+studentChildren.push(
+  ...([
+    { path: "events", redirect: "/student/growth/timeline" },
+    { path: "reservations", redirect: "/student/growth/timeline" },
+    { path: "follows", redirect: "/student/growth/timeline" }
+  ] as RouteRecordRaw[])
+);
 
 const router = createRouter({
   history: createWebHistory(),
@@ -110,16 +87,25 @@ const router = createRouter({
     {
       path: "/student",
       component: StudentLayout,
-      redirect: "/student/events",
+      redirect: "/student/growth/timeline",
       meta: { requiresAuth: true, roles: ["STUDENT"] },
       children: studentChildren
     },
     {
+      path: "/account-frozen",
+      name: "account-frozen",
+      component: FrozenAccountView,
+      meta: { requiresAuth: true, roles: ["SOCIAL"], title: "功能已冻结" }
+    },
+    {
       path: "/social",
-      component: SocialLayout,
-      redirect: "/social/events",
-      meta: { requiresAuth: true, roles: ["SOCIAL"] },
-      children: socialChildren
+      name: "social-frozen",
+      redirect: "/account-frozen"
+    },
+    {
+      path: "/social/:pathMatch(.*)*",
+      name: "social-frozen-path",
+      redirect: "/account-frozen"
     },
     {
       path: "/:pathMatch(.*)*",

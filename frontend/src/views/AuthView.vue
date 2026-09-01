@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, Building2, GraduationCap, KeyRound, Mail, UserRound } from "@lucide/vue";
+import { ArrowRight, KeyRound, Mail, UserRound } from "@lucide/vue";
 import { computed, reactive, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 
@@ -27,8 +27,8 @@ const isLogin = computed(() => props.mode === "login");
 const title = computed(() => (isLogin.value ? "欢迎回来" : "创建你的成长档案"));
 const supportingText = computed(() =>
   isLogin.value
-    ? "继续管理活动、挑战、日程和能力证据。"
-    : "选择身份后，系统会为你准备对应的工作空间。"
+    ? "继续管理成长记录、能力证据和求职准备。"
+    : "创建学生账号，开始沉淀可验证的成长证据。"
 );
 
 watch(
@@ -76,13 +76,13 @@ async function submit() {
       <div class="auth-statement">
         <p class="eyebrow">真实经历，而不是空白的四年</p>
         <h1>把每一次行动，沉淀成看得见的成长。</h1>
-        <p>发现实践机会、规划行动、完成挑战，并让真实证据形成属于你的能力档案。</p>
+        <p>记录经历、规划行动、完成挑战，并让真实证据形成属于你的能力档案。</p>
       </div>
       <div class="auth-feature-strip">
-        <span>活动发现</span>
-        <span>AI计划</span>
+        <span>成长记录</span>
+        <span>AI教练</span>
         <span>能力评估</span>
-        <span>成长教练</span>
+        <span>求职工作台</span>
       </div>
     </section>
 
@@ -92,25 +92,6 @@ async function submit() {
           <p class="eyebrow">{{ isLogin ? "SIGN IN" : "GET STARTED" }}</p>
           <h2>{{ title }}</h2>
           <p>{{ supportingText }}</p>
-        </div>
-
-        <div v-if="!isLogin" class="role-selector" aria-label="注册身份">
-          <button
-            type="button"
-            :class="{ 'is-active': form.role === 'STUDENT' }"
-            @click="form.role = 'STUDENT'"
-          >
-            <GraduationCap :size="20" />
-            <span><strong>学生端</strong><small>发现机会并记录成长</small></span>
-          </button>
-          <button
-            type="button"
-            :class="{ 'is-active': form.role === 'SOCIAL' }"
-            @click="form.role = 'SOCIAL'"
-          >
-            <Building2 :size="20" />
-            <span><strong>社会端</strong><small>发布实践与组织活动</small></span>
-          </button>
         </div>
 
         <label v-if="isLogin" class="form-field">

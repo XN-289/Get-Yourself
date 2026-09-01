@@ -37,7 +37,7 @@ export const useAuthStore = defineStore("auth", () => {
   const token = computed(() => session.value?.token ?? "");
   const isAuthenticated = computed(() => Boolean(token.value && user.value));
   const role = computed<UserRole | null>(() => user.value?.role ?? null);
-  const homeRoute = computed(() => (role.value === "SOCIAL" ? "/social/events" : "/student/events"));
+  const homeRoute = computed(() => (role.value === "SOCIAL" ? "/account-frozen" : "/student/growth/timeline"));
 
   function persist(nextSession: AuthSession | null) {
     session.value = nextSession;

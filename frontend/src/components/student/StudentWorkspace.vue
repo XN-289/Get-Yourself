@@ -5,10 +5,10 @@ import {
   ChevronDown,
   ChevronRight,
   CirclePlus,
-  Compass,
   Flag,
   LogOut,
   Menu,
+  MessagesSquare,
   Search,
   X
 } from "@lucide/vue";
@@ -55,7 +55,7 @@ const todayLabel = new Intl.DateTimeFormat("zh-CN", {
 
 const quickActions = [
   { label: "写日记", to: "/student/growth/journal", icon: BookOpen },
-  { label: "查找事件", to: "/student/events", icon: Compass },
+  { label: "问教练", to: "/student/coach", icon: MessagesSquare },
   { label: "创建挑战", to: "/student/challenges?action=create", icon: Flag },
   { label: "添加日程", to: "/student/schedule?action=create", icon: CalendarPlus }
 ];
@@ -130,7 +130,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleGlobalKeydown)
 <template>
   <div class="student-shell" @click="closeFloatingMenus">
     <aside class="student-sidebar">
-      <RouterLink class="student-brand" to="/student/events">
+      <RouterLink class="student-brand" to="/student/growth/timeline">
         <span class="brand-mark">GY</span>
         <span>
           <strong>Get Yourself</strong>
@@ -174,7 +174,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleGlobalKeydown)
 
     <section class="student-workspace">
       <header class="student-topbar">
-        <RouterLink class="student-mobile-brand" to="/student/events">
+        <RouterLink class="student-mobile-brand" to="/student/growth/timeline">
           <span class="brand-mark">GY</span>
           <strong>Get Yourself</strong>
         </RouterLink>

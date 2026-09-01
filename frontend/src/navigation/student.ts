@@ -2,12 +2,9 @@ import {
   Award,
   BookOpen,
   CalendarDays,
-  Compass,
   Flag,
-  Heart,
   History,
   MessagesSquare,
-  TicketCheck,
   type LucideIcon
 } from "@lucide/vue";
 
@@ -34,16 +31,8 @@ export const studentNavigationGroups: StudentNavigationGroup[] = [
     ]
   },
   {
-    label: "发现",
-    items: [
-      { to: "/student/events", label: "事件", icon: Compass },
-      { to: "/student/follows", label: "关注", icon: Heart }
-    ]
-  },
-  {
     label: "行动",
     items: [
-      { to: "/student/reservations", label: "我的预约", shortLabel: "预约", icon: TicketCheck },
       { to: "/student/schedule", label: "日程", icon: CalendarDays },
       { to: "/student/challenges", label: "挑战", icon: Flag }
     ]
@@ -55,7 +44,7 @@ export const studentNavigationItems = studentNavigationGroups.flatMap((group) =>
 export const studentMobilePrimaryItems = [
   studentNavigationItems.find((item) => item.to === "/student/growth/timeline"),
   studentNavigationItems.find((item) => item.to === "/student/growth/journal"),
-  studentNavigationItems.find((item) => item.to === "/student/events"),
+  studentNavigationItems.find((item) => item.to === "/student/coach"),
   studentNavigationItems.find((item) => item.to === "/student/challenges")
 ].filter((item): item is StudentNavigationItem => Boolean(item));
 
