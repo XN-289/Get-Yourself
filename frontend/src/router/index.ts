@@ -5,7 +5,10 @@ import type { UserRole } from "@/types/auth";
 import AuthView from "@/views/AuthView.vue";
 import FrozenAccountView from "@/views/FrozenAccountView.vue";
 import StudentLayout from "@/views/StudentLayout.vue";
-import StudentAgentWorkbenchDemoView from "@/views/StudentAgentWorkbenchDemoView.vue";
+import StudentAgentConsoleView from "@/views/StudentAgentConsoleView.vue";
+import StudentAssetsView from "@/views/StudentAssetsView.vue";
+import StudentInterviewView from "@/views/StudentInterviewView.vue";
+import StudentResumeView from "@/views/StudentResumeView.vue";
 import WorkspacePlaceholder from "@/views/WorkspacePlaceholder.vue";
 
 declare module "vue-router" {
@@ -19,18 +22,45 @@ declare module "vue-router" {
   }
 }
 
-const studentWorkbenchRedirect = { path: "/student/workbench", query: { focus: "assets" } };
+const legacyFocusRoutes: Record<string, string> = {
+  assets: "/student/assets",
+  resume: "/student/resume",
+  interview: "/student/interview"
+};
+
 const studentChildren: RouteRecordRaw[] = [
   {
     path: "workbench",
     name: "student-agent-workbench",
-    component: StudentAgentWorkbenchDemoView,
+    component: StudentAgentConsoleView,
+    beforeEnter: (to) => {
+      const focus = typeof to.query.focus === "string" ? legacyFocusRoutes[to.query.focus] : undefined;
+      return focus ? { path: focus } : true;
+    },
     meta: { title: "Agent 工作台", section: "Agent 主入口" }
   },
-  { path: "growth/timeline", redirect: studentWorkbenchRedirect },
-  { path: "growth/journal", redirect: studentWorkbenchRedirect },
-  { path: "achievements", redirect: studentWorkbenchRedirect },
-  { path: "schedule", redirect: "/student/workbench" },
+  {
+    path: "assets",
+    name: "student-assets",
+    component: StudentAssetsView,
+    meta: { title: "能力资产", section: "求职对象" }
+  },
+  {
+    path: "resume",
+    name: "student-resume",
+    component: StudentResumeView,
+    meta: { title: "简历管理", section: "求职对象" }
+  },
+  {
+    path: "interview",
+    name: "student-interview",
+    component: StudentInterviewView,
+    meta: { title: "面试管理", section: "求职对象" }
+  },
+  { path: "growth/timeline", redirect: "/student/assets" },
+  { path: "growth/journal", redirect: "/student/assets" },
+  { path: "achievements", redirect: "/student/assets" },
+  { path: "schedule", redirect: "/student/interview" },
   { path: "challenges", redirect: "/student/workbench" },
   { path: "coach", redirect: "/student/workbench" },
   { path: "events", redirect: "/student/workbench" },

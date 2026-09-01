@@ -43,9 +43,9 @@ const filteredNavigation = computed(() => {
 });
 const quickActions = [
   { label: "打开 Agent", to: "/student/workbench", icon: Bot },
-  { label: "整理经历", to: "/student/workbench?focus=assets", icon: FolderTree },
-  { label: "生成简历", to: "/student/workbench?focus=resume", icon: FileText },
-  { label: "面试复盘", to: "/student/workbench?focus=interview", icon: ListChecks }
+  { label: "整理经历", to: "/student/assets", icon: FolderTree },
+  { label: "生成简历", to: "/student/resume", icon: FileText },
+  { label: "面试复盘", to: "/student/interview", icon: ListChecks }
 ];
 
 watch(
@@ -66,14 +66,8 @@ watch(commandOpen, async (open) => {
 });
 
 function isActive(item: StudentNavigationItem) {
-  const [basePath, query] = item.to.split("?");
-  if (!route.path.startsWith(basePath)) {
-    return false;
-  }
-  if (query) {
-    return route.fullPath === item.to;
-  }
-  return route.path === basePath && !route.query.focus;
+  const [basePath] = item.to.split("?");
+  return route.path === basePath || route.path.startsWith(`${basePath}/`);
 }
 
 function toggleQuickMenu() {

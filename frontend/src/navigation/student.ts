@@ -28,9 +28,9 @@ export const studentNavigationGroups: StudentNavigationGroup[] = [
   {
     label: "求职对象",
     items: [
-      { to: "/student/workbench?focus=assets", label: "能力资产", shortLabel: "资产", icon: Award },
-      { to: "/student/workbench?focus=resume", label: "简历管理", shortLabel: "简历", icon: FileText },
-      { to: "/student/workbench?focus=interview", label: "面试管理", shortLabel: "面试", icon: ListChecks }
+      { to: "/student/assets", label: "能力资产", shortLabel: "资产", icon: Award },
+      { to: "/student/resume", label: "简历管理", shortLabel: "简历", icon: FileText },
+      { to: "/student/interview", label: "面试管理", shortLabel: "面试", icon: ListChecks }
     ]
   }
 ];
