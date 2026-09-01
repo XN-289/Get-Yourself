@@ -6,16 +6,16 @@ This file is the root operating contract for AI agents working in this repositor
 
 Get Yourself is a career system for college students. It has two connected surfaces:
 
-1. **Web platform**: student account, growth records, ability evidence, ability scoring, AI coach, long-term memory, and Agent Trace.
-2. **Local workbench**: a Codex-style CLI workspace that turns verified experience into resumes, job evaluations, interview preparation, and application tracking.
+1. **Web platform**: student account, Agent-first workbench, growth records, ability evidence, ability scoring, platform long-term memory, and Agent Trace.
+2. **Local workbench**: a Codex-style CLI workspace where the Agent entry turns verified experience into capability assets, resumes, job evaluations, interview workflow, and application tracking.
 
 The v0.1 product direction is:
 
 ```text
 Student records or imports experience
   -> AI extracts ability evidence
-  -> Ability scoring and coach memory accumulate
-  -> Local workbench produces resume, evaluation, and interview outputs
+  -> Ability scoring and platform memory accumulate
+  -> Agent routes local work and lands output in independent modules
   -> Application progress returns to the platform
 ```
 
@@ -23,6 +23,9 @@ Student records or imports experience
 
 - Serve technical college students first in v0.1.
 - The planned local entry is a `gy` wrapper that launches a Codex-style session.
+- Agent is the only primary student entry. Capability assets (working name), resume management, and interview management are separate module destinations, not mixed panels in the Agent workspace.
+- The growth coach is not a visible peer module. Existing coach-like capability is backend platform memory context only.
+- Schedule is not an independent module. Time signals only serve application deadlines and the interview workflow.
 - The web account binds to a local device through a browser-issued device code.
 - Job evaluation summaries and application tracker states may sync only after the user explicitly confirms each outbound sync.
 - Resume full text, STAR stories, and raw personal documents stay local unless the user explicitly opts in to upload.
