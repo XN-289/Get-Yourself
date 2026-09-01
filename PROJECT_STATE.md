@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-Updated: 2026-09-01 19:20
+Updated: 2026-09-01 19:36
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出与 Stage 3 最小设备绑定闭环已实现；PRD 已完成目标校准并明确整体目标不变；前端 Demo、`gy` Stage 1、证据包闭环与设备绑定仍待用户统一验收，自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环与 Stage 4a 简历素材/STAR 故事本地合同已实现；PRD 已完成目标校准并明确整体目标不变；前端 Demo、`gy` Stage 1、证据包闭环、设备绑定与 Stage 4a 仍待用户统一验收，自动同步尚未开始。
 
 ## 已接受事实
 
@@ -25,6 +25,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - Stage 3 设备绑定只建立本地工位授权，不复制网页登录态，不自动导入证据包，也不自动同步简历、报告、STAR 故事、原始材料或求职进度 — `docs/DEVICE_BINDING_CONTRACT.md`。
 - 一个账号最多保留 5 台活跃本地工位；绑定码 10 分钟一次性有效；服务端只保存绑定码、安装 ID 与设备 token 的 SHA-256 哈希 — `docs/DEVICE_BINDING_CONTRACT.md`。
 - 同一安装 ID 重新绑定时撤销旧设备授权；网页解绑保留所有本地文件，CLI 断开只在服务端确认后删除本地设备凭证 — `docs/DEVICE_BINDING_CONTRACT.md`。
+- Stage 4a 简历素材包与 `cv.md` 定稿分权；素材导入必须用户确认，故事库由素材包派生，导入器不执行 LLM 抽取、不修改定稿、不上传网页 — `docs/RESUME_MATERIALS_CONTRACT.md`。
 
 ## 决策索引
 
@@ -37,6 +38,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 2026-09-01 — 面试流程节点手工拖拽排序与重排保真边界 — `decisions.md`。
 - 2026-09-01 — 横向流程轨、右侧节点抽屉与外层状态入口只读边界 — `decisions.md`。
 - 2026-09-01 — Stage 3 显式设备绑定、授权-only 边界、设备数量上限与同安装重绑规则 — `decisions.md`。
+- 2026-09-01 — Stage 4a 用户确认素材包、派生故事库与简历定稿分权 — `decisions.md`。
 
 ## 已实现
 
@@ -64,6 +66,10 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - Agent 对话区亮色工具台改造 — `frontend/src/views/StudentAgentConsoleView.vue` 与 `frontend/src/components/agent/AgentMarkdown.vue`；深色控制台改为白底轻边框，Assistant 消息改为开放式轻左线段落，用户消息保留浅绿气泡，设备绑定、快捷任务、输入区与 Agent Trace 统一降为辅助层级，Markdown 代码块/引用同步亮色化。
 - Agent 对话区视觉验证 — 2026-09-01 1280px 桌面与 390px 窄屏检查通过，页面均无横向溢出；桌面截图平均亮度 247/255、深色像素占比 0.4%；`frontend/` 下 `npm run build` 通过。
 - PRD 目标校准 — `docs/PRODUCT_DESIGN_V0.1.md`；明确战略目标不变，记录 Agent-first、独立模块、面试实践闭环、授权-only、显式证据包和亮色工具台等实现校准，补充 Stage 0-6 当前状态，并把已决的绑定码、证据包与多设备问题移入决策记录。
+- Stage 4a 简历素材包 v1 契约 — `docs/RESUME_MATERIALS_CONTRACT.md`、`cli/templates/resume-materials.example.json`。
+- Stage 4a 简历素材校验、导入与派生故事库 — `cli/resume-materials.mjs`；支持只读 check、默认 dry-run、`--apply`、幂等导入、显式 `--replace`、素材/故事库备份、原子写、能力证据引用校验、JD 外部线索限制和 `cv.md` 隔离。
+- Stage 4a Agent 与状态入口 — `cli/modes/cv.md`、`cli/lib/intent-router.mjs`、`cli/gy.mjs`、`cli/AGENTS.md` 与 `cli/DATA_CONTRACT.md`；简历路由指向合同化导入流程，`gy --status` 只读展示素材包与故事库状态。
+- Stage 4a 验证结果 — 2026-09-01 `cli/` 下 `npm test` 28 pass / 0 fail；`node --check resume-materials.mjs`、`node --check gy.mjs` 与 `node --check lib/intent-router.mjs` 通过。
 
 ## 已验收
 
@@ -77,14 +83,15 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 
 ## 下一步
 
-1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨与节点抽屉）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出与 Stage 3 设备绑定。
-2. 验收通过后再设计 Stage 4 数据协同；在任何显式同步契约落地前，不做自动上传或自动导入。
+1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨与节点抽屉）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定与 Stage 4a 素材包/故事库。
+2. Stage 4a 验收后继续设计简历定稿审批与面试准备清单；在任何显式同步契约落地前，不做自动上传或自动导入。
 
 ## 恢复上下文
 
 - 前端入口：`frontend/`，开发路由包含 `/student/workbench`。
 - CLI 入口：`cli/gy.mjs`（`node gy.mjs`、`node gy.mjs --status`、`node gy.mjs --json "<任务>"`）。
 - 证据包入口：`cli/evidence-package.mjs`（`check` / `import` / `--apply` / `--replace`）。
+- 简历素材入口：`cli/resume-materials.mjs`（`check` / `import` / `--apply` / `--replace`）。
 - 验证命令：文档为内容复查；前端为 `npm run build`；CLI 为 `npm test`。
 - 已知坑：仓库根当前缺用户层 `cv.md`、`modes/_profile.md`、`portals.yml` 属于正常 onboarding 状态；`gy --status` 只报告，不自动创建。证据包 v1 没有签名，离线文件来源信任由用户选择文件承担。
 - 已知坑：当前 H2 演示能力数据种在 `demo_student`（用户名 `demo_student` / 密码 `demo123456`）；浏览器若仍登录临时账号 `123`，能力证据包导出会按预期提示“当前账号还没有可导出的能力证据”。
@@ -103,3 +110,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 2026-09-01 — 完成 Stage 3 最小设备绑定闭环与真实网页/CLI 冒烟 — 影响账号授权、本地凭证边界和后续数据协同；仍待用户验收，未开始自动同步。
 - 2026-09-01 — Agent 对话区从深色终端风调整为亮色 Codex 式工具台 — 影响主入口的长期使用氛围与信息层级；仍待用户验收。
 - 2026-09-01 — PRD 完成实现校准修订 — 明确整体目标不变、当前阶段状态、Stage 5 前端/后端边界与前端技术底座决策；仍待产品与技术评审和用户统一验收。
+- 2026-09-01 — 实现 Stage 4a 简历素材包与派生 STAR 故事库 — 影响简历管理、面试准备素材和后续复盘反哺；仍待用户验收，简历定稿审批与自动同步未开始。

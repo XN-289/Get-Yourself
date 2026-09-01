@@ -13,6 +13,8 @@ test('routes natural-language experience work to resume management', () => {
   assert.equal(route.moduleDestination, 'resume-management');
   assert.equal(route.modeFile, 'modes/cv.md');
   assert.equal(route.needsConfirmation, true);
+  assert.ok(route.suggestedAction.includes('resume-materials.mjs'));
+  assert.ok(route.securityNotes.some((note) => note.includes('cv.md')));
 });
 
 test('routes evidence package import into capability assets', () => {

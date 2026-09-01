@@ -8,6 +8,7 @@
 - `cv.md`（既有权威简历事实）
 - `config/profile.yml` 与 `modes/_profile.md`（方向、偏好、叙事）
 - `data/evidence-package.json`（如已导入，先按契约确认其版本和验证状态）
+- `data/resume-materials.json`（如已导入，读取用户确认过的候选素材；它不是简历定稿）
 
 ## 工作流
 
@@ -15,9 +16,10 @@
 2. **追问缺口**：缺少时间、结果或归属时先追问；用户不补充就保留缺口，不生成看似完整的表述。
 3. **生成条目候选**：每段经历输出一至两条适合简历的 bullet，优先动作、方法和结果。
 4. **标注证据状态**：`已验证` / `待确认` / `缺证据` / `外部信息`。
-5. **等待确认**：展示将写入的位置和 diff，用户确认后才修改 `cv.md` 或简历素材文件。
-6. **沉淀故事**：把有细节的经历整理成 STAR 故事候选，确认后写入 `interview-prep/story-bank.md`。
-7. **导出**：生成或修改 HTML 后调用 `node generate-pdf.mjs <input.html> <output.pdf>`；覆盖已有 PDF 前必须确认。
+5. **生成素材包候选**：按 `docs/RESUME_MATERIALS_CONTRACT.md` 输出结构化 JSON 草稿，`confirmation=user_confirmed` 只能在用户确认后使用。
+6. **等待确认并导入**：用户确认素材包后先执行 `node resume-materials.mjs import <draft.json>` dry-run，再经确认加 `--apply`；覆盖不同内容必须显式确认 `--replace`。
+7. **修改定稿**：需要写入 `cv.md` 时单独展示位置和 diff，用户再次确认后才修改；素材导入不等于简历定稿。
+8. **导出**：生成或修改 HTML 后调用 `node generate-pdf.mjs <input.html> <output.pdf>`；覆盖已有 PDF 前必须确认。
 
 ## 输出结构
 
@@ -40,4 +42,6 @@
 - 不把 JD 或公司页面中的要求写成学生能力。
 - 能力证据包摘要只能作为证据引用和追问线索；写入简历前仍需用户确认对应事实。
 - `cv.md` 是简历定稿权威；草稿和候选条目不得绕过确认直接写入。
+- `data/resume-materials.json` 是候选素材权威；`interview-prep/story-bank.md` 是它的派生故事库，不是定稿事实来源。
+- JD 分析结果不能写成学生经历；外部要求只能转化为差距提示或待确认问题。
 - 输出全中文，写入前必须获得用户确认。

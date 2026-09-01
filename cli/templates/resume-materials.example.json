@@ -1,0 +1,52 @@
+{
+  "schema": "get-yourself.resume-materials",
+  "schemaVersion": 1,
+  "packageId": "resume-materials-demo-2026-09-01",
+  "generatedAt": "2026-09-01T00:00:00.000Z",
+  "traceId": "trace.resume-materials-demo",
+  "targetRole": "Java 后端开发",
+  "confirmation": "user_confirmed",
+  "entries": [
+    {
+      "id": "internship-repair-backend",
+      "section": "internship",
+      "organization": "校园技术团队",
+      "role": "后端开发实习生",
+      "timeframe": "2026.03 - 2026.06",
+      "bullet": "设计并实现宿舍报修小程序的后端接口，支撑报修流程进入宿舍试用",
+      "sourceType": "user_statement",
+      "sourceId": "user-statement-repair-internship",
+      "evidenceStatus": "user_confirmed",
+      "evidenceRefs": [],
+      "openQuestions": [
+        "服务规模和稳定性结果还需要用户补充"
+      ]
+    },
+    {
+      "id": "project-frontend-contract",
+      "section": "project",
+      "organization": "宿舍报修小程序",
+      "role": "后端负责人",
+      "timeframe": "2026.04 - 2026.05",
+      "bullet": "与前端同学约定接口契约并完成联调修正，减少接口理解偏差",
+      "sourceType": "user_statement",
+      "sourceId": "user-statement-frontend-contract",
+      "evidenceStatus": "user_confirmed",
+      "evidenceRefs": [],
+      "openQuestions": []
+    }
+  ],
+  "stories": [
+    {
+      "id": "story-repair-api",
+      "title": "把报修流程从口头沟通推进到线上试用",
+      "situation": "宿舍报修依赖群聊消息，报修状态容易丢失。",
+      "task": "作为后端开发实习生，需要把报修流程拆成可维护的接口。",
+      "action": "与前端同学确认接口契约，设计并实现报修创建、状态更新和查询接口。",
+      "result": "报修流程进入宿舍试用，状态可以在小程序内追踪。",
+      "tags": ["后端开发", "跨端协作"],
+      "entryRefs": ["internship-repair-backend"],
+      "sourceType": "user_statement"
+    }
+  ]
+}

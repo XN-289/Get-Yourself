@@ -5,6 +5,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { inspectOnboarding } from './doctor.mjs';
 import { inspectEvidencePackage } from './evidence-package.mjs';
+import { inspectResumeMaterials } from './resume-materials.mjs';
 import { connectDevice, disconnectDevice, inspectDeviceBinding } from './device-binding.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { formatRoute, routeIntent } from './lib/intent-router.mjs';
@@ -23,6 +24,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     status: inspection.onboardingNeeded ? 'onboarding-needed' : 'ready',
     ...inspection,
     evidencePackage: inspectEvidencePackage(root),
+    resumeMaterials: inspectResumeMaterials(root),
     deviceBinding: inspectDeviceBinding(root),
     suggestions: [
       '整理经历 / 更新简历',
@@ -63,6 +65,14 @@ function printStatus({ json = false, root } = {}) {
     console.log(`能力证据包：本地文件无效（${evidence.error}）`);
   } else {
     console.log('能力证据包：未导入');
+  }
+  const materials = payload.resumeMaterials;
+  if (materials.state === 'ready') {
+    console.log(`简历素材包：已导入 ${materials.packageId}（${materials.entryCount} 条素材 / ${materials.storyCount} 个故事，故事库${materials.storyBankState === 'current' ? '一致' : '待处理'}）`);
+  } else if (materials.state === 'invalid') {
+    console.log(`简历素材包：本地文件无效（${materials.error}）`);
+  } else {
+    console.log('简历素材包：未导入');
   }
   const binding = payload.deviceBinding;
   if (binding.state === 'ready') {

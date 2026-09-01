@@ -21,6 +21,8 @@
 | `data/blacklist.md` | 不投名单（opt-in，绝不自动填充） |
 | `data/evidence-package.json` | 已导入的规范化能力证据包（唯一当前包） |
 | `data/evidence-package-backups/*` | 显式替换能力证据包前的规范化备份 |
+| `data/resume-materials.json` | 已导入的规范化简历素材包（唯一当前包，候选材料而非定稿） |
+| `data/resume-materials-backups/*` | 显式替换简历素材或派生故事库前的备份 |
 | `data/device-installation.json` | 本机安装标识（用于同一安装重绑时撤销旧授权） |
 | `data/device-binding.json` | 本地工位设备凭证（敏感，gitignore） |
 | `data/status-log.tsv` | 状态流转日志（追加式） |
@@ -58,7 +60,7 @@
 **如果文件在用户层，任何更新流程不得读取、修改或删除它。** 例外仅限用户显式执行 `gy connect` / `gy disconnect` 时维护 `data/device-installation.json` 与 `data/device-binding.json`；这两个文件绝不进入 git。
 **如果文件在系统层，它可以用上游最新版本安全替换。**
 
-`gy.mjs --status` 只读取用户层做就绪检查，不创建、不复制、不修改任何文件。能力证据包导入由 `evidence-package.mjs` 独立执行：`check` 只读，`import` 默认 dry-run，写入和替换分别需要 `--apply` 与 `--replace`。意图路由不持久化用户原句；后续写入必须由宿主 AI 在用户确认后按对应模式的规范执行。
+`gy.mjs --status` 只读取用户层做就绪检查，不创建、不复制、不修改任何文件。能力证据包导入由 `evidence-package.mjs` 独立执行：`check` 只读，`import` 默认 dry-run，写入和替换分别需要 `--apply` 与 `--replace`。简历素材导入由 `resume-materials.mjs` 独立执行，边界相同；它只写 `data/resume-materials.json` 与派生的 `interview-prep/story-bank.md`，永不修改 `cv.md`。意图路由不持久化用户原句；后续写入必须由宿主 AI 在用户确认后按对应模式的规范执行。
 
 ## 自定义数据目录
 

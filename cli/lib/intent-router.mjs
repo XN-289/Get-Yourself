@@ -65,9 +65,10 @@ const ROUTES = {
     displayName: '整理经历与简历',
     moduleDestination: 'resume-management',
     modeFile: 'modes/cv.md',
-    suggestedAction: '先核对时间、角色、动作和结果，再生成可追溯的简历条目草稿。',
+    suggestedAction: '先核对时间、角色、动作和结果，再生成可追溯的简历素材包草稿；确认后用 resume-materials.mjs dry-run / apply 导入。',
     needsConfirmation: true,
     fallbackPrompt: '请补充这段经历的时间、角色、做了什么、结果和可验证证据。',
+    securityNotes: ['未确认推断不得标记 user_confirmed；素材导入不修改 cv.md 定稿。'],
   },
   capability: {
     intent: 'analyze_capability',
