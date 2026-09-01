@@ -10,6 +10,7 @@ import StudentCoachView from "@/views/StudentCoachView.vue";
 import StudentGrowthTimelineView from "@/views/StudentGrowthTimelineView.vue";
 import StudentJournalView from "@/views/StudentJournalView.vue";
 import StudentLayout from "@/views/StudentLayout.vue";
+import StudentLocalWorkbenchDemoView from "@/views/StudentLocalWorkbenchDemoView.vue";
 import StudentModulePlaceholder from "@/views/StudentModulePlaceholder.vue";
 import StudentScheduleView from "@/views/StudentScheduleView.vue";
 import WorkspacePlaceholder from "@/views/WorkspacePlaceholder.vue";
@@ -53,6 +54,12 @@ const studentChildren: RouteRecordRaw[] = [
 }));
 
 studentChildren.push(
+  {
+    path: "workbench",
+    name: "student-local-workbench",
+    component: StudentLocalWorkbenchDemoView,
+    meta: { title: "本地工作台", section: "求职执行" }
+  },
   ...([
     { path: "events", redirect: "/student/growth/timeline" },
     { path: "reservations", redirect: "/student/growth/timeline" },

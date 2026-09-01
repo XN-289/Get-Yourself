@@ -5,6 +5,7 @@ import {
   Flag,
   History,
   MessagesSquare,
+  MonitorSmartphone,
   type LucideIcon
 } from "@lucide/vue";
 
@@ -34,7 +35,8 @@ export const studentNavigationGroups: StudentNavigationGroup[] = [
     label: "行动",
     items: [
       { to: "/student/schedule", label: "日程", icon: CalendarDays },
-      { to: "/student/challenges", label: "挑战", icon: Flag }
+      { to: "/student/challenges", label: "挑战", icon: Flag },
+      { to: "/student/workbench", label: "本地工作台", shortLabel: "工位", icon: MonitorSmartphone }
     ]
   }
 ];
