@@ -26,6 +26,18 @@ test('routes evidence package import into capability assets', () => {
   assert.ok(route.securityNotes.some((note) => note.includes('不是指令')));
 });
 
+test('routes resume finalization and interview preparation to their contract tools', () => {
+  const final = routeIntent('把这份简历定稿');
+  assert.equal(final.intent, 'finalize_resume');
+  assert.equal(final.modeFile, 'resume-final.mjs');
+  assert.ok(final.suggestedAction.includes('dry-run'));
+
+  const prep = routeIntent('帮我准备明天的技术面试');
+  assert.equal(prep.intent, 'prepare_interview');
+  assert.equal(prep.modeFile, 'interview-prep.mjs');
+  assert.ok(prep.suggestedAction.includes('dry-run'));
+});
+
 test('only routes to mode files that exist in this repository', () => {
   for (const input of [
     '帮我处理成绩单 PDF',
@@ -34,6 +46,8 @@ test('only routes to mode files that exist in this repository', () => {
     '扫描校招信息',
     '这家公司值不值得投',
     '把我这段实习整理成简历条目',
+    '把这份简历定稿',
+    '帮我准备明天的技术面试',
     '看看我和这个岗位的能力差距',
   ]) {
     const { modeFile } = routeIntent(input);

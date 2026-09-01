@@ -32,6 +32,7 @@ desktop.ini
 
 # Local generated files
 cli/data/
+cli/interview-prep/
 *.zip
 *.mp4
 .tmp-docx/

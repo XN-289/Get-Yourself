@@ -28,9 +28,12 @@ npm run gy -- disconnect
 node evidence-package.mjs check ../path/to/evidence-package.json
 node evidence-package.mjs import ../path/to/evidence-package.json
 node evidence-package.mjs import ../path/to/evidence-package.json --apply
+node resume-materials.mjs check ../path/to/resume-materials.json
+node resume-final.mjs check ../path/to/resume-final-plan.json
+node interview-prep.mjs check ../path/to/interview-prep.json
 ```
 
-当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。它不假装调用 LLM，也不写简历、tracker 或个人材料；实际执行由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。
+当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。`gy` 本身不假装调用 LLM，也不直接写简历、tracker 或个人材料；素材导入、简历定稿和面试准备由用户确认后调用对应契约工具完成，实际任务由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。
 
 ## 它解决什么问题
 
@@ -104,6 +107,9 @@ claude   # 或 codex / qwen / kimi
 get-yourself-cli/
 ├── gy.mjs                 # Agent 统一入口与只读状态检查
 ├── evidence-package.mjs   # 能力证据包校验与显式导入
+├── resume-materials.mjs   # 简历素材包与 STAR 故事库
+├── resume-final.mjs       # cv.md 定稿审批
+├── interview-prep.mjs     # 面试准备包与清单
 ├── lib/intent-router.mjs  # 确定性意图路由
 ├── AGENTS.md              # AI 指令（规范来源）
 ├── CLAUDE.md / QWEN.md / KIMI.md / CODEX.md   # 各 CLI 入口

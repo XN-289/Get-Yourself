@@ -425,6 +425,10 @@ function readInstalledMaterials(root) {
   return canonicalizeResumeMaterials(parsed, { evidenceById });
 }
 
+export function loadInstalledResumeMaterials(root = getCareerOpsRoot()) {
+  return readInstalledMaterials(root);
+}
+
 function storyBankExists(root) {
   try {
     return lstatSync(storyBankPathFor(root)) !== null;

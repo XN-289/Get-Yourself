@@ -6,6 +6,8 @@ import { getCareerOpsRoot } from './path-resolver.mjs';
 import { inspectOnboarding } from './doctor.mjs';
 import { inspectEvidencePackage } from './evidence-package.mjs';
 import { inspectResumeMaterials } from './resume-materials.mjs';
+import { inspectResumeFinal } from './resume-final.mjs';
+import { inspectInterviewPrep } from './interview-prep.mjs';
 import { connectDevice, disconnectDevice, inspectDeviceBinding } from './device-binding.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { formatRoute, routeIntent } from './lib/intent-router.mjs';
@@ -25,6 +27,8 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     ...inspection,
     evidencePackage: inspectEvidencePackage(root),
     resumeMaterials: inspectResumeMaterials(root),
+    resumeFinal: inspectResumeFinal(root),
+    interviewPrep: inspectInterviewPrep(root),
     deviceBinding: inspectDeviceBinding(root),
     suggestions: [
       '整理经历 / 更新简历',
@@ -73,6 +77,28 @@ function printStatus({ json = false, root } = {}) {
     console.log(`简历素材包：本地文件无效（${materials.error}）`);
   } else {
     console.log('简历素材包：未导入');
+  }
+  const resumeFinal = payload.resumeFinal;
+  if (resumeFinal.state === 'ready') {
+    const cvState = resumeFinal.cvState === 'current' ? '一致' : '待处理';
+    console.log(`简历定稿：${resumeFinal.planId}（${resumeFinal.sectionCount} 个章节 / ${resumeFinal.selectedEntryCount} 条素材，cv.md ${cvState}）`);
+  } else if (resumeFinal.state === 'invalid') {
+    console.log(`简历定稿：本地计划无效（${resumeFinal.error}）`);
+  } else if (resumeFinal.state === 'blocked') {
+    console.log('简历定稿：等待素材包导入');
+  } else {
+    console.log('简历定稿：未生成');
+  }
+  const interviewPrep = payload.interviewPrep;
+  if (interviewPrep.state === 'ready') {
+    const currentCount = interviewPrep.preparations.filter(item => item.markdownState === 'current').length;
+    console.log(`面试准备：${interviewPrep.preparationCount} 份（${currentCount} 份清单一致）`);
+  } else if (interviewPrep.state === 'invalid') {
+    console.log(`面试准备：本地文件无效（${interviewPrep.error}）`);
+  } else if (interviewPrep.state === 'blocked') {
+    console.log('面试准备：等待素材包导入');
+  } else {
+    console.log('面试准备：未生成');
   }
   const binding = payload.deviceBinding;
   if (binding.state === 'ready') {

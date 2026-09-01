@@ -1,0 +1,20 @@
+{
+  "schema": "get-yourself.resume-final-plan",
+  "schemaVersion": 1,
+  "planId": "resume-final-demo-2026-09-01",
+  "generatedAt": "2026-09-01T12:00:00.000Z",
+  "traceId": "trace.resume-final-demo",
+  "materialsPackageId": "resume-materials-demo-2026-09-01",
+  "materialsContentHash": "sha256:538792dc67572464ae59c52bfc1afe777d1075111cb7096ae062cc8493d3125b",
+  "confirmation": "user_confirmed",
+  "sections": [
+    {
+      "section": "internship",
+      "entryRefs": ["internship-repair-backend"]
+    },
+    {
+      "section": "project",
+      "entryRefs": ["project-frontend-contract"]
+    }
+  ]
+}

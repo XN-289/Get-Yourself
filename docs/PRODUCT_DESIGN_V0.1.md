@@ -32,7 +32,7 @@
 | Stage 1 | 已实现，待用户统一验收 | 前端四模块路由与 `gy` 确定性对话入口已落地 |
 | Stage 2 | 已实现，待用户统一验收 | 网页显式导出与本地显式导入已形成文件闭环 |
 | Stage 3 | 已实现，待用户统一验收 | 10 分钟一次性绑定码、设备管理与解绑已落地 |
-| Stage 4 | 进行中 | Stage 4a 本地简历素材包与派生 STAR 故事库已实现；定稿写入、面试准备与复盘反哺尚未完成 |
+| Stage 4 | 进行中 | Stage 4a 简历素材包、Stage 4b 简历定稿审批与面试准备清单已实现；复盘结构化和能力资产反哺尚未完成 |
 | Stage 5 | 前端交互部分已实现 | 公司机会流程轨已落地；JD 分析、报告、tracker 持久化和 skill 执行未完成 |
 | Stage 6 | 未开始 | 求职摘要同步、网页进度摘要与 Trace 汇总尚未实现 |
 
@@ -1112,7 +1112,7 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 
 - 每条进入简历的内容都有来源，未确认推断不会进入定稿。
 
-当前实现边界：Stage 4a 已落地本地简历素材包契约与导入器。Agent 可以生成结构化候选草稿，用户确认后通过 `resume-materials.mjs` 写入 `data/resume-materials.json`，并派生 `interview-prep/story-bank.md`；导入器不修改 `cv.md`、不上传网页、不执行 LLM 抽取。简历定稿审批、面试准备清单、复盘结构化和能力资产反哺仍未完成。契约细节见 `docs/RESUME_MATERIALS_CONTRACT.md`。
+当前实现边界：Stage 4a 已落地本地简历素材包契约与导入器。Agent 可以生成结构化候选草稿，用户确认后通过 `resume-materials.mjs` 写入 `data/resume-materials.json`，并派生 `interview-prep/story-bank.md`；导入器不修改 `cv.md`、不上传网页、不执行 LLM 抽取。Stage 4b 已落地简历定稿审批与面试准备清单：`resume-final.mjs` 只允许当前素材哈希匹配的 `verified` / `user_confirmed` 条目进入 `cv.md`，并保留用户手工维护的非托管章节；`interview-prep.mjs` 生成绑定当前素材的清单与 STAR 复盘，JD 全程只作为数据。复盘结构化和能力资产反哺仍未完成。契约细节见 `docs/RESUME_MATERIALS_CONTRACT.md`、`docs/RESUME_FINAL_CONTRACT.md` 与 `docs/INTERVIEW_PREP_CONTRACT.md`。
 
 ### Stage 5：岗位评估与 tracker 闭环
 

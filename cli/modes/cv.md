@@ -18,8 +18,9 @@
 4. **标注证据状态**：`已验证` / `待确认` / `缺证据` / `外部信息`。
 5. **生成素材包候选**：按 `docs/RESUME_MATERIALS_CONTRACT.md` 输出结构化 JSON 草稿，`confirmation=user_confirmed` 只能在用户确认后使用。
 6. **等待确认并导入**：用户确认素材包后先执行 `node resume-materials.mjs import <draft.json>` dry-run，再经确认加 `--apply`；覆盖不同内容必须显式确认 `--replace`。
-7. **修改定稿**：需要写入 `cv.md` 时单独展示位置和 diff，用户再次确认后才修改；素材导入不等于简历定稿。
-8. **导出**：生成或修改 HTML 后调用 `node generate-pdf.mjs <input.html> <output.pdf>`；覆盖已有 PDF 前必须确认。
+7. **生成定稿计划**：需要写入 `cv.md` 时，按 `docs/RESUME_FINAL_CONTRACT.md` 输出章节、条目引用和当前素材哈希，先执行 `node resume-final.mjs check <plan.json>`。
+8. **修改定稿**：用户确认计划后先执行 `node resume-final.mjs apply <plan.json>` dry-run，再经确认加 `--apply`；覆盖不同计划或手工修改过的 `cv.md` 必须显式确认 `--replace`。
+9. **导出**：生成或修改 HTML 后调用 `node generate-pdf.mjs <input.html> <output.pdf>`；覆盖已有 PDF 前必须确认。
 
 ## 输出结构
 
@@ -43,5 +44,6 @@
 - 能力证据包摘要只能作为证据引用和追问线索；写入简历前仍需用户确认对应事实。
 - `cv.md` 是简历定稿权威；草稿和候选条目不得绕过确认直接写入。
 - `data/resume-materials.json` 是候选素材权威；`interview-prep/story-bank.md` 是它的派生故事库，不是定稿事实来源。
+- `data/resume-final-plan.json` 只记录一次用户确认的章节选择；`cv.md` 仍是最终事实权威。
 - JD 分析结果不能写成学生经历；外部要求只能转化为差距提示或待确认问题。
 - 输出全中文，写入前必须获得用户确认。

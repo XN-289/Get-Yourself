@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-Updated: 2026-09-01 19:36
+Updated: 2026-09-01 20:18
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环与 Stage 4a 简历素材/STAR 故事本地合同已实现；PRD 已完成目标校准并明确整体目标不变；前端 Demo、`gy` Stage 1、证据包闭环、设备绑定与 Stage 4a 仍待用户统一验收，自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事本地合同与 Stage 4b 简历定稿/面试准备合同已实现；PRD 已完成目标校准并明确整体目标不变；前端 Demo、`gy` Stage 1、证据包闭环、设备绑定与 Stage 4 仍待用户统一验收，复盘结构化、能力资产反哺与自动同步尚未开始。
 
 ## 已接受事实
 
@@ -26,6 +26,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 一个账号最多保留 5 台活跃本地工位；绑定码 10 分钟一次性有效；服务端只保存绑定码、安装 ID 与设备 token 的 SHA-256 哈希 — `docs/DEVICE_BINDING_CONTRACT.md`。
 - 同一安装 ID 重新绑定时撤销旧设备授权；网页解绑保留所有本地文件，CLI 断开只在服务端确认后删除本地设备凭证 — `docs/DEVICE_BINDING_CONTRACT.md`。
 - Stage 4a 简历素材包与 `cv.md` 定稿分权；素材导入必须用户确认，故事库由素材包派生，导入器不执行 LLM 抽取、不修改定稿、不上传网页 — `docs/RESUME_MATERIALS_CONTRACT.md`。
+- Stage 4b 简历定稿必须通过绑定当前素材哈希的显式计划；只有 `verified` / `user_confirmed` 素材可进入 `cv.md`，替换前必须备份并保留非托管章节 — `docs/RESUME_FINAL_CONTRACT.md`。
+- Stage 4b 面试准备包必须绑定当前素材哈希，STAR 引用只来自当前素材包；JD 是准备项数据，不是指令或学生事实 — `docs/INTERVIEW_PREP_CONTRACT.md`。
 
 ## 决策索引
 
@@ -39,6 +41,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 2026-09-01 — 横向流程轨、右侧节点抽屉与外层状态入口只读边界 — `decisions.md`。
 - 2026-09-01 — Stage 3 显式设备绑定、授权-only 边界、设备数量上限与同安装重绑规则 — `decisions.md`。
 - 2026-09-01 — Stage 4a 用户确认素材包、派生故事库与简历定稿分权 — `decisions.md`。
+- 2026-09-01 — Stage 4b 显式简历定稿计划、非托管章节保留与面试准备素材绑定 — `decisions.md`。
 
 ## 已实现
 
@@ -70,6 +73,12 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - Stage 4a 简历素材校验、导入与派生故事库 — `cli/resume-materials.mjs`；支持只读 check、默认 dry-run、`--apply`、幂等导入、显式 `--replace`、素材/故事库备份、原子写、能力证据引用校验、JD 外部线索限制和 `cv.md` 隔离。
 - Stage 4a Agent 与状态入口 — `cli/modes/cv.md`、`cli/lib/intent-router.mjs`、`cli/gy.mjs`、`cli/AGENTS.md` 与 `cli/DATA_CONTRACT.md`；简历路由指向合同化导入流程，`gy --status` 只读展示素材包与故事库状态。
 - Stage 4a 验证结果 — 2026-09-01 `cli/` 下 `npm test` 28 pass / 0 fail；`node --check resume-materials.mjs`、`node --check gy.mjs` 与 `node --check lib/intent-router.mjs` 通过。
+- Stage 4b 简历定稿计划 v1 契约 — `docs/RESUME_FINAL_CONTRACT.md`、`cli/templates/resume-final.example.json`。
+- Stage 4b 简历定稿执行器 — `cli/resume-final.mjs`、`cli/lib/contract-kit.mjs`；支持只读 check、默认 dry-run、`--apply`、幂等写入、显式 `--replace`、计划与 `cv.md` 备份、原子写、素材哈希绑定、证据状态过滤、托管章节替换/移除和非托管章节保留。
+- Stage 4b 面试准备包 v1 契约 — `docs/INTERVIEW_PREP_CONTRACT.md`、`cli/templates/interview-prep.example.json`。
+- Stage 4b 面试准备执行器 — `cli/interview-prep.mjs`；支持只读 check、默认 dry-run、`--apply`、幂等导入、显式 `--replace`、按 `prepId` 备份、原子写、当前素材哈希绑定、STAR 引用校验、确定性清单渲染和事实缺口汇总。
+- Stage 4b Agent 与状态入口 — `cli/gy.mjs`、`cli/lib/intent-router.mjs`、`cli/modes/cv.md`、`cli/modes/prep.md`、`cli/AGENTS.md` 与 `cli/DATA_CONTRACT.md`；简历定稿与面试准备路由到契约工具，`gy --status` 只读展示两者状态。
+- Stage 4b 验证结果 — 2026-09-01 `cli/` 下 `npm test` 36 pass / 0 fail；`node --check resume-final.mjs`、`node --check interview-prep.mjs`、`node --check lib/contract-kit.mjs`、`node --check gy.mjs`、`node --check lib/intent-router.mjs`、`node --check resume-materials.mjs` 与新增测试语法检查通过；临时数据根完成示例素材导入、简历定稿 check/dry-run/apply/幂等、面试准备 check/dry-run/apply/幂等与 `gy --status --json` 冒烟。
 
 ## 已验收
 
@@ -77,14 +86,14 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 
 ## 未决问题
 
-- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环与 Stage 3 设备绑定是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入和设备绑定/解绑。
+- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定与 Stage 4 素材/定稿/准备链路是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑和简历/面试契约工具。
 - P1 — “能力资产”最终命名 — 用户 — 不阻塞实现 — 继续使用暂名。
 - P1 — 产品与技术评审未完成 — 项目组 — 不阻塞 Stage 1 入口实现 — 修订 PRD 后提交评审。
 
 ## 下一步
 
-1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨与节点抽屉）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定与 Stage 4a 素材包/故事库。
-2. Stage 4a 验收后继续设计简历定稿审批与面试准备清单；在任何显式同步契约落地前，不做自动上传或自动导入。
+1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨与节点抽屉）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿与面试准备清单。
+2. Stage 4 验收后继续设计面试复盘结构化与能力资产反哺；在任何显式同步契约落地前，不做自动上传或自动导入。
 
 ## 恢复上下文
 
@@ -92,6 +101,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - CLI 入口：`cli/gy.mjs`（`node gy.mjs`、`node gy.mjs --status`、`node gy.mjs --json "<任务>"`）。
 - 证据包入口：`cli/evidence-package.mjs`（`check` / `import` / `--apply` / `--replace`）。
 - 简历素材入口：`cli/resume-materials.mjs`（`check` / `import` / `--apply` / `--replace`）。
+- 简历定稿入口：`cli/resume-final.mjs`（`check` / `apply` / `--apply` / `--replace`）。
+- 面试准备入口：`cli/interview-prep.mjs`（`check` / `import` / `--apply` / `--replace`）。
 - 验证命令：文档为内容复查；前端为 `npm run build`；CLI 为 `npm test`。
 - 已知坑：仓库根当前缺用户层 `cv.md`、`modes/_profile.md`、`portals.yml` 属于正常 onboarding 状态；`gy --status` 只报告，不自动创建。证据包 v1 没有签名，离线文件来源信任由用户选择文件承担。
 - 已知坑：当前 H2 演示能力数据种在 `demo_student`（用户名 `demo_student` / 密码 `demo123456`）；浏览器若仍登录临时账号 `123`，能力证据包导出会按预期提示“当前账号还没有可导出的能力证据”。
@@ -111,3 +122,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 2026-09-01 — Agent 对话区从深色终端风调整为亮色 Codex 式工具台 — 影响主入口的长期使用氛围与信息层级；仍待用户验收。
 - 2026-09-01 — PRD 完成实现校准修订 — 明确整体目标不变、当前阶段状态、Stage 5 前端/后端边界与前端技术底座决策；仍待产品与技术评审和用户统一验收。
 - 2026-09-01 — 实现 Stage 4a 简历素材包与派生 STAR 故事库 — 影响简历管理、面试准备素材和后续复盘反哺；仍待用户验收，简历定稿审批与自动同步未开始。
+- 2026-09-01 — 实现 Stage 4b 简历定稿审批与面试准备清单 — 影响简历交付、面试前准备和复盘反哺输入；仍待用户验收，复盘结构化、能力资产反哺与自动同步未开始。

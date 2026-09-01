@@ -1,0 +1,37 @@
+{
+  "schema": "get-yourself.interview-prep",
+  "schemaVersion": 1,
+  "prepId": "interview-prep-demo-2026-09-01",
+  "generatedAt": "2026-09-01T12:00:00.000Z",
+  "traceId": "trace.interview-prep-demo",
+  "materialsPackageId": "resume-materials-demo-2026-09-01",
+  "materialsContentHash": "sha256:538792dc67572464ae59c52bfc1afe777d1075111cb7096ae062cc8493d3125b",
+  "company": "示例科技",
+  "role": "Java 后端开发实习生",
+  "occasion": "technical_interview",
+  "confirmation": "user_confirmed",
+  "checklist": [
+    {
+      "id": "check-story-repair-api",
+      "category": "story_review",
+      "title": "复盘报修接口故事",
+      "detail": "把接口设计、跨端契约和线上试用结果串成一个回答",
+      "sourceType": "materials"
+    },
+    {
+      "id": "check-jd-backend-basics",
+      "category": "jd_requirement",
+      "title": "核对后端基础要求",
+      "detail": "JD 提到 Java 基础、接口设计和数据库，需要对照课程与项目证据",
+      "sourceType": "jd"
+    },
+    {
+      "id": "check-self-introduction",
+      "category": "self_introduction",
+      "title": "准备三分钟自我介绍",
+      "detail": "突出后端实习、接口协作和可运行的宿舍报修项目",
+      "sourceType": "user_statement"
+    }
+  ],
+  "storyRefs": ["story-repair-api"]
+}
