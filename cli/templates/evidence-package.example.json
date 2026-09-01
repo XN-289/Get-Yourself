@@ -1,0 +1,73 @@
+{
+  "schema": "get-yourself.evidence-package",
+  "schemaVersion": 1,
+  "packageId": "demo-evidence-2026-09-01",
+  "generatedAt": "2026-09-01T00:00:00.000Z",
+  "student": {
+    "graduationYear": 2027,
+    "targetRoles": ["Java 后端开发"]
+  },
+  "abilities": [
+    {
+      "id": "backend",
+      "name": "后端开发",
+      "score": 78,
+      "summary": "有课程设计、挑战交付和早期用户试用证据",
+      "evidenceRefs": ["evidence-backend-1"]
+    },
+    {
+      "id": "collaboration",
+      "name": "工程协作",
+      "score": 71,
+      "summary": "能跨角色沟通需求并推进联调",
+      "evidenceRefs": ["evidence-collaboration-1"]
+    },
+    {
+      "id": "debugging",
+      "name": "问题定位",
+      "score": 66,
+      "summary": "有从用户反馈定位接口问题的经历",
+      "evidenceRefs": ["evidence-debugging-1"]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence-backend-1",
+      "title": "宿舍报修小程序",
+      "summary": "负责后端接口设计与实现，支撑报修流程进入宿舍试用",
+      "occurredAt": "2026-05-01T00:00:00.000Z",
+      "sourceType": "growth_record",
+      "sourceId": "record-repair-miniapp",
+      "verification": "verified",
+      "abilityIds": ["backend"],
+      "traceId": "trace-repair-miniapp"
+    },
+    {
+      "id": "evidence-collaboration-1",
+      "title": "跨端联调协作",
+      "summary": "与前端同学约定接口契约并完成联调修正",
+      "occurredAt": "2026-05-10T00:00:00.000Z",
+      "sourceType": "reflection",
+      "sourceId": "record-frontend-contract",
+      "verification": "user_confirmed",
+      "abilityIds": ["collaboration", "backend"],
+      "traceId": "trace-frontend-contract"
+    },
+    {
+      "id": "evidence-debugging-1",
+      "title": "报修状态不同步问题",
+      "summary": "根据试用反馈定位异步消息失败原因并补充重试处理",
+      "occurredAt": "2026-05-20T00:00:00.000Z",
+      "sourceType": "growth_record",
+      "sourceId": "record-status-debugging",
+      "verification": "platform_reviewed",
+      "abilityIds": ["debugging"],
+      "traceId": "trace-status-debugging"
+    }
+  ],
+  "memorySummary": {
+    "summary": "适合优先补齐量化结果和生产级系统设计证据",
+    "strengths": ["跨端协作", "从反馈推进迭代"],
+    "gapFocus": ["性能数据", "线上问题复盘"]
+  }
+}

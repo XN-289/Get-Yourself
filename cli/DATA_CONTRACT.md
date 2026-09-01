@@ -19,6 +19,8 @@
 | `data/scan-history.tsv` | 扫描去重历史 |
 | `data/scan-runs.tsv` | 每次扫描计数 |
 | `data/blacklist.md` | 不投名单（opt-in，绝不自动填充） |
+| `data/evidence-package.json` | 已导入的规范化能力证据包（唯一当前包） |
+| `data/evidence-package-backups/*` | 显式替换能力证据包前的规范化备份 |
 | `data/status-log.tsv` | 状态流转日志（追加式） |
 | `reports/*` | 评估报告 |
 | `output/*` | 生成的 PDF |
@@ -54,7 +56,7 @@
 **如果文件在用户层，任何更新流程不得读取、修改或删除它。**
 **如果文件在系统层，它可以用上游最新版本安全替换。**
 
-`gy.mjs --status` 只读取用户层做就绪检查，不创建、不复制、不修改任何文件。意图路由不持久化用户原句；后续写入必须由宿主 AI 在用户确认后按对应模式的规范执行。
+`gy.mjs --status` 只读取用户层做就绪检查，不创建、不复制、不修改任何文件。能力证据包导入由 `evidence-package.mjs` 独立执行：`check` 只读，`import` 默认 dry-run，写入和替换分别需要 `--apply` 与 `--replace`。意图路由不持久化用户原句；后续写入必须由宿主 AI 在用户确认后按对应模式的规范执行。
 
 ## 自定义数据目录
 

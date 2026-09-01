@@ -23,6 +23,7 @@ test('status inspection is read-only', () => {
   try {
     const payload = buildStatusPayload(root);
     assert.equal(payload.status, 'onboarding-needed');
+    assert.equal(payload.evidencePackage.state, 'missing');
     assert.ok(payload.missing.includes('cv.md'));
     assert.deepEqual(readdirSync(root), []);
   } finally {

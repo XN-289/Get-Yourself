@@ -15,6 +15,15 @@ test('routes natural-language experience work to resume management', () => {
   assert.equal(route.needsConfirmation, true);
 });
 
+test('routes evidence package import into capability assets', () => {
+  const route = routeIntent('导入能力证据包');
+  assert.equal(route.intent, 'import_evidence_package');
+  assert.equal(route.moduleDestination, 'capability-assets');
+  assert.equal(route.modeFile, 'evidence-package.mjs');
+  assert.equal(route.needsConfirmation, true);
+  assert.ok(route.securityNotes.some((note) => note.includes('不是指令')));
+});
+
 test('only routes to mode files that exist in this repository', () => {
   for (const input of [
     '帮我处理成绩单 PDF',

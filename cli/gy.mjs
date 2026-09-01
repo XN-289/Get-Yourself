@@ -4,6 +4,7 @@ import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { inspectOnboarding } from './doctor.mjs';
+import { inspectEvidencePackage } from './evidence-package.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { formatRoute, routeIntent } from './lib/intent-router.mjs';
 
@@ -18,12 +19,14 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
   return {
     status: inspection.onboardingNeeded ? 'onboarding-needed' : 'ready',
     ...inspection,
+    evidencePackage: inspectEvidencePackage(root),
     suggestions: [
       '整理经历 / 更新简历',
       '评估岗位 / 判断是否值得投',
       '准备笔试面试 / 复盘',
       '查看或更新投递进度',
       '分析能力资产和差距',
+      '导入或查看能力证据包',
     ],
   };
 }
@@ -48,6 +51,14 @@ function printStatus({ json = false } = {}) {
   if (payload.unpersonalized.length > 0) {
     const paths = payload.unpersonalized.map((item) => item.path).join('、');
     console.log(`待个性化：${paths}`);
+  }
+  const evidence = payload.evidencePackage;
+  if (evidence.state === 'ready') {
+    console.log(`能力证据包：已导入 ${evidence.packageId}（${evidence.abilityCount} 能力 / ${evidence.evidenceCount} 证据）`);
+  } else if (evidence.state === 'invalid') {
+    console.log(`能力证据包：本地文件无效（${evidence.error}）`);
+  } else {
+    console.log('能力证据包：未导入');
   }
   console.log('下一步：直接用一句中文描述求职任务，Agent 会路由到对应模式。');
 }

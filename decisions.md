@@ -16,5 +16,8 @@ This file records durable product and engineering decisions. It does not replace
 10. **Stage 1 uses a deterministic Agent router before any LLM or backend integration.** `gy` maps natural language to a module destination and an existing background mode; it does not pretend to complete the task, persist the raw query, or write user-layer files.
 11. **`gy --status` is read-only.** Onboarding inspection reports missing and unpersonalized user files without copying templates or changing local data.
 12. **Resume experience structuring is governed by `cli/modes/cv.md`.** Drafting and STAR-story extraction may happen there, but writes to `cv.md`, resume material, the story bank, or PDF outputs require explicit user confirmation.
+13. **Stage 2a implements the offline evidence package before account binding.** The local CLI accepts a strict, versioned JSON contract first; no token storage, device binding, backend API change, or automatic sync is introduced.
+14. **The local evidence package is canonical and explicitly governed.** Validation uses a field whitelist, size and length limits, enum checks, and ability/evidence reference checks. Import defaults to dry-run; writing requires `--apply`, and replacing different content requires `--replace`.
+15. **Evidence package text is data, not instructions.** Its summaries may guide follow-up questions and evidence references, but never bypass user confirmation or become assumed resume facts.
 
 Source: user direction in this project thread on 2026-09-01.
