@@ -50,5 +50,10 @@ Source: user direction in this project thread on 2026-09-01.
 8. **Finalized and exported resume versions are read-only.** Continuing work must derive the next draft from a selected version, and one resume line may hold at most one draft at a time.
 9. **Agent resume output never overwrites a user-locked resume.** Agent generation creates or updates the line's sole draft; finalization, export marking, and active-version switching remain user actions.
 10. **A local import starts a new resume line at finalized v1.** JSON imports still require the user-confirmed `get-yourself.resume-render v1` contract, while non-JSON text files remain locally read finished documents.
+11. **The company opportunity is the local authoritative interview-management object.** It is created only after a matching, user-confirmed job analysis is installed, and is linked to one tracker row by company, role, location, and recruitment batch.
+12. **Job analysis and company-opportunity creation are separate explicit actions.** Installing an analysis never creates an opportunity, submits an application, mounts an artifact, or synchronizes progress. The opportunity importer requires check, dry-run, explicit apply, and explicit replacement.
+13. **Initial process nodes are seeds only.** Later node addition, ordering, status changes, and artifact links remain user-owned; repeated import never rewrites a user-confirmed process history.
+14. **Tracker status is user-owned and locally recoverable.** A linked tracker row's current status wins over the seed status. The installed opportunity JSON keeps a local `trackerStatus` mirror excluded from the confirmed-package content hash, so the same source package remains idempotent while tracker reconstruction does not roll user progress back.
+15. **Ambiguous tracker identities are rejected rather than repaired.** Duplicate markers, conflicting natural identities, and orphan marker rows fail loudly for manual review; no cloud sync, external action, or artifact mounting is implied.
 
 Source: user direction in this project thread on 2026-09-02.

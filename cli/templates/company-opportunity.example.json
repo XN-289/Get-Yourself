@@ -1,0 +1,53 @@
+{
+  "schema": "get-yourself.company-opportunity",
+  "schemaVersion": 1,
+  "opportunityId": "company-opportunity-demo-2026-09-02",
+  "generatedAt": "2026-09-02T12:00:00.000Z",
+  "traceId": "trace.company-opportunity-demo",
+  "confirmation": "user_confirmed",
+  "analysisId": "job-analysis-demo-2026-09-02",
+  "analysisContentHash": "sha256:d67a284171e4132bb8cac843280011bda1c81a57710703c497fdf4a30ac1eb5e",
+  "company": "示例科技",
+  "role": "Java 后端开发实习生",
+  "recruitmentBatch": "2026 秋招",
+  "location": "上海",
+  "initialTrackerStatus": "Evaluated",
+  "processNodes": [
+    {
+      "id": "jd-analysis",
+      "type": "jd_analysis",
+      "title": "JD 分析",
+      "status": "passed"
+    },
+    {
+      "id": "resume-adaptation",
+      "type": "resume_adaptation",
+      "title": "简历适配",
+      "status": "todo"
+    },
+    {
+      "id": "submission",
+      "type": "submission",
+      "title": "投递网申",
+      "status": "todo"
+    },
+    {
+      "id": "first-interview",
+      "type": "interview",
+      "title": "一面",
+      "status": "todo"
+    },
+    {
+      "id": "offer-decision",
+      "type": "offer",
+      "title": "Offer 确认",
+      "status": "todo"
+    },
+    {
+      "id": "review-sedimentation",
+      "type": "review_sedimentation",
+      "title": "复盘沉淀",
+      "status": "todo"
+    }
+  ]
+}

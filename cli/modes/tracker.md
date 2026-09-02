@@ -27,6 +27,9 @@ node set-status.mjs <报告#|公司> <状态> [--note "备注"] [--force]
 
 1. 评估完写报告 → 写 TSV 到 `batch/tracker-additions/` → `node merge-tracker.mjs`
 2. 或直接 `node add-entry.mjs`（手动加一个未评估的投递，如内推/线下投递）
+3. 已安装岗位分析确认后 → 生成公司机会 JSON → `node company-opportunity.mjs import <opportunity.json> --apply`
+
+公司机会行的自然身份是公司 + 岗位 + 地点 + 招聘批次，Notes 中必须保留 `opportunityId` / `batch` / `analysisId` / `analysisContentHash` 元数据。重复导入同一机会不会新增行；用户手工更新的状态优先于 `initialTrackerStatus`，不会被重复导入重置。若同身份或 marker 出现歧义，先人工处理冲突，不做静默合并。
 
 ## 状态语义（校招版）
 

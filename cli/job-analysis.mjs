@@ -604,6 +604,16 @@ function readInstalledAnalysis(root, materials, analysisId) {
   return installed;
 }
 
+export function loadInstalledJobAnalysis(
+  root = getCareerOpsRoot(),
+  analysisId,
+  materials = null,
+) {
+  const installedMaterials = materials ?? loadInstalledResumeMaterials(root);
+  if (!installedMaterials) return null;
+  return readInstalledAnalysis(root, installedMaterials, analysisId);
+}
+
 function readOptionalMarkdown(target) {
   let info;
   try {

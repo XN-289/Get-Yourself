@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-Updated: 2026-09-02 14:14
+Updated: 2026-09-02 15:06
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析与本地能力反哺台账已实现；简历版本库仍是前端会话内 Demo，尚未桥接本地文件持久化；前端 Demo、`gy`、证据包、设备绑定与 Stage 4 仍待用户统一验收，平台自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、公司机会/投递清单本地桥接与本地能力反哺台账已实现；简历版本库仍是前端会话内 Demo，尚未桥接本地文件持久化；前端 Demo、`gy`、证据包、设备绑定、Stage 4 与 Stage 5 本地桥接仍待用户统一验收，平台自动同步尚未开始。
 
 ## 已接受事实
 
@@ -32,6 +32,9 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 简历管理以“岗位方向 / 简历线 / 版本”为结构；定稿与导出版只读，修改必须派生草稿，当前投递版只能从非草稿版本中选择 — `decisions.md`。
 - 简历导入与编辑均保留本地边界，不上传、不自动同步，JSON 导入仅接受用户确认过的简历渲染包；Agent 只能写草稿，不能覆盖定稿或导出版 — `decisions.md`。
 - 外部模板项目仅作设计研究；不复制非宽松许可项目的代码或视觉资产 — `decisions.md`。
+- 公司机会自然身份是公司 + 岗位 + 地点 + 招聘批次；岗位分析与公司机会写入是两个显式动作 — `decisions.md` 与 `docs/COMPANY_OPPORTUNITY_CONTRACT.md`。
+- 公司机会初始流程节点只是种子；后续节点顺序、状态和产物链接由用户管理，重复导入不得重置用户确认历史 — `decisions.md`。
+- tracker 当前行状态由用户拥有；本地机会 JSON 保存不计入确认包哈希的 `trackerStatus` 镜像，tracker 关联行缺失重建时不得回滚到种子状态 — `decisions.md`。
 
 ## 决策索引
 
@@ -49,6 +52,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-02 — 中文简历模板目录、只读模板列表与模板不作为事实源的边界 — `decisions.md`。
 - 2026-09-02 — 简历管理成品对象化与导入/编辑本地边界 — `decisions.md`。
 - 2026-09-02 — 简历线、版本树、唯一当前投递版与 Agent 不覆盖定稿边界 — `decisions.md`。
+- 2026-09-02 — 公司机会本地对象、显式分析桥接、自然身份、流程种子与用户-owned tracker 状态恢复边界 — `decisions.md`。
 
 ## 已实现
 
@@ -90,6 +94,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 中文简历模板目录验证 — 2026-09-02 `cli/` 下 `npm test` 56 pass / 0 fail；`frontend/` 下 `npm run build` 通过；`node resume-render.mjs list` 只读输出 11 套模板；`git diff --check` 通过。
 - 简历版本管理 — `frontend/src/stores/studentWorkbench.ts` 与 `frontend/src/views/StudentResumeView.vue`；简历线包含标题、目标岗位、唯一当前投递版和版本树，版本记录状态、模板、来源、文件名、版本说明和全文；页面支持岗位方向分组、版本选择、当前投递版标记、本机导入、草稿派生、草稿编辑、定稿、标记导出和历史版本切换。
 - 简历版本管理验证 — 2026-09-02 浏览器实测从 Java 主简历 v2 派生 v4 草稿、保存“联调结果补强”、确认 v3 未被覆盖、v4 定稿并设为当前投递版、切回 v2 历史投递版均通过；已有 v4 草稿时从 v2 继续会显示“打开现有草稿”并复用该草稿；Agent 生成后进入简历管理会直接选中 v4 草稿，同时当前投递版仍显示 v3；390px 页面无横向溢出，编辑抽屉占满视口且内部无横向滚动；`frontend/` 下 `npm run build` 通过。
+- Stage 5 公司机会与 tracker 本地桥接 — `cli/company-opportunity.mjs`、`cli/templates/company-opportunity.example.json`、`cli/job-analysis.mjs`、`cli/gy.mjs`、`cli/lib/intent-router.mjs` 与 `cli/tracker-aliases.json`；支持只读 check、默认 dry-run、显式 `--apply` / `--replace`、绑定已安装岗位分析、公司/岗位/地点/批次自然身份、流程节点种子、中文/自定义 tracker 表头、幂等关联行、共享 tracker 锁、冲突/孤儿行拒绝、用户 tracker 状态同步与缺失重建恢复。
+- Stage 5 公司机会验证 — 2026-09-02 `cli/` 下 `npm test` 62 pass / 0 fail；`node --test tests/company-opportunity.test.mjs` 6 pass / 0 fail；`node --check company-opportunity.mjs`、`node --check job-analysis.mjs`、`node --check gy.mjs`、`node --check lib/intent-router.mjs`、`node --check tests/company-opportunity.test.mjs` 与 `git diff --check` 通过；`node gy.mjs --status --json` 在素材包缺失时只读返回 `companyOpportunities.state=blocked`。
 
 ## 已验收
 
@@ -97,14 +103,14 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 
 ## 未决问题
 
-- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定与 Stage 4 素材/定稿/准备链路是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑和简历/面试契约工具。
+- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定、Stage 4 素材/定稿/准备链路与 Stage 5 公司机会/tracker 本地桥接是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑、简历/面试契约工具和公司机会导入。
 - P1 — “能力资产”最终命名 — 用户 — 不阻塞实现 — 继续使用暂名。
 - P1 — 产品与技术评审未完成 — 项目组 — 不阻塞 Stage 1 入口实现 — 修订 PRD 后提交评审。
 
 ## 下一步
 
-1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨、节点抽屉与简历版本管理）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿/面试准备、Stage 4c 复盘、结构化渲染、岗位分析与能力反哺台账。
-2. 验收后继续补齐面试节点 skill 的真实执行入口与保存契约；在任何显式同步契约落地前，不做自动上传或自动导入。
+1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨、节点抽屉与简历版本管理）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿/面试准备、Stage 4c 复盘、结构化渲染、岗位分析、公司机会/tracker 桥接与能力反哺台账。
+2. 继续补齐公司机会后续节点 mutation、前端持久化桥接、防骗核查、真实产物挂载和页面内 skill 执行；在任何显式同步契约落地前，不做自动上传或自动导入。
 
 ## 恢复上下文
 
@@ -114,6 +120,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 简历素材入口：`cli/resume-materials.mjs`（`check` / `import` / `--apply` / `--replace`）。
 - 简历定稿入口：`cli/resume-final.mjs`（`check` / `apply` / `--apply` / `--replace`）。
 - 面试准备入口：`cli/interview-prep.mjs`（`check` / `import` / `--apply` / `--replace`）。
+- 公司机会入口：`cli/company-opportunity.mjs`（`check` / `import` / `--apply` / `--replace`）。
 - 验证命令：文档为内容复查；前端为 `npm run build`；CLI 为 `npm test`。
 - 已知坑：仓库根当前缺用户层 `cv.md`、`modes/_profile.md`、`portals.yml` 属于正常 onboarding 状态；`gy --status` 只报告，不自动创建。证据包 v1 没有签名，离线文件来源信任由用户选择文件承担。
 - 已知坑：当前 H2 演示能力数据种在 `demo_student`（用户名 `demo_student` / 密码 `demo123456`）；浏览器若仍登录临时账号 `123`，能力证据包导出会按预期提示“当前账号还没有可导出的能力证据”。
@@ -137,3 +144,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-02 — 补充中文简历模板目录、只读 `list` 命令和简历管理页模板选择区 — 影响中国校招简历交付体验与后续渲染/PDF 验收。
 - 2026-09-02 — 简历管理改为简历线 + 版本树 + 唯一当前投递版，并明确 Agent 只写草稿、定稿/导出版只读 — 影响简历交付体验和后续本地文件库/渲染包桥接；仍待用户验收。
 - 2026-09-02 — PRD 补充当前实现快照与验收边界 — 明确 Stage 1-4 已实现但待统一验收、Stage 5 部分实现、Stage 6 未开始，以及简历版本库仍是前端会话内状态。
+- 2026-09-02 — 实现公司机会 v1 契约与投递清单幂等持久化 — 影响 JD 分析后的面试管理主对象、用户 tracker 状态恢复和后续节点 / 产物 / skill 挂载；仍待用户统一验收。

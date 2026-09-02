@@ -9,6 +9,7 @@ import { inspectResumeMaterials } from './resume-materials.mjs';
 import { inspectResumeFinal } from './resume-final.mjs';
 import { inspectResumeRender } from './resume-render.mjs';
 import { inspectJobAnalysis } from './job-analysis.mjs';
+import { inspectCompanyOpportunities } from './company-opportunity.mjs';
 import { inspectInterviewPrep } from './interview-prep.mjs';
 import { inspectInterviewReview } from './interview-review.mjs';
 import { inspectCapabilityFeedback } from './capability-feedback.mjs';
@@ -34,6 +35,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     resumeFinal: inspectResumeFinal(root),
     resumeRender: inspectResumeRender(root),
     jobAnalysis: inspectJobAnalysis(root),
+    companyOpportunities: inspectCompanyOpportunities(root),
     interviewPrep: inspectInterviewPrep(root),
     interviewReview: inspectInterviewReview(root),
     capabilityFeedback: inspectCapabilityFeedback(root),
@@ -41,6 +43,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     suggestions: [
       '整理经历 / 更新简历',
       '评估岗位 / 判断是否值得投',
+      '确认后把岗位写入公司机会',
       '准备笔试面试 / 复盘',
       '把复盘反哺到能力资产',
       '查看或更新投递进度',
@@ -128,6 +131,17 @@ function printStatus({ json = false, root } = {}) {
     console.log('面试准备：等待素材包导入');
   } else {
     console.log('面试准备：未生成');
+  }
+  const companyOpportunities = payload.companyOpportunities;
+  if (companyOpportunities.state === 'ready') {
+    const linkedCount = companyOpportunities.opportunities.filter(item => item.trackerState === 'linked').length;
+    console.log(`公司机会：${companyOpportunities.opportunityCount} 个（${linkedCount} 条投递清单关联）`);
+  } else if (companyOpportunities.state === 'invalid') {
+    console.log(`公司机会：本地文件无效（${companyOpportunities.error}）`);
+  } else if (companyOpportunities.state === 'blocked') {
+    console.log('公司机会：等待素材包导入');
+  } else {
+    console.log('公司机会：未创建');
   }
   const interviewReview = payload.interviewReview;
   if (interviewReview.state === 'ready') {
