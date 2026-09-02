@@ -35,6 +35,7 @@ const VERSION_STATUSES = new Set(['draft', 'final', 'exported']);
 const VERSION_SOURCES = new Set(['agent', 'import', 'manual']);
 const UNSAFE_CONTENT_CONTROL_PATTERN = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const FILE_NAME_PATTERN = /^[^\\/:*?"<>|\r\n]{1,110}\.[A-Za-z0-9]{1,12}$/;
+const WINDOWS_RESERVED_FILE_NAME_PATTERN = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i;
 
 const USAGE = `Usage:
   node resume-library.mjs check <library.json> [--json]
@@ -57,10 +58,18 @@ function requireVersionContent(value, path) {
   return value;
 }
 
+function requireCanonicalTimestamp(value, path) {
+  const timestamp = requireTimestamp(value, path, ContractToolError, 'invalid-library');
+  return new Date(timestamp).toISOString();
+}
+
 function requireFileName(value, path) {
   const text = requireString(value, path, { min: 5, max: 120 });
   if (!FILE_NAME_PATTERN.test(text)) {
     throw libraryError(`${path} must be a file name without path separators`);
+  }
+  if (WINDOWS_RESERVED_FILE_NAME_PATTERN.test(text)) {
+    throw libraryError(`${path} cannot use a reserved Windows device name`);
   }
   return text;
 }
@@ -95,7 +104,7 @@ export function canonicalizeResumeLibrary(input) {
     schema: RESUME_LIBRARY_SCHEMA,
     schemaVersion: RESUME_LIBRARY_SCHEMA_VERSION,
     libraryId: requireSafeId(input.libraryId, '$.libraryId', ContractToolError, 'invalid-library'),
-    generatedAt: requireTimestamp(input.generatedAt, '$.generatedAt', ContractToolError, 'invalid-library'),
+    generatedAt: requireCanonicalTimestamp(input.generatedAt, '$.generatedAt'),
     traceId: requireSafeId(input.traceId, '$.traceId', ContractToolError, 'invalid-library'),
     confirmation: input.confirmation,
     documents: [],
@@ -178,7 +187,7 @@ export function canonicalizeResumeLibrary(input) {
         version: requireVersionNumber(rawVersion.version, `${versionPath}.version`),
         status: requireEnum(rawVersion.status, `${versionPath}.status`, VERSION_STATUSES, ContractToolError, 'invalid-library'),
         templateId,
-        updatedAt: requireTimestamp(rawVersion.updatedAt, `${versionPath}.updatedAt`, ContractToolError, 'invalid-library'),
+        updatedAt: requireCanonicalTimestamp(rawVersion.updatedAt, `${versionPath}.updatedAt`),
         source: requireEnum(rawVersion.source, `${versionPath}.source`, VERSION_SOURCES, ContractToolError, 'invalid-library'),
         changeNote: requireString(
           rawVersion.changeNote,
@@ -226,7 +235,7 @@ export function canonicalizeResumeLibrary(input) {
     };
   });
 
-  const contentHash = semanticHash({ ...library, generatedAt: undefined });
+  const contentHash = semanticHash({ ...library, generatedAt: undefined, traceId: undefined });
   return {
     library,
     canonicalJson: `${JSON.stringify(library, null, 2)}\n`,

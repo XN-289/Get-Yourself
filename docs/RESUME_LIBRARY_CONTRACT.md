@@ -33,10 +33,10 @@
 - 顶层与嵌套对象使用字段白名单，未知字段拒绝。
 - `confirmation` 只允许 `user_confirmed`。
 - `libraryId`、`traceId`、`documentId`、`versionId` 使用安全 ID：`A-Z`、`a-z`、`0-9`、`_`、`.`、`-`，长度 1 到 64。
-- `generatedAt` 与 `updatedAt` 使用 ISO-8601 UTC 时间。
+- `generatedAt` 与 `updatedAt` 使用 ISO-8601 UTC 时间；导入时统一规范化为毫秒精度的 UTC ISO 字符串，保证浏览器与 CLI 对同一语义时间得到同一哈希。
 - `documents` 最多 100 条；每条简历线最多 100 个版本。
 - 版本全文为 1 到 131072 个字符，不允许无法安全进入 JSON / HTML 工作流的基础控制字符。
-- `fileName` 是可选文件名，不能包含路径分隔符或 Windows 保留分隔字符。
+- `fileName` 是可选文件名，不能包含路径分隔符，也不能使用 Windows 保留设备名。
 
 ```json
 {
@@ -77,7 +77,7 @@
 | `schemaVersion` | 是 | 当前固定为 `1` |
 | `libraryId` | 是 | 版本库 ID，语义内容相同时可保持稳定 |
 | `generatedAt` | 是 | ISO-8601 UTC；不参与语义哈希 |
-| `traceId` | 是 | 本地 Trace 指针 |
+| `traceId` | 是 | 本地 Trace 指针；每次导出可变化，不参与语义哈希 |
 | `confirmation` | 是 | 固定 `user_confirmed` |
 | `documents` | 是 | 0 到 100 条简历线 |
 | `documents[].documentId` | 是 | 全库唯一 |
@@ -97,7 +97,7 @@
 
 一条简历线最多一个 `draft`。当前投递版只能是 `final` 或 `exported`。
 
-语义哈希计算整个规范化版本库，但排除顶层 `generatedAt`。因此只重新导出时间不同、内容相同的版本库是幂等导入。
+语义哈希计算整个规范化版本库，但排除顶层 `generatedAt` 与 `traceId`。因此只重新导出时间或 Trace 指针不同、内容相同的版本库是幂等导入。
 
 ## 本地命令
 

@@ -53,9 +53,10 @@ type UnknownRecord = Record<string, unknown>;
 
 const SAFE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
-const DISPLAY_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+const DISPLAY_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/;
 const UNSAFE_CONTENT_CONTROL_PATTERN = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const FILE_NAME_PATTERN = /^[^\\/:*?"<>|\r\n]{1,110}\.[A-Za-z0-9]{1,12}$/;
+const WINDOWS_RESERVED_FILE_NAME_PATTERN = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i;
 
 const VERSION_STATUSES = new Set<ResumeVersionStatus>(["draft", "final", "exported"]);
 const VERSION_SOURCES = new Set<ResumeDocumentSource>(["agent", "import", "manual"]);
@@ -139,6 +140,7 @@ function requireVersionContent(value: unknown, path: string) {
 function requireFileName(value: unknown, path: string) {
   const text = requireString(value, path, { min: 5, max: 120 });
   if (!FILE_NAME_PATTERN.test(text)) throw new Error(`${path} 不能包含路径分隔符`);
+  if (WINDOWS_RESERVED_FILE_NAME_PATTERN.test(text)) throw new Error(`${path} 不能使用 Windows 保留设备名`);
   return text;
 }
 
@@ -246,7 +248,11 @@ export async function canonicalizeResumeLibrary(
     confirmation: "user_confirmed",
     documents
   };
-  const { generatedAt: _generatedAt, ...hashValue } = library;
+  const {
+    generatedAt: _generatedAt,
+    traceId: _traceId,
+    ...hashValue
+  } = library;
   return {
     library,
     contentHash: await sha256Json(hashValue),
@@ -255,12 +261,34 @@ export async function canonicalizeResumeLibrary(
   };
 }
 
-function documentContractId(document: ResumeDocument) {
-  return document.libraryDocumentId ?? `resume-doc-${document.id}`;
+function defaultDocumentContractId(document: ResumeDocument) {
+  return `resume-doc-${document.id}`;
 }
 
-function versionContractId(version: ResumeVersion) {
-  return version.libraryVersionId ?? `resume-version-${version.id}`;
+function defaultVersionContractId(version: ResumeVersion) {
+  return `resume-version-${version.id}`;
+}
+
+function lockContractId(requested: string, used: Set<string>) {
+  if (used.has(requested)) throw new Error("简历契约 ID 重复");
+  used.add(requested);
+  return requested;
+}
+
+function allocateDefaultContractId(requested: string, used: Set<string>) {
+  if (!used.has(requested)) {
+    used.add(requested);
+    return requested;
+  }
+  for (let suffix = 2; suffix < 1000; suffix += 1) {
+    const ending = `-${suffix}`;
+    const candidate = `${requested.slice(0, 64 - ending.length)}${ending}`;
+    if (!used.has(candidate)) {
+      used.add(candidate);
+      return candidate;
+    }
+  }
+  throw new Error("无法分配唯一的简历契约 ID");
 }
 
 function contractTimestamp(value: string, fallback: string) {
@@ -268,7 +296,8 @@ function contractTimestamp(value: string, fallback: string) {
     return new Date(value).toISOString();
   }
   if (DISPLAY_TIMESTAMP_PATTERN.test(value)) {
-    const time = new Date(`${value.replace(" ", "T")}:00+08:00`);
+    const seconds = value.length === 16 ? ":00" : "";
+    const time = new Date(`${value.replace(" ", "T")}${seconds}+08:00`);
     if (!Number.isNaN(time.getTime())) return time.toISOString();
   }
   return fallback;
@@ -284,10 +313,11 @@ export function formatResumeLibraryTimestamp(value: string) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
     hour12: false
   }).formatToParts(time);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
-  return `${part("year")}-${part("month")}-${part("day")} ${part("hour")}:${part("minute")}`;
+  return `${part("year")}-${part("month")}-${part("day")} ${part("hour")}:${part("minute")}:${part("second")}`;
 }
 
 export async function buildResumeLibrary(input: {
@@ -296,32 +326,55 @@ export async function buildResumeLibrary(input: {
 }): Promise<CanonicalResumeLibrary> {
   const generatedAt = new Date().toISOString();
   const stamp = Date.now().toString(36);
-  const documents = [...input.documents]
-    .sort((a, b) => a.id - b.id)
-    .map(document => {
-      const versions = [...document.versions]
-        .sort((a, b) => a.version - b.version)
-        .map(version => ({
-          versionId: versionContractId(version),
-          version: version.version,
-          status: version.status,
-          templateId: version.templateId,
-          updatedAt: contractTimestamp(version.updatedAt, generatedAt),
-          source: version.source,
-          changeNote: version.changeNote,
-          content: version.content,
-          ...(version.fileName ? { fileName: version.fileName } : {})
-        }));
-      return {
-        documentId: documentContractId(document),
-        title: document.title,
-        targetRole: document.targetRole,
-        activeVersionId: versionContractId(
-          document.versions.find(version => version.id === document.activeVersionId) ?? document.versions[0]
-        ),
-        versions
-      };
-    });
+  const sortedDocuments = [...input.documents].sort((a, b) => a.id - b.id);
+  const usedDocumentIds = new Set<string>();
+  const allVersions = sortedDocuments.flatMap(document => [...document.versions]
+    .sort((a, b) => a.version - b.version));
+  const usedVersionIds = new Set<string>();
+  const versionContractIds = new Map<number, string>();
+  for (const version of allVersions) {
+    if (version.libraryVersionId) {
+      versionContractIds.set(version.id, lockContractId(version.libraryVersionId, usedVersionIds));
+    }
+  }
+  for (const version of allVersions) {
+    if (!versionContractIds.has(version.id)) {
+      versionContractIds.set(
+        version.id,
+        allocateDefaultContractId(defaultVersionContractId(version), usedVersionIds)
+      );
+    }
+  }
+  for (const document of sortedDocuments) {
+    if (document.libraryDocumentId) lockContractId(document.libraryDocumentId, usedDocumentIds);
+  }
+  const documents = sortedDocuments.map(document => {
+    const documentId = document.libraryDocumentId
+      ?? allocateDefaultContractId(defaultDocumentContractId(document), usedDocumentIds);
+    const versions = [...document.versions]
+      .sort((a, b) => a.version - b.version)
+      .map(version => ({
+        versionId: versionContractIds.get(version.id) ?? defaultVersionContractId(version),
+        version: version.version,
+        status: version.status,
+        templateId: version.templateId,
+        updatedAt: contractTimestamp(version.updatedAt, generatedAt),
+        source: version.source,
+        changeNote: version.changeNote,
+        content: version.content,
+        ...(version.fileName ? { fileName: version.fileName } : {})
+      }));
+    const activeVersion = document.versions.find(version => version.id === document.activeVersionId)
+      ?? document.versions[0];
+    const activeVersionId = versionContractIds.get(activeVersion.id);
+    return {
+      documentId,
+      title: document.title,
+      targetRole: document.targetRole,
+      activeVersionId: activeVersionId ?? versions[0].versionId,
+      versions
+    };
+  });
   return canonicalizeResumeLibrary(
     {
       schema: RESUME_LIBRARY_SCHEMA,

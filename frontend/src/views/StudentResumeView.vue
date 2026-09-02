@@ -24,6 +24,7 @@ const { resumeDocuments, resumeStatusCount, resumeTemplates } = storeToRefs(stor
 
 const importInput = ref<HTMLInputElement | null>(null);
 const importError = ref("");
+const MAX_RESUME_IMPORT_BYTES = 2 * 1024 * 1024;
 const editorError = ref("");
 const editorOpen = ref(false);
 const initialDocument = resumeDocuments.value[0] ?? null;
@@ -275,6 +276,11 @@ async function handleImportChange(event: Event) {
   const file = input.files?.[0];
   importError.value = "";
   if (!file) return;
+  if (file.size > MAX_RESUME_IMPORT_BYTES) {
+    importError.value = "简历文件超过 2MB";
+    input.value = "";
+    return;
+  }
 
   try {
     const imported = store.importResumeDocument(documentInputFromText(await file.text(), file.name));

@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-02 19:13
+Updated: 2026-09-02 20:08
 Current phase: implementation
 
 ## 一句话现状
@@ -107,8 +107,9 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 中文简历模板目录验证 — 2026-09-02 `cli/` 下 `npm test` 56 pass / 0 fail；`frontend/` 下 `npm run build` 通过；`node resume-render.mjs list` 只读输出 11 套模板；`git diff --check` 通过。
 - 简历版本管理 — `frontend/src/stores/studentWorkbench.ts` 与 `frontend/src/views/StudentResumeView.vue`；简历线包含标题、目标岗位、唯一当前投递版和版本树，版本记录状态、模板、来源、文件名、版本说明和全文；页面支持岗位方向分组、版本选择、当前投递版标记、本机导入、草稿派生、草稿编辑、定稿、标记导出和历史版本切换。
 - 简历版本管理验证 — 2026-09-02 浏览器实测从 Java 主简历 v2 派生 v4 草稿、保存“联调结果补强”、确认 v3 未被覆盖、v4 定稿并设为当前投递版、切回 v2 历史投递版均通过；已有 v4 草稿时从 v2 继续会显示“打开现有草稿”并复用该草稿；Agent 生成后进入简历管理会直接选中 v4 草稿，同时当前投递版仍显示 v3；390px 页面无横向溢出，编辑抽屉占满视口且内部无横向滚动；`frontend/` 下 `npm run build` 通过。
-- 简历版本库文件桥 — `cli/resume-library.mjs`、`cli/templates/resume-library.example.json`、`frontend/src/utils/resumeLibrary.ts`、`frontend/src/components/resume/LocalResumeLibraryBridge.vue` 与 `frontend/src/stores/studentWorkbench.ts`；CLI 支持 v1 严格校验、只读 check、默认 dry-run、显式 `--apply` / `--replace`、幂等导入、备份和原子写，前端支持导出会话版本库、读取本地版本库并确认后替换会话对象，`gy --status` 只读展示版本库状态。
+- 简历版本库文件桥 — `cli/resume-library.mjs`、`cli/templates/resume-library.example.json`、`frontend/src/utils/resumeLibrary.ts`、`frontend/src/components/resume/LocalResumeLibraryBridge.vue` 与 `frontend/src/stores/studentWorkbench.ts`；CLI 支持 v1 严格校验、只读 check、默认 dry-run、显式 `--apply` / `--replace`、幂等导入、备份和原子写，前端支持导出会话版本库、读取本地版本库并确认后替换会话对象，`gy --status` 只读展示版本库状态；契约 ID 分配先锁定外部显式 ID、本地默认 ID 避让，时间统一毫秒 UTC，`generatedAt` 与 `traceId` 均不参与语义哈希，标题 / 岗位 / 全文 / 控制字符 / 文件名和 Windows 保留设备名在两端与前端会话层均有校验。
 - 简历版本库验证 — 2026-09-02 `cli/` 下 `npm test` 74 pass / 0 fail，新增 3 个 Node 测试通过；示例库 `check`、dry-run、`--apply`、幂等导入、不同库替换保护和备份隔离已覆盖；`frontend/` 下 `npm run build` 通过；浏览器实测真实导出、CLI `check` 与前后端内容哈希一致（`sha256:b84e7f1ce47877c91b0e02026fb42b461d9ec81dd9ee38015f9da56ddf2dc07b`）、示例库读取确认后正确替换为 1 线 / 2 版且浏览器未写 `cli/data`；1280px 与 390px 页面横向溢出均为 0，导出 / 读取确认弹窗在窄屏完整可见，Esc 取消后无残留弹窗与滚动锁定；修复 `WorkbenchPanel` 窄屏被内容最小宽度撑开的问题。
+- 简历版本库对抗检验 — 2026-09-02 发现并修复三类身份漂移：外部显式契约 ID 被误避让为 `-2`、展示时间丢秒后回导漂移、每次新 `traceId` 参与语义哈希导致同内容重导出被误判变更；浏览器连续导出两份仅 `generatedAt` / `traceId` 不同的 JSON，内容哈希均一致（`sha256:23f2e45b91aef316578e68d36f94a16afa083aa64d3abda586dbc045859d4e0e`），CLI `check` 同哈希，临时数据根第一次导入为 `imported`、第二次为 `unchanged` 且未生成备份；`cli/` 下 `npm test` 74 pass / 0 fail、`frontend/` 下 `npm run build` 通过、`git diff --check` 通过。
 - Stage 5 公司机会与 tracker 本地桥接 — `cli/company-opportunity.mjs`、`cli/templates/company-opportunity.example.json`、`cli/job-analysis.mjs`、`cli/gy.mjs`、`cli/lib/intent-router.mjs` 与 `cli/tracker-aliases.json`；支持只读 check、默认 dry-run、显式 `--apply` / `--replace`、绑定已安装岗位分析、公司/岗位/地点/批次自然身份、流程节点种子、中文/自定义 tracker 表头、幂等关联行、共享 tracker 锁、冲突/孤儿行拒绝、用户 tracker 状态同步与缺失重建恢复。
 - Stage 5 公司机会验证 — 2026-09-02 `cli/` 下 `npm test` 62 pass / 0 fail；`node --test tests/company-opportunity.test.mjs` 6 pass / 0 fail；`node --check company-opportunity.mjs`、`node --check job-analysis.mjs`、`node --check gy.mjs`、`node --check lib/intent-router.mjs`、`node --check tests/company-opportunity.test.mjs` 与 `git diff --check` 通过；`node gy.mjs --status --json` 在素材包缺失时只读返回 `companyOpportunities.state=blocked`。
 - Stage 5 公司机会节点 mutation — `cli/company-opportunity.mjs`、`cli/templates/company-opportunity-node.example.json`、`cli/tests/company-opportunity.test.mjs`、`cli/lib/intent-router.mjs`、`cli/modes/tracker.md`、`cli/AGENTS.md`、`cli/DATA_CONTRACT.md`、`docs/COMPANY_OPPORTUNITY_CONTRACT.md`、`docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`；支持 `check-nodes`、默认 dry-run 的 `mutate-nodes` 与显式 `mutate-nodes --apply`，用完整有序目标节点列表执行新增、删除、重排和状态修改；同一计划幂等、同一 `mutationId` 不同计划冲突、过期计划拒绝、历史计划被新 mutation 取代时只报告不再改写。
@@ -178,3 +179,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-02 — 实现 career-ops 借鉴的本地防骗核查契约 — 影响岗位推进前的安全门槛、证据留痕和后续岗位 liveness / 官方渠道核查扩展；仍待用户统一验收。
 - 2026-09-02 — 实现 Agent 页面内 skill 显式确认流 — 影响 Agent 写入型输出的信任边界、模块沉淀口径和后续本地 runtime / 文件桥衔接；仍待用户统一验收。
 - 2026-09-02 — 实现简历版本库显式文件桥 — 影响简历线 / 版本 / 当前投递版的本地持久化、CLI 写盘审批和后续与定稿 / 渲染事实链的衔接；仍待用户统一验收。
+- 2026-09-02 — 完成简历版本库文件桥对抗检验并修复契约 ID 避让、时间精度、Trace 哈希与输入校验边界 — 影响浏览器 / CLI 的同语义幂等导入和本机简历身份稳定性；仍待用户统一验收。

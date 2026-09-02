@@ -17,6 +17,11 @@ type WorkbenchIntent =
   | "review"
   | "plan";
 
+const MAX_RESUME_VERSION_CONTENT = 128 * 1024;
+const UNSAFE_RESUME_CONTENT_CONTROL_PATTERN = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+const RESUME_FILE_NAME_PATTERN = /^[^\\/:*?"<>|\r\n]{1,110}\.[A-Za-z0-9]{1,12}$/;
+const WINDOWS_RESERVED_FILE_NAME_PATTERN = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i;
+
 export interface ChatMessage {
   id: number;
   role: ChatRole;
@@ -1188,14 +1193,23 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       resumeTemplates.value.find((item) => item.id === input.templateId) ?? resumeTemplates.value[0];
     const content = input.content.trim();
     if (!content) throw new Error("简历内容不能为空");
+    if (title.length < 2 || title.length > 100) throw new Error("简历名称长度必须在 2 到 100 个字符之间");
+    if (targetRole.length < 2 || targetRole.length > 100) throw new Error("目标岗位长度必须在 2 到 100 个字符之间");
+    if (content.length > MAX_RESUME_VERSION_CONTENT) throw new Error("简历内容超过 131072 个字符");
+    if (UNSAFE_RESUME_CONTENT_CONTROL_PATTERN.test(content)) throw new Error("简历内容包含不支持的控制字符");
+    const changeNote = input.changeNote?.trim() || "未记录版本说明";
+    if (changeNote.length < 2 || changeNote.length > 500) throw new Error("版本说明长度必须在 2 到 500 个字符之间");
+    const fileName = input.fileName?.trim();
+    if (fileName && !RESUME_FILE_NAME_PATTERN.test(fileName)) throw new Error("简历文件名不能包含路径分隔符");
+    if (fileName && WINDOWS_RESERVED_FILE_NAME_PATTERN.test(fileName)) throw new Error("简历文件名不能使用 Windows 保留设备名");
     return {
       title,
       targetRole,
       templateId: template.id,
       content,
       source: input.source ?? "manual",
-      fileName: input.fileName?.trim() || undefined,
-      changeNote: input.changeNote?.trim() || "未记录版本说明"
+      fileName: fileName || undefined,
+      changeNote
     };
   }
 

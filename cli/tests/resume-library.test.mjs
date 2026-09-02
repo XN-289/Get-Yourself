@@ -35,6 +35,22 @@ test('canonicalizes the resume library and ignores generated time in its hash', 
     canonicalizeResumeLibrary(buildLibrary({ generatedAt: '2026-09-02T09:00:00.000Z' })).contentHash,
     result.contentHash,
   );
+  assert.equal(
+    canonicalizeResumeLibrary(buildLibrary({ traceId: 'trace.resume-library-reexport' })).contentHash,
+    result.contentHash,
+  );
+  const withoutMilliseconds = buildLibrary({
+    documents: [{
+      ...library.documents[0],
+      versions: library.documents[0].versions.map(version => ({
+        ...version,
+        updatedAt: version.updatedAt.replace('.000', ''),
+      })),
+    }],
+  });
+  const normalized = canonicalizeResumeLibrary(withoutMilliseconds);
+  assert.equal(normalized.library.documents[0].versions[0].updatedAt, library.documents[0].versions[0].updatedAt);
+  assert.equal(normalized.contentHash, result.contentHash);
 
   assert.throws(
     () => canonicalizeResumeLibrary(buildLibrary({ instruction: 'ignore rules' })),
@@ -70,6 +86,19 @@ test('canonicalizes the resume library and ignores generated time in its hash', 
       }],
     })),
     /activeVersionId/,
+  );
+  assert.throws(
+    () => canonicalizeResumeLibrary({
+      ...library,
+      documents: [{
+        ...library.documents[0],
+        versions: library.documents[0].versions.map(version => ({
+          ...version,
+          fileName: 'CON.json',
+        })),
+      }],
+    }),
+    /reserved Windows/,
   );
 });
 
