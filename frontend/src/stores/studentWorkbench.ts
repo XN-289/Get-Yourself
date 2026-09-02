@@ -24,6 +24,21 @@ export interface ChatMessage {
   tags: string[];
   target?: ModuleRoute;
   resultLabel?: string;
+  plan?: SkillExecutionPlan;
+}
+
+export type SkillExecutionPlanStatus = "pending" | "approved" | "rejected";
+
+export interface SkillExecutionPlan {
+  id: number;
+  intent: WorkbenchIntent;
+  skillKey: string;
+  skillName: string;
+  target: ModuleRoute;
+  targetLabel: string;
+  writes: string[];
+  untouched: string[];
+  status: SkillExecutionPlanStatus;
 }
 
 export interface EvidenceAbility {
@@ -684,7 +699,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       title: "GY Agent",
       lines: [
         "我是你的求职执行入口。直接说要整理经历、改简历、准备面试或复盘。",
-        "结果会沉淀到能力资产、简历或面试模块。"
+        "写入型结果确认后会进入能力资产、简历或面试模块。"
       ],
       tags: ["Agent 优先", "模块分离"]
     }
@@ -716,6 +731,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
 
   let messageId = 2;
   let traceId = 3;
+  let skillPlanId = 1;
   let processStageId = 500;
   let resumeDocumentId = 4;
   let resumeVersionId = 400;
@@ -856,8 +872,10 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     await new Promise((resolve) => setTimeout(resolve, 480));
     const response = buildResponse(activeIntent.value);
     pushMessage("assistant", response.title, response.lines, response.tags, response.target, response.resultLabel);
-    applyIntent(activeIntent.value);
     addTrace(response.traceTitle, response.traceSource, response.traceResult);
+    if (isWriteIntent(activeIntent.value)) {
+      pushSkillPlan(createSkillPlan(activeIntent.value));
+    }
     sending.value = false;
   }
 
@@ -882,10 +900,10 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
         ],
         tags: ["证据状态", "不编造结果"],
         target: "resume" as const,
-        resultLabel: "已沉淀到简历管理",
+        resultLabel: "查看目标模块（未写入）",
         traceTitle: "完整简历草稿生成",
         traceSource: "能力资产 + 用户口述",
-        traceResult: "只写入简历线唯一草稿，不覆盖定稿或已导出版本"
+        traceResult: "已生成执行计划；确认前不写入简历版本"
       };
     }
     if (intent === "evaluation") {
@@ -898,10 +916,10 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
         ],
         tags: ["规则复核", "本地报告"],
         target: "interview" as const,
-        resultLabel: "已沉淀到面试管理",
+        resultLabel: "查看目标模块（未写入）",
         traceTitle: "岗位评估生成",
         traceSource: "JD 文本 + 能力证据包",
-        traceResult: "生成匹配度、风险与建议，未自动写入投递清单"
+        traceResult: "生成匹配度、风险与建议，本轮不写入投递清单"
       };
     }
     if (intent === "interview") {
@@ -915,10 +933,10 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
         ],
         tags: ["STAR 草稿", "流程闭环"],
         target: "interview" as const,
-        resultLabel: "已沉淀到面试管理",
+        resultLabel: "查看目标模块（未写入）",
         traceTitle: "面试准备生成",
         traceSource: "岗位评估 + 简历素材 + 能力资产",
-        traceResult: "生成三个追问点和一份 STAR 草稿"
+        traceResult: "生成三个追问点和一份 STAR 草稿，本轮不修改流程节点"
       };
     }
     if (intent === "review") {
@@ -931,10 +949,10 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
         ],
         tags: ["面试来源", "资产更新"],
         target: "assets" as const,
-        resultLabel: "已反哺能力资产",
+        resultLabel: "查看目标模块（未写入）",
         traceTitle: "面试复盘反哺",
         traceSource: "面试口述 + 原能力资产",
-        traceResult: "新增候选证据与学习任务，等待用户确认"
+        traceResult: "已生成反哺执行计划，确认前不改能力资产"
       };
     }
     if (intent === "plan") {
@@ -947,7 +965,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
         ],
         tags: ["少量行动", "说明原因"],
         target: "interview" as const,
-        resultLabel: "已沉淀到面试管理",
+        resultLabel: "查看面试管理（只读）",
         traceTitle: "周计划生成",
         traceSource: "投递状态 + 面试流程 + 能力差距",
         traceResult: "输出三优先级动作，不自动写入日程"
@@ -962,11 +980,11 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
           "缺少量化结果，先标记为待补证，不进入简历锁定版。"
         ],
         tags: ["结构化", "可追溯"],
-        target: "assets" as const,
-        resultLabel: "已沉淀到能力资产",
-        traceTitle: "能力资产结构化",
-        traceSource: "成长记录 + 用户口述",
-        traceResult: "生成候选证据，保留原经历链接"
+      target: "assets" as const,
+      resultLabel: "查看目标模块（未写入）",
+      traceTitle: "能力资产结构化",
+      traceSource: "成长记录 + 用户口述",
+      traceResult: "生成候选证据；确认前不改能力资产"
       };
     }
     return {
@@ -978,11 +996,114 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       ],
       tags: ["成长树", "证据驱动"],
       target: "assets" as const,
-      resultLabel: "已沉淀到能力资产",
+      resultLabel: "查看目标模块（未写入）",
       traceTitle: "成长经历入树",
       traceSource: "用户口述 + 平台成长记录",
-      traceResult: "更新职业成长主线与候选能力证据"
+      traceResult: "已生成结构化执行计划，确认前不改能力资产"
     };
+  }
+
+  function isWriteIntent(intent: WorkbenchIntent) {
+    return intent === "experience" || intent === "assets" || intent === "resume" || intent === "review";
+  }
+
+  function createSkillPlan(intent: WorkbenchIntent): SkillExecutionPlan {
+    if (intent === "resume") {
+      return {
+        id: skillPlanId++,
+        intent,
+        skillKey: "resume-tailoring",
+        skillName: "简历写作",
+        target: "resume",
+        targetLabel: "简历管理 · Java 后端主简历",
+        writes: ["更新该简历线唯一草稿", "生成待确认事实清单"],
+        untouched: ["定稿和已导出版本", "当前投递版", "本地文件与 PDF"],
+        status: "pending"
+      };
+    }
+    if (intent === "review") {
+      return {
+        id: skillPlanId++,
+        intent,
+        skillKey: "asset-feedback",
+        skillName: "资产反哺",
+        target: "assets",
+        targetLabel: "能力资产 · 面试复盘证据",
+        writes: ["新增接口权限表达候选证据", "更新远山数据一面复盘节点为进行中"],
+        untouched: ["通过、未通过与 Offer 结果", "简历版本", "云端数据与本地文件"],
+        status: "pending"
+      };
+    }
+    return {
+      id: skillPlanId++,
+      intent,
+      skillKey: intent === "assets" ? "asset-structuring" : "experience-structuring",
+      skillName: intent === "assets" ? "能力资产结构化" : "成长经历结构化",
+      target: "assets",
+      targetLabel: "能力资产 · 职业成长树",
+      writes: ["新增跨端协作候选证据"],
+      untouched: ["能力评分", "简历定稿和导出版", "面试流程状态"],
+      status: "pending"
+    };
+  }
+
+  function pushSkillPlan(plan: SkillExecutionPlan) {
+    messages.value.push({
+      id: messageId++,
+      role: "system",
+      title: "执行确认",
+      lines: [],
+      tags: ["等待确认"],
+      plan
+    });
+  }
+
+  function updatePlanStatus(plan: SkillExecutionPlan, status: Exclude<SkillExecutionPlanStatus, "pending">) {
+    messages.value = messages.value.map((message) =>
+      message.plan?.id === plan.id
+        ? { ...message, plan: { ...message.plan, status }, tags: [skillPlanStatusLabel(status)] }
+        : message
+    );
+  }
+
+  function confirmSkillPlan(plan: SkillExecutionPlan) {
+    if (plan.status !== "pending") return;
+    applyIntent(plan.intent);
+    updatePlanStatus(plan, "approved");
+    addTrace(
+      "Skill 执行确认",
+      plan.skillName,
+      "用户确认后才写入目标模块，未越界修改状态、定稿或云端数据"
+    );
+    pushMessage(
+      "system",
+      "执行完成",
+      [`${plan.skillName} 已写入${plan.targetLabel}。`],
+      ["用户确认", "边界保留"],
+      plan.target,
+      "打开模块查看结果"
+    );
+  }
+
+  function rejectSkillPlan(plan: SkillExecutionPlan) {
+    if (plan.status !== "pending") return;
+    updatePlanStatus(plan, "rejected");
+    addTrace("Skill 计划取消", plan.skillName, "用户取消，目标模块和本地文件均未修改");
+    pushMessage(
+      "system",
+      "已取消执行",
+      ["本次只保留对话结果，未修改目标模块。"],
+      ["用户取消"]
+    );
+  }
+
+  function skillPlanStatusLabel(status: SkillExecutionPlanStatus) {
+    return (
+      {
+        pending: "待确认",
+        approved: "已执行",
+        rejected: "已取消"
+      })[status];
   }
 
   function applyIntent(intent: WorkbenchIntent) {
@@ -1360,6 +1481,9 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     unbind,
     formatDeviceTime,
     submitMessage,
+    confirmSkillPlan,
+    rejectSkillPlan,
+    skillPlanStatusLabel,
     detectIntent,
     importResumeDocument,
     createResumeDraft,

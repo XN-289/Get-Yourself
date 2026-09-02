@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-Updated: 2026-09-02 17:42
+Updated: 2026-09-02 18:27
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥与本地能力反哺台账已实现；简历版本库仍是前端会话内 Demo，尚未桥接本地文件持久化；前端 Demo、`gy`、证据包、设备绑定、Stage 4 与 Stage 5 本地桥接仍待用户统一验收，平台自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、学生端工具台 UI 基座、页面内 skill 显式确认流、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥与本地能力反哺台账已实现；简历版本库仍是前端会话内 Demo，页面内 skill 确认流也只写前端会话对象，尚未桥接本地文件持久化或本地 skill runtime；前端 Demo、`gy`、证据包、设备绑定、Stage 4 与 Stage 5 本地桥接仍待用户统一验收，平台自动同步尚未开始。
 
 ## 已接受事实
 
@@ -39,6 +39,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 面试管理前端通过显式 JSON 文件桥参与本地节点维护：导入机会、规范化哈希、编辑完整目标列表、导出 mutation 计划；写盘仍必须经 CLI dry-run 和 `--apply`，浏览器不直接写 `cli/data` — `decisions.md` 与 `docs/COMPANY_OPPORTUNITY_CONTRACT.md`。
 - tracker 当前行状态由用户拥有；本地机会 JSON 保存不计入确认包哈希的 `trackerStatus` 镜像，tracker 关联行缺失重建时不得回滚到种子状态 — `decisions.md`。
 - 防骗核查是本地契约化报告；Agent 只起草证据和信号，红色信号一票否决推进建议，黄色信号生成核实动作，证据不足不给绿灯；不自动联网核查、不修改公司机会或投递进度 — `docs/SCAM_CHECK_CONTRACT.md`。
+- 页面内 skill 写入必须先生成显式计划并经用户确认；计划展示目标模块、将写入对象和不会改动对象，取消则目标模块不变 — `decisions.md`。
+- 页面内 skill 确认流只写前端会话对象并记录 Trace，不写本地文件、不执行 CLI skill、不改用户拥有的流程结果、不同步云端 — `decisions.md`。
 
 ## 决策索引
 
@@ -61,6 +63,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-02 — 公司机会前端显式文件桥、CLI 兼容内容哈希与浏览器不直接写本地边界 — `decisions.md`。
 - 2026-09-02 — 公司机会真实产物独立挂载计划、真实文件哈希与节点 mutation 自动保留产物边界 — `decisions.md`。
 - 2026-09-02 — 吸收 career-ops Block G / interview-redflag / liveness 思路，落地证据引用式本地防骗核查契约 — `decisions.md`。
+- 2026-09-02 — 页面内 skill 写入显式审批与会话/本地 runtime 边界 — `decisions.md`。
 
 ## 已实现
 
@@ -112,6 +115,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - Stage 5 产物挂载验证 — 2026-09-02 `cli/` 下 `npm test` 66 pass / 0 fail，`node --test tests/company-opportunity.test.mjs` 10 pass / 0 fail，`node --check company-opportunity.mjs`、`node --check lib/intent-router.mjs`、`node --check tests/company-opportunity.test.mjs` 与 `frontend/` 下 `npm run build` 通过；浏览器实测 CLI 挂载后的机会 JSON 导入 `/student/interview` 后页面哈希与安装哈希一致，导出的节点计划不含 `artifacts`，CLI dry-run 按节点 ID 保留 1 个 JD 分析产物；桌面与 390px 窄屏页面本体无横向溢出，节点表在内部滚动，产物列与类型/状态列对齐。
 - Stage 5 本地防骗核查 — `cli/scam-check.mjs`、`cli/templates/scam-check.example.json`、`docs/SCAM_CHECK_CONTRACT.md`、`cli/modes/scam-check.md`、`cli/gy.mjs` 与 `cli/lib/intent-router.mjs`；支持证据引用式校验、红/黄信号与岗位存活观察、确定性结论、只读 check、默认 dry-run、显式 `--apply` / `--replace`、幂等导入、报告渲染、备份和只读状态展示；报告只展示证据索引，不回显外部原文。
 - Stage 5 防骗核查验证 — 2026-09-02 `cli/` 下 `npm test` 71 pass / 0 fail；`node --check scam-check.mjs`、`node --check gy.mjs`、`node --check lib/intent-router.mjs`、`node --check tests/scam-check.test.mjs` 通过；示例包 `check` 输出 `high_risk / stop`、红色 1 条 / 黄色 0 条 / 证据 2 条；仓库根 `git diff --check` 通过。
+- Agent 页面内 skill 确认流 — `frontend/src/stores/studentWorkbench.ts` 与 `frontend/src/views/StudentAgentConsoleView.vue`；经历结构化、能力资产结构化、简历生成和复盘反哺先生成执行计划，展示目标模块、将写入对象和不会改动对象；用户确认后写入当前会话对象并记录 Trace，取消则不改目标模块；岗位评估、面试准备和周计划保持只读，不伪装沉淀。
+- Agent skill 确认流验证 — 2026-09-02 `frontend/` 下 `npm run build` 通过；浏览器实测“生成简历”确认后简历线新增 / 复用唯一草稿且当前投递版、定稿和导出版未被覆盖，“复盘反哺”取消后目标能力资产状态保持不变；执行卡状态可在待确认、已执行、已取消间正确流转，确认与取消均记录 Trace；390px 下页面与执行卡无横向溢出，测试后浏览器视口已恢复默认。
 
 ## 已验收
 
@@ -125,8 +130,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 
 ## 下一步
 
-1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨、节点抽屉、节点 mutation、真实产物挂载与简历版本管理）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿/面试准备、Stage 4c 复盘、结构化渲染、岗位分析、防骗核查、公司机会/tracker/节点 mutation/产物挂载桥接与能力反哺台账。
-2. 继续补齐页面内 skill 执行确认流和简历版本本地持久化；在任何显式同步契约落地前，不做自动上传或自动导入。
+1. 用户统一验收前端 Demo（重点检查 Agent skill 确认流、公司机会横向流程轨、节点抽屉、节点 mutation、真实产物挂载与简历版本管理）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿/面试准备、Stage 4c 复盘、结构化渲染、岗位分析、防骗核查、公司机会/tracker/节点 mutation/产物挂载桥接与能力反哺台账。
+2. 继续推进本地 skill runtime / 文件执行桥和简历版本本地持久化；在任何显式同步契约落地前，不做自动上传或自动导入。
 
 ## 恢复上下文
 
@@ -166,3 +171,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-02 — 实现面试管理前端显式文件桥 — 影响公司机会节点的可视化维护与本地契约执行衔接；仍待用户统一验收。
 - 2026-09-02 — 实现公司机会真实产物挂载与前端只读展示 — 影响 JD 分析、简历、面试准备、复盘和能力反哺产物进入流程节点的方式；仍待用户统一验收。
 - 2026-09-02 — 实现 career-ops 借鉴的本地防骗核查契约 — 影响岗位推进前的安全门槛、证据留痕和后续岗位 liveness / 官方渠道核查扩展；仍待用户统一验收。
+- 2026-09-02 — 实现 Agent 页面内 skill 显式确认流 — 影响 Agent 写入型输出的信任边界、模块沉淀口径和后续本地 runtime / 文件桥衔接；仍待用户统一验收。

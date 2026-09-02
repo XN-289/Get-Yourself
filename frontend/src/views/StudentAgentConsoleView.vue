@@ -5,11 +5,13 @@ import {
   Check,
   Copy,
   KeyRound,
+  ListChecks,
   LoaderCircle,
   MonitorSmartphone,
   Send,
   Terminal,
-  Trash2
+  Trash2,
+  X
 } from "@lucide/vue";
 import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
@@ -141,12 +143,62 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
     <div v-if="deviceError" class="device-error" role="alert">{{ deviceError }}</div>
 
     <div ref="messageStream" class="message-stream">
-      <article v-for="message in messages" :key="message.id" :class="`is-${message.role}`">
+      <article
+        v-for="message in messages"
+        :key="message.id"
+        :class="[`is-${message.role}`, { 'is-plan-message': message.plan }]"
+      >
         <header>
           <strong>{{ message.title }}</strong>
           <span v-if="message.tags.length">{{ message.tags.join(" · ") }}</span>
         </header>
-        <AgentMarkdown :content="message.lines.join('\n\n')" />
+        <AgentMarkdown v-if="message.lines.length" :content="message.lines.join('\n\n')" />
+        <aside
+          v-if="message.plan"
+          class="skill-plan"
+          :class="`is-${message.plan.status}`"
+          :aria-label="`${message.plan.skillName}执行确认`"
+        >
+          <header>
+            <span><ListChecks :size="15" /></span>
+            <div>
+              <strong>{{ message.plan.skillName }}</strong>
+              <small>{{ message.plan.targetLabel }}</small>
+            </div>
+            <em>{{ store.skillPlanStatusLabel(message.plan.status) }}</em>
+          </header>
+
+          <div class="plan-boundaries">
+            <section>
+              <span>将写入</span>
+              <ul>
+                <li v-for="item in message.plan.writes" :key="item">{{ item }}</li>
+              </ul>
+            </section>
+            <section>
+              <span>不会改动</span>
+              <ul>
+                <li v-for="item in message.plan.untouched" :key="item">{{ item }}</li>
+              </ul>
+            </section>
+          </div>
+
+          <p class="plan-scope">网页会话内执行；本地文件和 CLI skill 仍需显式文件桥。</p>
+
+          <footer v-if="message.plan.status === 'pending'">
+            <WorkbenchButton size="sm" variant="ghost" @click="store.rejectSkillPlan(message.plan)">
+              <X :size="14" />
+              取消
+            </WorkbenchButton>
+            <WorkbenchButton size="sm" variant="primary" @click="store.confirmSkillPlan(message.plan)">
+              <Check :size="14" />
+              确认执行
+            </WorkbenchButton>
+          </footer>
+          <p v-else class="plan-result">
+            {{ message.plan.status === "approved" ? "模块写入已完成，未越界对象保持不变。" : "已取消，模块未发生写入。" }}
+          </p>
+        </aside>
         <RouterLink v-if="message.target" :to="modulePath(message.target)">
           {{ message.resultLabel ?? "打开模块" }}
           <ArrowUpRight :size="15" />
@@ -456,6 +508,12 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   background: #fff8e9;
 }
 
+.message-stream article.is-plan-message {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .message-stream article.is-assistant {
   padding-left: 13px;
   border-left: 2px solid #d9e2df;
@@ -505,6 +563,143 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   display: flex;
   align-items: center;
   gap: 7px;
+}
+
+.skill-plan {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(20, 123, 115, 0.24);
+  border-left: 3px solid var(--teal);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.skill-plan header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skill-plan header > span {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #e8f6f1;
+  color: var(--teal-dark);
+}
+
+.skill-plan header div {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.skill-plan header strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-plan header small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-plan header em {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #edf7f3;
+  color: var(--teal-dark);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.skill-plan.is-rejected header em {
+  background: #f4f6f6;
+  color: var(--muted);
+}
+
+.plan-boundaries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfdfc;
+}
+
+.plan-boundaries section {
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.plan-boundaries section + section {
+  border-left: 1px solid var(--line);
+}
+
+.plan-boundaries span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.plan-boundaries ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-boundaries li {
+  position: relative;
+  padding-left: 11px;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.plan-boundaries li + li {
+  margin-top: 4px;
+}
+
+.plan-boundaries li::before {
+  position: absolute;
+  top: 7px;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--teal);
+  content: "";
+}
+
+.plan-scope {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.skill-plan footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.plan-result {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .spin {
@@ -672,6 +867,23 @@ function submitQuickPrompt(prompt: (typeof quickPrompts)[number]) {
   .message-stream {
     min-height: 300px;
     padding: 12px;
+  }
+
+  .plan-boundaries {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-boundaries section + section {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .skill-plan footer {
+    flex-direction: column-reverse;
+  }
+
+  .skill-plan footer :deep(button) {
+    width: 100%;
   }
 }
 </style>
