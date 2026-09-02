@@ -35,8 +35,11 @@ import { isMainModule } from './lib/is-main-module.mjs';
 
 export const COMPANY_OPPORTUNITY_SCHEMA = 'get-yourself.company-opportunity';
 export const COMPANY_OPPORTUNITY_SCHEMA_VERSION = 1;
+export const COMPANY_OPPORTUNITY_NODE_SCHEMA = 'get-yourself.company-opportunity-node-mutation';
+export const COMPANY_OPPORTUNITY_NODE_SCHEMA_VERSION = 1;
 export const COMPANY_OPPORTUNITY_PACKAGE_DIR = 'data/company-opportunities';
 export const COMPANY_OPPORTUNITY_BACKUP_DIR = 'data/company-opportunities-backups';
+export const COMPANY_OPPORTUNITY_MUTATION_DIR = 'data/company-opportunity-mutations';
 export const INITIAL_TRACKER_STATUS = 'Evaluated';
 
 const MAX_PACKAGE_BYTES = 128 * 1024;
@@ -44,6 +47,7 @@ const MAX_TRACKER_BYTES = 2 * 1024 * 1024;
 const MAX_OPPORTUNITIES = 200;
 const MAX_NODES = 50;
 const MAX_BACKUPS_PER_OPPORTUNITY = 10;
+const CONTENT_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const CONFIRMATIONS = new Set(['user_confirmed']);
 const NODE_TYPES = new Set([
   'jd_analysis',
@@ -60,7 +64,9 @@ const OPPORTUNITY_MARKER_RE = /(?:^|[;；])\s*opportunityId=([A-Za-z0-9._-]+)/;
 
 const USAGE = `Usage:
   node company-opportunity.mjs check <opportunity.json> [--json]
-  node company-opportunity.mjs import <opportunity.json> [--apply] [--replace] [--json]`;
+  node company-opportunity.mjs import <opportunity.json> [--apply] [--replace] [--json]
+  node company-opportunity.mjs check-nodes <node-mutation.json> [--json]
+  node company-opportunity.mjs mutate-nodes <node-mutation.json> [--apply] [--json]`;
 
 const DEFAULT_TRACKER = [
   '# 求职进度表',
@@ -78,6 +84,14 @@ function requireInitialTrackerStatus(value) {
   const text = requireString(value, '$.initialTrackerStatus', {}, ContractToolError, 'invalid-opportunity');
   if (text !== INITIAL_TRACKER_STATUS) {
     throw opportunityError(`$.initialTrackerStatus must be ${INITIAL_TRACKER_STATUS} in v1`);
+  }
+  return text;
+}
+
+function requireContentHash(value, path) {
+  const text = requireString(value, path, { min: 71, max: 71 }, ContractToolError, 'invalid-node-mutation');
+  if (!CONTENT_HASH_PATTERN.test(text)) {
+    throw new ContractToolError(`${path} must be a sha256 content hash`, 'invalid-node-mutation', { path });
   }
   return text;
 }
@@ -252,8 +266,91 @@ export function canonicalizeCompanyOpportunity(
   };
 }
 
+export function canonicalizeCompanyOpportunityNodeMutation(input, installedOpportunity) {
+  if (!installedOpportunity) {
+    throw new ContractToolError('An installed company opportunity is required.', 'opportunity-missing');
+  }
+  const requiredFields = [
+    'schema',
+    'schemaVersion',
+    'mutationId',
+    'opportunityId',
+    'generatedAt',
+    'traceId',
+    'confirmation',
+    'expectedOpportunityContentHash',
+    'changeSummary',
+    'processNodes',
+  ];
+  requireObjectWithOptional(
+    input,
+    '$',
+    requiredFields,
+    [],
+    ContractToolError,
+    'invalid-node-mutation',
+  );
+  if (input.schema !== COMPANY_OPPORTUNITY_NODE_SCHEMA) {
+    throw new ContractToolError(`$.schema must be ${COMPANY_OPPORTUNITY_NODE_SCHEMA}`, 'invalid-node-mutation');
+  }
+  if (input.schemaVersion !== COMPANY_OPPORTUNITY_NODE_SCHEMA_VERSION) {
+    throw new ContractToolError(`$.schemaVersion must be ${COMPANY_OPPORTUNITY_NODE_SCHEMA_VERSION}`, 'unsupported-version');
+  }
+  requireEnum(input.confirmation, '$.confirmation', CONFIRMATIONS, ContractToolError, 'invalid-node-mutation');
+  const plan = {
+    schema: COMPANY_OPPORTUNITY_NODE_SCHEMA,
+    schemaVersion: COMPANY_OPPORTUNITY_NODE_SCHEMA_VERSION,
+    mutationId: requireSafeId(input.mutationId, '$.mutationId', ContractToolError, 'invalid-node-mutation'),
+    opportunityId: requireSafeId(input.opportunityId, '$.opportunityId', ContractToolError, 'invalid-node-mutation'),
+    generatedAt: requireTimestamp(input.generatedAt, '$.generatedAt', ContractToolError, 'invalid-node-mutation'),
+    traceId: requireSafeId(input.traceId, '$.traceId', ContractToolError, 'invalid-node-mutation'),
+    confirmation: input.confirmation,
+    expectedOpportunityContentHash: requireContentHash(input.expectedOpportunityContentHash, '$.expectedOpportunityContentHash'),
+    changeSummary: requireString(
+      input.changeSummary,
+      '$.changeSummary',
+      { min: 2, max: 500 },
+      ContractToolError,
+      'invalid-node-mutation',
+    ),
+  };
+  if (plan.opportunityId !== installedOpportunity.opportunity.opportunityId) {
+    throw new ContractToolError(
+      'opportunityId does not match the installed company opportunity',
+      'opportunity-mismatch',
+    );
+  }
+  requireArray(input.processNodes, '$.processNodes', 1, MAX_NODES, ContractToolError, 'invalid-node-mutation');
+  const desired = canonicalizeCompanyOpportunity(
+    {
+      ...installedOpportunity.opportunity,
+      processNodes: input.processNodes,
+    },
+    installedOpportunity.installedAnalysis,
+    { allowInstalledTrackerState: true },
+  );
+  plan.processNodes = desired.opportunity.processNodes;
+  const contentHash = semanticHash({ ...plan, generatedAt: undefined });
+  return {
+    plan,
+    desired,
+    canonicalJson: JSON.stringify(plan, null, 2),
+    contentHash,
+    summary: {
+      ...plan,
+      nodeCount: desired.opportunity.processNodes.length,
+      resultingOpportunityContentHash: desired.contentHash,
+      planContentHash: contentHash,
+    },
+  };
+}
+
 function packagePathFor(root, opportunityId) {
   return join(root, COMPANY_OPPORTUNITY_PACKAGE_DIR, `${opportunityId}.json`);
+}
+
+function mutationPathFor(root, opportunityId, mutationId) {
+  return join(root, COMPANY_OPPORTUNITY_MUTATION_DIR, opportunityId, `${mutationId}.json`);
 }
 
 function requireAnalysisForInput(root, input, materials) {
@@ -277,7 +374,7 @@ function readOpportunityFile(filePath, root, materials = null, options = {}) {
   return canonicalizeCompanyOpportunity(input, installedAnalysis, options);
 }
 
-function readInstalledOpportunity(root, opportunityId, materials) {
+export function loadCompanyOpportunity(root, opportunityId, materials = loadInstalledResumeMaterials(root)) {
   const target = packagePathFor(root, opportunityId);
   let info;
   try {
@@ -290,6 +387,10 @@ function readInstalledOpportunity(root, opportunityId, materials) {
     throw opportunityError('Installed company opportunity is not a regular file', 'invalid-opportunity', { path: target });
   }
   return readOpportunityFile(target, root, materials, { allowInstalledTrackerState: true });
+}
+
+function readInstalledOpportunity(root, opportunityId, materials) {
+  return loadCompanyOpportunity(root, opportunityId, materials);
 }
 
 function listInstalledOpportunities(root, materials) {
@@ -520,6 +621,187 @@ function readTrackerInTransaction(transaction) {
   return transaction.read();
 }
 
+function readNodeMutationFile(filePath, root, materials) {
+  const input = readJsonContract(filePath, {
+    maxBytes: MAX_PACKAGE_BYTES,
+    ErrorClass: ContractToolError,
+    errorCode: 'invalid-node-mutation',
+  });
+  const opportunityId = input === null || typeof input !== 'object' || Array.isArray(input) || typeof input.opportunityId !== 'string'
+    ? ''
+    : input.opportunityId;
+  if (!opportunityId) {
+    throw new ContractToolError('$.opportunityId is required', 'invalid-node-mutation');
+  }
+  requireSafeId(opportunityId, '$.opportunityId', ContractToolError, 'invalid-node-mutation');
+  const installed = loadCompanyOpportunity(root, opportunityId, materials);
+  if (!installed) {
+    throw new ContractToolError(`Installed company opportunity not found: ${opportunityId}`, 'opportunity-missing');
+  }
+  return canonicalizeCompanyOpportunityNodeMutation(input, installed);
+}
+
+function readInstalledMutationRecord(filePath, mutation) {
+  let raw;
+  try {
+    raw = readFileSync(filePath, 'utf8');
+  } catch (error) {
+    throw new ContractToolError(`Cannot read installed mutation record: ${error.message}`, 'io-error', { path: filePath });
+  }
+  let record;
+  try {
+    record = JSON.parse(raw);
+  } catch (error) {
+    throw new ContractToolError(`Installed mutation record is not valid JSON: ${error.message}`, 'invalid-mutation-record', { path: filePath });
+  }
+  if (
+    record === null
+    || typeof record !== 'object'
+    || Array.isArray(record)
+    || record.mutationId !== mutation.plan.mutationId
+    || record.opportunityId !== mutation.plan.opportunityId
+    || record.planContentHash !== mutation.contentHash
+  ) {
+    throw new ContractToolError(
+      'mutationId already belongs to a different node mutation plan',
+      'mutation-conflict',
+      { path: filePath },
+    );
+  }
+  return record;
+}
+
+export async function mutateCompanyOpportunityNodes(filePath, options = {}) {
+  const root = options.root ?? getCareerOpsRoot();
+  const trackerPath = options.trackerPath ?? resolveTrackerPathForWrite(root);
+  const apply = options.apply === true;
+  const transaction = await openTrackerTransaction(trackerPath, { tracker: trackerPath });
+
+  try {
+    const materials = loadInstalledResumeMaterials(root);
+    const current = readNodeMutationFile(filePath, root, materials);
+    const packageTarget = packagePathFor(root, current.plan.opportunityId);
+    const mutationTarget = mutationPathFor(
+      root,
+      current.plan.opportunityId,
+      current.plan.mutationId,
+    );
+    let existingRecord = null;
+    if (existsSync(mutationTarget)) {
+      const info = lstatSync(mutationTarget);
+      if (!info.isFile()) {
+        throw new ContractToolError('Installed mutation record is not a regular file', 'invalid-mutation-record', {
+          path: mutationTarget,
+        });
+      }
+      existingRecord = readInstalledMutationRecord(mutationTarget, current);
+    }
+
+    // Re-read under the shared tracker lock so opportunity mutations serialize with imports.
+    const installed = loadCompanyOpportunity(root, current.plan.opportunityId, materials);
+    if (!installed) {
+      throw new ContractToolError(
+        `Installed company opportunity not found: ${current.plan.opportunityId}`,
+        'opportunity-missing',
+      );
+    }
+    const desired = canonicalizeCompanyOpportunity(
+      {
+        ...installed.opportunity,
+        processNodes: current.desired.opportunity.processNodes,
+      },
+      installed.installedAnalysis,
+      { allowInstalledTrackerState: true },
+    );
+    const nodesAlreadyCurrent = JSON.stringify(installed.opportunity.processNodes)
+      === JSON.stringify(desired.opportunity.processNodes);
+    if (
+      !nodesAlreadyCurrent
+      && existingRecord === null
+      && installed.contentHash !== current.plan.expectedOpportunityContentHash
+    ) {
+      throw new ContractToolError(
+        'The company opportunity changed after this node mutation was drafted; regenerate the plan.',
+        'stale-opportunity',
+        {
+          expectedContentHash: current.plan.expectedOpportunityContentHash,
+          currentContentHash: installed.contentHash,
+        },
+      );
+    }
+
+    if (existingRecord && !nodesAlreadyCurrent) {
+      return {
+        action: 'superseded',
+        applied: true,
+        changed: false,
+        packagePath: packageTarget,
+        mutationPath: mutationTarget,
+        trackerPath,
+        trackerAction: 'none',
+        backupPath: null,
+        plan: current.summary,
+      };
+    }
+
+    if (!apply) {
+      return {
+        action: existingRecord
+          ? (nodesAlreadyCurrent ? 'dry-run-unchanged' : 'dry-run-superseded')
+          : 'dry-run',
+        applied: false,
+        packagePath: packageTarget,
+        mutationPath: mutationTarget,
+        trackerPath,
+        trackerAction: 'none',
+        plan: current.summary,
+      };
+    }
+
+    let backupPath = null;
+    let packageChanged = false;
+    let recordAdded = existingRecord === null;
+    if (!nodesAlreadyCurrent) {
+      backupPath = backupFile(
+        packageTarget,
+        join(root, COMPANY_OPPORTUNITY_BACKUP_DIR, installed.opportunity.opportunityId),
+        'company-opportunity-package',
+        installed.contentHash,
+        MAX_BACKUPS_PER_OPPORTUNITY,
+      );
+      writeContractFile(
+        packageTarget,
+        `${JSON.stringify(desired.opportunity, null, 2)}\n`,
+      );
+      packageChanged = true;
+    }
+    if (recordAdded) {
+      const record = {
+        ...current.plan,
+        planContentHash: current.contentHash,
+        resultingOpportunityContentHash: desired.contentHash,
+      };
+      writeContractFile(mutationTarget, `${JSON.stringify(record, null, 2)}\n`);
+    }
+
+    return {
+      action: existingRecord
+        ? (nodesAlreadyCurrent ? 'unchanged' : 'superseded')
+        : (packageChanged ? 'mutated' : 'mutation-record-completed'),
+      applied: true,
+      changed: packageChanged || recordAdded,
+      packagePath: packageTarget,
+      mutationPath: mutationTarget,
+      trackerPath,
+      trackerAction: 'none',
+      backupPath,
+      plan: current.summary,
+    };
+  } finally {
+    transaction.close();
+  }
+}
+
 export async function importCompanyOpportunity(filePath, options = {}) {
   const root = options.root ?? getCareerOpsRoot();
   const trackerPath = options.trackerPath ?? resolveTrackerPathForWrite(root);
@@ -725,9 +1007,18 @@ function parseArguments(argv) {
   const apply = args.includes('--apply');
   const replace = args.includes('--replace');
   const positional = args.filter(arg => !['--json', '--apply', '--replace'].includes(arg));
-  if (positional.length !== 2 || !['check', 'import'].includes(positional[0])) return null;
-  if (positional[0] === 'check' && (apply || replace)) return null;
-  return { command: positional[0], packageFile: positional[1], json, apply, replace };
+  const commands = ['check', 'import', 'check-nodes', 'mutate-nodes'];
+  if (positional.length !== 2 || !commands.includes(positional[0])) return null;
+  if ((positional[0] === 'check' || positional[0] === 'check-nodes') && (apply || replace)) return null;
+  if (positional[0] === 'mutate-nodes' && replace) return null;
+  return {
+    command: positional[0],
+    packageFile: positional[1],
+    mutationFile: positional[1],
+    json,
+    apply,
+    replace,
+  };
 }
 
 async function main() {
@@ -751,6 +1042,37 @@ async function main() {
         `初始流程节点：${result.summary.nodeCount} 个`,
         `内容哈希：${result.summary.contentHash}`,
       ].join('\n'));
+      return;
+    }
+
+    if (args.command === 'check-nodes') {
+      const result = readNodeMutationFile(args.mutationFile, root);
+      const payload = { ok: true, action: 'checked', ...result.summary };
+      console.log(args.json ? JSON.stringify(payload, null, 2) : [
+        '公司机会节点计划校验通过。',
+        `Mutation ID: ${result.summary.mutationId}`,
+        `Opportunity ID: ${result.summary.opportunityId}`,
+        `变更摘要：${result.summary.changeSummary}`,
+        `目标流程节点：${result.summary.nodeCount} 个`,
+        `绑定当前机会哈希：${result.summary.expectedOpportunityContentHash}`,
+        `生成机会哈希：${result.summary.resultingOpportunityContentHash}`,
+      ].join('\n'));
+      return;
+    }
+
+    if (args.command === 'mutate-nodes') {
+      const result = await mutateCompanyOpportunityNodes(args.mutationFile, { root, apply: args.apply });
+      const payload = { ok: true, ...result };
+      console.log(args.json ? JSON.stringify(payload, null, 2) : [
+        `公司机会节点变更结果：${result.action}`,
+        `机会对象：${result.packagePath}`,
+        `变更记录：${result.mutationPath}`,
+        `投递清单：${result.trackerPath}（${result.trackerAction}）`,
+        `变更摘要：${result.plan.changeSummary}`,
+        `目标流程节点：${result.plan.nodeCount} 个`,
+        result.backupPath ? `机会备份：${result.backupPath}` : null,
+        '本操作只改本地机会节点，不改投递清单状态，不执行 skill，不挂载产物。',
+      ].filter(Boolean).join('\n'));
       return;
     }
 

@@ -11,12 +11,15 @@ import { routeIntent } from '../lib/intent-router.mjs';
 import {
   importCompanyOpportunity,
   inspectCompanyOpportunities,
+  loadCompanyOpportunity,
+  mutateCompanyOpportunityNodes,
 } from '../company-opportunity.mjs';
 
 const cliRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const materialsExamplePath = join(cliRoot, 'templates/resume-materials.example.json');
 const analysisExamplePath = join(cliRoot, 'templates/job-analysis.example.json');
 const opportunityExamplePath = join(cliRoot, 'templates/company-opportunity.example.json');
+const nodeMutationExamplePath = join(cliRoot, 'templates/company-opportunity-node.example.json');
 
 function installDependencies(root) {
   importResumeMaterials(materialsExamplePath, { root, apply: true });
@@ -36,6 +39,19 @@ function writeOpportunity(root, name, opportunity) {
   const path = join(root, name);
   writeFileSync(path, `${JSON.stringify(opportunity, null, 2)}\n`, 'utf8');
   return path;
+}
+
+function writeNodePlan(root, name, plan) {
+  const path = join(root, name);
+  writeFileSync(path, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+  return path;
+}
+
+function buildNodePlan(installed, overrides = {}) {
+  const plan = JSON.parse(readFileSync(nodeMutationExamplePath, 'utf8'));
+  plan.opportunityId = installed.opportunity.opportunityId;
+  plan.expectedOpportunityContentHash = installed.contentHash;
+  return { ...plan, ...overrides };
 }
 
 function trackerPathFor(root) {
@@ -332,6 +348,109 @@ test('custom tracker columns and widths are preserved', async () => {
   }
 });
 
+test('company opportunity node mutation is explicit, hash-bound, and tracker-isolated', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-company-opportunity-node-'));
+  try {
+    const { materials, analysis } = installDependencies(root);
+    await importCompanyOpportunity(
+      writeOpportunity(root, 'opportunity.json', buildOpportunity(analysis)),
+      { root, trackerPath: trackerPathFor(root), apply: true },
+    );
+    let installed = loadCompanyOpportunity(root, 'company-opportunity-demo-2026-09-02', materials);
+    const plan = buildNodePlan(installed);
+    const planPath = writeNodePlan(root, 'node-mutation.json', plan);
+    const trackerBefore = readFileSync(trackerPathFor(root), 'utf8');
+
+    const dryRun = await mutateCompanyOpportunityNodes(planPath, {
+      root,
+      trackerPath: trackerPathFor(root),
+    });
+    assert.equal(dryRun.action, 'dry-run');
+    assert.equal(dryRun.trackerAction, 'none');
+    assert.equal(existsSync(join(root, 'data/company-opportunity-mutations')), false);
+    assert.equal(readFileSync(trackerPathFor(root), 'utf8'), trackerBefore);
+
+    const applied = await mutateCompanyOpportunityNodes(planPath, {
+      root,
+      trackerPath: trackerPathFor(root),
+      apply: true,
+    });
+    assert.equal(applied.action, 'mutated');
+    assert.equal(applied.backupPath !== null, true);
+    assert.equal(readFileSync(trackerPathFor(root), 'utf8'), trackerBefore);
+
+    installed = loadCompanyOpportunity(root, installed.opportunity.opportunityId, materials);
+    assert.equal(
+      installed.opportunity.processNodes.find(node => node.id === 'resume-adaptation').status,
+      'passed',
+    );
+    assert.equal(
+      installed.opportunity.processNodes.findIndex(node => node.id === 'written-test'),
+      2,
+    );
+    assert.equal(installed.opportunity.trackerStatus, 'Evaluated');
+    const recordPath = join(
+      root,
+      'data/company-opportunity-mutations/company-opportunity-demo-2026-09-02/company-opportunity-node-demo-2026-09-02.json',
+    );
+    assert.equal(JSON.parse(readFileSync(recordPath, 'utf8')).mutationId, plan.mutationId);
+
+    const repeat = await mutateCompanyOpportunityNodes(planPath, {
+      root,
+      trackerPath: trackerPathFor(root),
+      apply: true,
+    });
+    assert.equal(repeat.action, 'unchanged');
+    assert.equal(repeat.changed, false);
+
+    await assert.rejects(
+      mutateCompanyOpportunityNodes(
+        writeNodePlan(root, 'collision.json', buildNodePlan(installed, {
+          changeSummary: '复用同一个 mutationId 的不同计划。',
+        })),
+        { root, trackerPath: trackerPathFor(root), apply: true },
+      ),
+      error => error.code === 'mutation-conflict',
+    );
+
+    const secondPlan = buildNodePlan(installed, {
+      mutationId: 'company-opportunity-node-second',
+      changeSummary: '把一面标记为已通过。',
+      processNodes: installed.opportunity.processNodes.map(node => (
+        node.id === 'first-interview' ? { ...node, status: 'passed' } : node
+      )),
+    });
+    await mutateCompanyOpportunityNodes(
+      writeNodePlan(root, 'second-node.json', secondPlan),
+      { root, trackerPath: trackerPathFor(root), apply: true },
+    );
+    const superseded = await mutateCompanyOpportunityNodes(planPath, {
+      root,
+      trackerPath: trackerPathFor(root),
+      apply: true,
+    });
+    assert.equal(superseded.action, 'superseded');
+    assert.equal(superseded.changed, false);
+
+    await assert.rejects(
+      mutateCompanyOpportunityNodes(
+        writeNodePlan(root, 'stale.json', buildNodePlan(loadCompanyOpportunity(
+          root,
+          'company-opportunity-demo-2026-09-02',
+          materials,
+        ), {
+          mutationId: 'company-opportunity-node-stale',
+          expectedOpportunityContentHash: `sha256:${'0'.repeat(64)}`,
+        })),
+        { root, trackerPath: trackerPathFor(root), apply: true },
+      ),
+      error => error.code === 'stale-opportunity',
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('routes company opportunity creation to its contract tool', () => {
   const route = routeIntent('确认后把这家公司写入公司机会');
   assert.equal(route.intent, 'create_company_opportunity');
@@ -339,4 +458,13 @@ test('routes company opportunity creation to its contract tool', () => {
   assert.equal(route.modeFile, 'company-opportunity.mjs');
   assert.ok(route.suggestedAction.includes('dry-run'));
   assert.ok(route.securityNotes.some(note => note.includes('不上传') && note.includes('不投递')));
+});
+
+test('routes company opportunity node updates to its contract tool', () => {
+  const route = routeIntent('我要调整这个公司机会的流程节点状态');
+  assert.equal(route.intent, 'update_company_opportunity_nodes');
+  assert.equal(route.moduleDestination, 'interview-management');
+  assert.equal(route.modeFile, 'company-opportunity.mjs');
+  assert.ok(route.suggestedAction.includes('mutate-nodes'));
+  assert.ok(route.securityNotes.some(note => note.includes('不更新投递清单') && note.includes('不执行 skill')));
 });

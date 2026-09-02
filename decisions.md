@@ -55,5 +55,6 @@ Source: user direction in this project thread on 2026-09-01.
 13. **Initial process nodes are seeds only.** Later node addition, ordering, status changes, and artifact links remain user-owned; repeated import never rewrites a user-confirmed process history.
 14. **Tracker status is user-owned and locally recoverable.** A linked tracker row's current status wins over the seed status. The installed opportunity JSON keeps a local `trackerStatus` mirror excluded from the confirmed-package content hash, so the same source package remains idempotent while tracker reconstruction does not roll user progress back.
 15. **Ambiguous tracker identities are rejected rather than repaired.** Duplicate markers, conflicting natural identities, and orphan marker rows fail loudly for manual review; no cloud sync, external action, or artifact mounting is implied.
+16. **Company-opportunity node changes use complete, hash-bound mutation plans.** A user-confirmed plan carries the full ordered target node list, current opportunity content hash, mutation ID, and trace ID; explicit apply updates only the local opportunity object, backup, and mutation record, never tracker status, artifacts, skills, or cloud progress.
 
 Source: user direction in this project thread on 2026-09-02.

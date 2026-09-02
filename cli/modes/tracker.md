@@ -31,6 +31,18 @@ node set-status.mjs <报告#|公司> <状态> [--note "备注"] [--force]
 
 公司机会行的自然身份是公司 + 岗位 + 地点 + 招聘批次，Notes 中必须保留 `opportunityId` / `batch` / `analysisId` / `analysisContentHash` 元数据。重复导入同一机会不会新增行；用户手工更新的状态优先于 `initialTrackerStatus`，不会被重复导入重置。若同身份或 marker 出现歧义，先人工处理冲突，不做静默合并。
 
+## 公司机会流程节点
+
+节点新增、删除、移动和状态确认不直接改 JSON。正确路径是：
+
+```bash
+node company-opportunity.mjs check-nodes <node-mutation.json>
+node company-opportunity.mjs mutate-nodes <node-mutation.json>
+node company-opportunity.mjs mutate-nodes <node-mutation.json> --apply
+```
+
+节点计划必须绑定当前机会内容哈希，并给出确认后的完整节点列表。该操作只更新机会对象、备份和变更记录，不更新投递清单状态，不执行 skill，不挂载产物。
+
 ## 状态语义（校招版）
 
 | 状态 | 含义 |

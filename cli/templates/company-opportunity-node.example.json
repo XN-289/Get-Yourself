@@ -1,0 +1,55 @@
+{
+  "schema": "get-yourself.company-opportunity-node-mutation",
+  "schemaVersion": 1,
+  "mutationId": "company-opportunity-node-demo-2026-09-02",
+  "opportunityId": "company-opportunity-demo-2026-09-02",
+  "generatedAt": "2026-09-02T12:30:00.000Z",
+  "traceId": "trace.company-opportunity-node-demo",
+  "confirmation": "user_confirmed",
+  "expectedOpportunityContentHash": "sha256:d67a284171e4132bb8cac8432800118bda1c81a57710703c497fdf4a30ac1eb5e",
+  "changeSummary": "把简历适配标记为已通过，新增笔试节点，并把复盘沉淀移动到 Offer 确认之后。",
+  "processNodes": [
+    {
+      "id": "jd-analysis",
+      "type": "jd_analysis",
+      "title": "JD 分析",
+      "status": "passed"
+    },
+    {
+      "id": "resume-adaptation",
+      "type": "resume_adaptation",
+      "title": "简历适配",
+      "status": "passed"
+    },
+    {
+      "id": "written-test",
+      "type": "custom",
+      "title": "笔试",
+      "status": "active"
+    },
+    {
+      "id": "submission",
+      "type": "submission",
+      "title": "投递网申",
+      "status": "passed"
+    },
+    {
+      "id": "first-interview",
+      "type": "interview",
+      "title": "一面",
+      "status": "waiting"
+    },
+    {
+      "id": "offer-decision",
+      "type": "offer",
+      "title": "Offer 确认",
+      "status": "todo"
+    },
+    {
+      "id": "review-sedimentation",
+      "type": "review_sedimentation",
+      "title": "复盘沉淀",
+      "status": "todo"
+    }
+  ]
+}

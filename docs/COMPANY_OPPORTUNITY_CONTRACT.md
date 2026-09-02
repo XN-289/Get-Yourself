@@ -12,9 +12,14 @@ This is an explicit bridge, not an automatic continuation of job analysis. Insta
 node company-opportunity.mjs check <opportunity.json> [--json]
 node company-opportunity.mjs import <opportunity.json> [--json]
 node company-opportunity.mjs import <opportunity.json> --apply [--replace] [--json]
+node company-opportunity.mjs check-nodes <node-mutation.json> [--json]
+node company-opportunity.mjs mutate-nodes <node-mutation.json> [--json]
+node company-opportunity.mjs mutate-nodes <node-mutation.json> --apply [--json]
 ```
 
 `check` and `import` without `--apply` are read-only. Import writes only after `--apply`. Replacing a different confirmed package requires `--apply --replace`. Changed package and tracker files are backed up before replacement or status-state synchronization.
+
+Node mutation follows the same explicit boundary: `check-nodes` is read-only, `mutate-nodes` defaults to dry-run, and writes require `--apply`. Mutation uses the shared tracker lock to serialize with opportunity imports, but it never reads or changes tracker content.
 
 ## Package Schema
 
@@ -52,6 +57,20 @@ Allowed types are `jd_analysis`, `resume_adaptation`, `submission`, `interview`,
 
 These nodes are initial seeds only. Later node addition, ordering, status changes, and artifact links remain user-owned. This importer does not mutate existing node order or node statuses, and no node skill is executed.
 
+### Node Mutation Plans
+
+After installation, node changes use the `get-yourself.company-opportunity-node-mutation` v1 plan. The plan is a complete target node list, not a set of loose instructions. It binds `opportunityId`, `expectedOpportunityContentHash`, a `mutationId`, trace ID, user confirmation, a change summary, and the full ordered `processNodes` result.
+
+The expected content hash prevents a stale plan from overwriting another user-confirmed change. The mutation only replaces `processNodes`; it cannot change company, role, location, batch, analysis binding, tracker status, or other opportunity facts. Repeating the same plan is idempotent, a different plan reusing the same `mutationId` is rejected, and an already-superseded historical plan is reported without another write.
+
+Applied results and trace records are:
+
+- updated `data/company-opportunities/{opportunityId}.json`
+- `data/company-opportunity-mutations/{opportunityId}/{mutationId}.json`
+- an opportunity backup under `data/company-opportunities-backups/{opportunityId}/`
+
+Node mutation never updates `data/applications.md`, mounts an artifact, executes a node skill, uploads progress, or implies that an application was submitted.
+
 ## Tracker Persistence
 
 The default tracker is `data/applications.md`. Header-aware parsing supports customized columns and Chinese headers, including `日期`, `公司`, `渠道`, `地点`, `岗位`, `评分`, `状态`, `简历`, `报告`, and `备注`; custom column widths and unrelated rows are preserved.
@@ -79,6 +98,7 @@ Applied files are:
 
 - `data/company-opportunities/{opportunityId}.json`
 - `data/applications.md`
+- `data/company-opportunity-mutations/{opportunityId}/{mutationId}.json` for applied node plans
 
 Backups are stored under `data/company-opportunities-backups/{opportunityId}/`. The tracker transaction uses the shared tracker lock, so company-opportunity writes are serialized with other tracker writers.
 
