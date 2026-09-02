@@ -1,0 +1,112 @@
+import assert from 'node:assert/strict';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import test from 'node:test';
+import { importJobAnalysis } from '../job-analysis.mjs';
+import { importResumeMaterials, loadInstalledResumeMaterials } from '../resume-materials.mjs';
+import {
+  canonicalizeOpportunityTracker,
+} from '../opportunity-tracker.mjs';
+
+const cliRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+const materialsExamplePath = join(cliRoot, 'templates/resume-materials.example.json');
+const analysisExamplePath = join(cliRoot, 'templates/job-analysis.example.json');
+
+function installJobAnalysis(root) {
+  importResumeMaterials(materialsExamplePath, { root, apply: true });
+  const materials = loadInstalledResumeMaterials(root);
+  importJobAnalysis(analysisExamplePath, { root, apply: true });
+  return { materials, analysisId: 'job-analysis-demo-2026-09-02' };
+}
+
+function buildTracker(analysis, overrides = {}) {
+  const tracker = {
+    schema: 'get-yourself.opportunity-tracker',
+    schemaVersion: 1,
+    trackerId: 'opportunity-tracker-demo',
+    generatedAt: '2026-09-02T12:00:00.000Z',
+    traceId: 'trace.opportunity-tracker-demo',
+    confirmation: 'user_confirmed',
+    opportunities: [
+      {
+        id: 'demo-tech-backend',
+        analysisId: analysis.analysisId,
+        analysisContentHash: analysis.contentHash,
+        company: analysis.analysis.company,
+        role: analysis.analysis.role,
+        location: '上海',
+        recruitmentBatch: '2027届秋招',
+        source: '官网',
+        nextAction: '补充公司主体和薪资信息后决定是否投递。',
+        stages: [
+          {
+            id: 'stage-jd-analysis',
+            name: 'JD 分析',
+            status: 'passed',
+            note: '岗位分析已完成。',
+            artifactRefs: [
+              { type: 'job-analysis', id: analysis.analysisId, contentHash: analysis.contentHash },
+            ],
+          },
+          {
+            id: 'stage-application',
+            name: '投递',
+            status: 'active',
+            scheduledAt: '2026-09-03T10:00:00.000Z',
+          },
+        ],
+      },
+    ],
+  };
+  return { ...tracker, ...overrides };
+}
+
+test('canonicalizes opportunities with analysis provenance and ordering-sensitive hashes', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-opportunity-tracker-canonical-'));
+  try {
+    const { materials } = installJobAnalysis(root);
+    const analysis = {
+      analysisId: 'job-analysis-demo-2026-09-02',
+      contentHash: 'sha256:538792dc67572464ae59c52bfc1afe777d1075111cb7096ae062cc8493d3125b',
+      analysis: {
+        company: '示例科技',
+        role: 'Java 后端开发实习生',
+      },
+    };
+    assert.equal(materials.package.packageId, 'resume-materials-demo-2026-09-01');
+
+    const result = canonicalizeOpportunityTracker(buildTracker(analysis), {
+      analyses: new Map([[analysis.analysisId, analysis]]),
+      artifacts: new Map([[`job-analysis:${analysis.analysisId}`, analysis]]),
+    });
+    assert.equal(result.summary.trackerId, 'opportunity-tracker-demo');
+    assert.equal(result.summary.opportunityCount, 1);
+    assert.equal(result.summary.stageCount, 2);
+    assert.match(result.contentHash, /^sha256:[0-9a-f]{64}$/);
+    assert.equal(
+      canonicalizeOpportunityTracker(
+        buildTracker(analysis, { generatedAt: '2026-09-02T13:00:00.000Z' }),
+        {
+          analyses: new Map([[analysis.analysisId, analysis]]),
+          artifacts: new Map([[`job-analysis:${analysis.analysisId}`, analysis]]),
+        },
+      ).contentHash,
+      result.contentHash,
+    );
+
+    const reordered = buildTracker(analysis);
+    reordered.opportunities[0].stages.reverse();
+    assert.notEqual(
+      canonicalizeOpportunityTracker(reordered, {
+        analyses: new Map([[analysis.analysisId, analysis]]),
+        artifacts: new Map([[`job-analysis:${analysis.analysisId}`, analysis]]),
+      }).contentHash,
+      result.contentHash,
+    );
+    assert.equal(existsSync(join(root, 'data/opportunity-tracker')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
