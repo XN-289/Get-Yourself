@@ -9,6 +9,7 @@ import { inspectResumeMaterials } from './resume-materials.mjs';
 import { inspectResumeFinal } from './resume-final.mjs';
 import { inspectResumeRender } from './resume-render.mjs';
 import { inspectJobAnalysis } from './job-analysis.mjs';
+import { inspectScamChecks } from './scam-check.mjs';
 import { inspectCompanyOpportunities } from './company-opportunity.mjs';
 import { inspectInterviewPrep } from './interview-prep.mjs';
 import { inspectInterviewReview } from './interview-review.mjs';
@@ -35,6 +36,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     resumeFinal: inspectResumeFinal(root),
     resumeRender: inspectResumeRender(root),
     jobAnalysis: inspectJobAnalysis(root),
+    scamCheck: inspectScamChecks(root),
     companyOpportunities: inspectCompanyOpportunities(root),
     interviewPrep: inspectInterviewPrep(root),
     interviewReview: inspectInterviewReview(root),
@@ -43,6 +45,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     suggestions: [
       '整理经历 / 更新简历',
       '评估岗位 / 判断是否值得投',
+      '核查招聘防骗风险',
       '确认后把岗位写入公司机会',
       '准备笔试面试 / 复盘',
       '把复盘反哺到能力资产',
@@ -121,6 +124,15 @@ function printStatus({ json = false, root } = {}) {
     console.log('岗位分析：等待素材包导入');
   } else {
     console.log('岗位分析：未生成');
+  }
+  const scamCheck = payload.scamCheck;
+  if (scamCheck.state === 'ready') {
+    const currentCount = scamCheck.checks.filter(item => item.markdownState === 'current').length;
+    console.log(`防骗核查：${scamCheck.checkCount} 份（${currentCount} 份报告一致）`);
+  } else if (scamCheck.state === 'invalid') {
+    console.log(`防骗核查：本地文件无效（${scamCheck.error}）`);
+  } else {
+    console.log('防骗核查：未生成');
   }
   if (interviewPrep.state === 'ready') {
     const currentCount = interviewPrep.preparations.filter(item => item.markdownState === 'current').length;

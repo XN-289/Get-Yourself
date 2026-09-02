@@ -112,6 +112,20 @@ const ROUTES = {
     requiresNetwork: true,
     securityNotes: [EXTERNAL_CONTENT_NOTE],
   },
+  scamCheck: {
+    intent: 'check_scam',
+    displayName: '防骗核查',
+    moduleDestination: 'interview-management',
+    modeFile: 'modes/scam-check.md',
+    suggestedAction: '先整理用户提供的 JD、HR 沟通、公司页面和第三方证据，生成 scam-check.mjs 草稿；确认后执行 check 和 import dry-run，用户显式同意后 --apply。',
+    needsConfirmation: true,
+    fallbackPrompt: '请提供岗位描述、HR 沟通记录、公司页面或第三方来源；没有证据的信息我会标为需核实，不会臆断。',
+    securityNotes: [
+      EXTERNAL_CONTENT_NOTE,
+      '任一红色信号一票否决推进建议；黄色信号只生成核实动作，不给绿灯。',
+      '防骗核查只写本地 JSON、Markdown 和备份，不改公司机会、投递清单、岗位分析或云端数据。',
+    ],
+  },
   evaluation: {
     intent: 'evaluate_job',
     displayName: '评估岗位',
@@ -192,6 +206,7 @@ const ROUTING_RULES = [
   ['interview', /面试|笔试|复盘|hr\s*面|技术面|群面|一面|二面|明天.*准备|准备.*明天/i],
   ['tracker', /投递|进度|状态|跟进|已投|网申|申请/i],
   ['scan', /扫描|找岗|找岗位|岗位信息|校招信息|信息源/i],
+  ['scamCheck', /防骗|诈骗|骗局|培训贷|包就业|收费内推|黑中介|岗位真实性|入职前收费/i],
   ['resumeRender', /渲染简历|简历渲染|模板渲染|换.{0,8}模板|套.{0,8}模板/i],
   ['resumeFinal', /简历定稿|定稿简历|生成简历|更新简历|写入\s*cv\.md/i],
   ['capability', /能力资产|能力|差距|缺什么|补证据|提升/i],

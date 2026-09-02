@@ -1,0 +1,33 @@
+{
+  "schema": "get-yourself.scam-check",
+  "schemaVersion": 1,
+  "checkId": "demo-scam-check",
+  "generatedAt": "2026-09-02T10:00:00.000Z",
+  "traceId": "trace.scam-check-demo",
+  "confirmation": "user_confirmed",
+  "company": "示例网络科技",
+  "role": "产品助理",
+  "evidence": [
+    {
+      "id": "evidence-jd",
+      "sourceType": "jd",
+      "content": "岗位描述：产品助理，负责 App 功能协助，月薪 8000 到 12000，工作地点为科技园 A 栋。"
+    },
+    {
+      "id": "evidence-hr-chat",
+      "sourceType": "hr_chat",
+      "content": "HR 说明：入职前需缴纳 800 元岗位保障金，转正后退还。"
+    }
+  ],
+  "signals": [
+    {
+      "id": "signal-pre-job-fee",
+      "type": "pre_job_fee",
+      "severity": "red",
+      "evidenceRefs": [
+        "evidence-hr-chat"
+      ],
+      "note": "HR 要求入职前缴纳岗位保障金，属于入职前收费信号。"
+    }
+  ]
+}
