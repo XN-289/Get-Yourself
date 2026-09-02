@@ -13,10 +13,12 @@ import { X } from "@lucide/vue";
 withDefaults(
   defineProps<{
     description?: string;
+    size?: "md" | "lg";
     title: string;
   }>(),
   {
-    description: ""
+    description: "",
+    size: "md"
   }
 );
 
@@ -27,7 +29,7 @@ const open = defineModel<boolean>("open", { default: false });
   <DialogRoot v-model:open="open">
     <DialogPortal>
       <DialogOverlay class="workbench-drawer-overlay" />
-      <DialogContent class="workbench-drawer">
+      <DialogContent class="workbench-drawer" :class="`is-${size}`">
         <header class="workbench-drawer-header">
           <div>
             <DialogTitle class="workbench-drawer-title">
@@ -75,6 +77,10 @@ const open = defineModel<boolean>("open", { default: false });
   color: var(--ink);
   box-shadow: -24px 0 70px rgba(23, 33, 36, 0.2);
   animation: workbench-drawer-in 150ms ease-out;
+}
+
+.workbench-drawer.is-lg {
+  width: min(720px, calc(100vw - 18px));
 }
 
 .workbench-drawer-header {

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, reactive, ref } from "vue";
+import { computed, ref } from "vue";
 
 import { workbenchDeviceApi, type WorkbenchDevice } from "@/api/workbenchDevice";
 
@@ -34,19 +34,30 @@ export interface EvidenceAbility {
   source: "growth" | "interview" | "jd";
 }
 
-export interface ResumeFact {
+export type ResumeDocumentStatus = "editing" | "final" | "exported";
+export type ResumeDocumentSource = "agent" | "import" | "manual";
+
+export interface ResumeDocument {
   id: number;
-  label: string;
-  source: string;
-  confirmed: boolean;
+  title: string;
+  targetRole: string;
+  version: number;
+  status: ResumeDocumentStatus;
+  templateId: string;
+  updatedAt: string;
+  source: ResumeDocumentSource;
+  fileName?: string;
+  content: string;
 }
 
-export interface ResumeAsset {
-  id: number;
-  name: string;
-  version: string;
-  status: string;
-  coverage: string;
+export interface ResumeDocumentInput {
+  title: string;
+  targetRole: string;
+  templateId: string;
+  content: string;
+  status?: ResumeDocumentStatus;
+  source?: ResumeDocumentSource;
+  fileName?: string;
 }
 
 export interface ResumeTemplate {
@@ -123,20 +134,63 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
   const activeIntent = ref<WorkbenchIntent>("experience");
   const evidenceAbilities = ref<EvidenceAbility[]>([]);
 
-  const resumeAssets = ref<ResumeAsset[]>([
+  const resumeDocuments = ref<ResumeDocument[]>([
     {
       id: 1,
-      name: "Java 后端主简历",
-      version: "v3",
-      status: "待确认 2 个事实",
-      coverage: "覆盖 82% 能力证据"
+      title: "Java 后端主简历",
+      targetRole: "Java 后端开发",
+      version: 3,
+      status: "final",
+      templateId: "tech-compact",
+      updatedAt: "2026-09-02 09:20",
+      source: "agent",
+      content: `# 李雷 · Java 后端开发
+
+## 摘要
+后端实习经历覆盖接口设计、前端联调和宿舍试用落地。
+
+## 实习与项目
+### 校园技术团队 · 后端开发实习生
+- 设计宿舍报修接口，支撑报修流程进入宿舍试用。
+- 与前端约定接口契约，减少接口理解偏差。
+
+### 宿舍报修小程序 · 后端负责人
+- 完成报修创建、状态更新和查询接口。
+- 沉淀接口约定和联调记录。`
     },
     {
       id: 2,
-      name: "前端实习一页版",
-      version: "v2",
-      status: "已锁定",
-      coverage: "覆盖 68% 能力证据"
+      title: "前端实习一页版",
+      targetRole: "前端开发实习生",
+      version: 2,
+      status: "final",
+      templateId: "modern-sidebar",
+      updatedAt: "2026-09-01 16:40",
+      source: "agent",
+      content: `# 李雷 · 前端开发实习生
+
+## 摘要
+熟悉组件开发与接口联调，能把设计稿落成可试用页面。
+
+## 项目
+### 宿舍报修小程序 · 前端协作者
+- 完成报修表单、状态列表和详情页组件。
+- 参与接口契约确认，记录前后端联调问题。`
+    },
+    {
+      id: 3,
+      title: "供应链系统简历",
+      targetRole: "供应链系统实习生",
+      version: 1,
+      status: "exported",
+      templateId: "classic-ats",
+      updatedAt: "2026-08-30 11:10",
+      source: "import",
+      fileName: "supply-chain-resume.md",
+      content: `# 李雷 · 供应链系统实习生
+
+## 摘要
+具备 Java、SQL 和业务流程建模基础，关注系统落地后的真实使用效果。`
     }
   ]);
 
@@ -208,17 +262,6 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       useCases: ["新媒体运营", "校园招聘会打印版", "视觉强调"]
     }
   ]);
-  const activeResumeTemplateId = ref("tech-compact");
-
-  const resumeDraft = reactive({
-    bullet: "宿舍报修小程序：独立完成前后端开发，协作完成接口联调，系统已进入宿舍试用。",
-    facts: [
-      { id: 1, label: "独立负责模块边界", source: "用户口述", confirmed: false },
-      { id: 2, label: "宿舍楼试用范围", source: "成长记录", confirmed: true },
-      { id: 3, label: "接口联调过程", source: "项目记录", confirmed: false }
-    ] as ResumeFact[]
-  });
-
   const careerStages = ref<CareerStage[]>([
     {
       id: "explore",
@@ -574,10 +617,11 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
         bound: activeDevices.value.length > 1 ? `已绑定 ${activeDevices.value.length} 台` : "已绑定"
       })[bindingState.value]
   );
-  const confirmedFactCount = computed(() => resumeDraft.facts.filter((fact) => fact.confirmed).length);
-  const activeResumeTemplate = computed(
-    () => resumeTemplates.value.find((template) => template.id === activeResumeTemplateId.value) ?? resumeTemplates.value[0]
-  );
+  const resumeStatusCount = computed(() => ({
+    editing: resumeDocuments.value.filter((item) => item.status === "editing").length,
+    final: resumeDocuments.value.filter((item) => item.status === "final").length,
+    exported: resumeDocuments.value.filter((item) => item.status === "exported").length
+  }));
   const connectCommand = computed(() =>
     deviceCode.value ? `node cli/gy.mjs connect ${deviceCode.value}` : ""
   );
@@ -586,6 +630,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
   let messageId = 2;
   let traceId = 3;
   let processStageId = 500;
+  let resumeDocumentId = 4;
   let devicePollTimer: ReturnType<typeof setInterval> | null = null;
 
   function formatDeviceTime(value: string | null) {
@@ -866,8 +911,47 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       return;
     }
     if (intent === "resume") {
-      resumeDraft.bullet =
-        "宿舍报修小程序：独立完成前后端开发，协作完成接口联调，系统已进入宿舍试用。";
+      const title = "Java 后端简历 · Agent 生成版";
+      const existing = resumeDocuments.value.find((item) => item.title === title);
+      const content = `# 李雷 · Java 后端开发
+
+## 摘要
+后端实习经历覆盖接口设计、前端联调和宿舍试用落地。
+
+## 待确认
+- 个人负责的模块边界
+- 宿舍楼试用范围
+- 接口联调过程`;
+      if (existing) {
+        if (existing.content !== content) {
+          existing.version += 1;
+          existing.status = "editing";
+        }
+        existing.content = content;
+        existing.updatedAt = new Intl.DateTimeFormat("zh-CN", {
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(new Date());
+      } else {
+        resumeDocuments.value.unshift({
+          id: resumeDocumentId++,
+          title,
+          targetRole: "Java 后端开发",
+          version: 1,
+          status: "editing",
+          templateId: "tech-compact",
+          updatedAt: new Intl.DateTimeFormat("zh-CN", {
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit"
+          }).format(new Date()),
+          source: "agent",
+          content
+        });
+      }
       return;
     }
     if (intent === "review") {
@@ -896,28 +980,64 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     }
   }
 
-  function confirmResumeFact(factId: number) {
-    resumeDraft.facts = resumeDraft.facts.map((fact) =>
-      fact.id === factId ? { ...fact, confirmed: true } : fact
-    );
-    if (resumeDraft.facts.every((fact) => fact.confirmed)) {
-      resumeAssets.value = resumeAssets.value.map((asset) =>
-        asset.id === 1 ? { ...asset, status: "已锁定", coverage: "覆盖 86% 能力证据" } : asset
-      );
-    }
-    addTrace("简历事实确认", `本地简历条目：${resumeDraft.bullet.slice(0, 18)}...`, "用户确认事实后才能锁定简历版本");
+  function normalizeResumeDocument(input: ResumeDocumentInput) {
+    const title = input.title.trim() || "未命名简历";
+    const targetRole = input.targetRole.trim() || "未标注岗位";
+    const template =
+      resumeTemplates.value.find((item) => item.id === input.templateId) ?? resumeTemplates.value[0];
+    const content = input.content.trim();
+    if (!content) throw new Error("简历内容不能为空");
+    return {
+      title,
+      targetRole,
+      templateId: template.id,
+      content,
+      status: input.status ?? "final",
+      source: input.source ?? "manual",
+      fileName: input.fileName?.trim() || undefined
+    };
   }
 
-  function selectResumeTemplate(templateId: string) {
-    if (!resumeTemplates.value.some((template) => template.id === templateId)) return;
-    activeResumeTemplateId.value = templateId;
-    const template = resumeTemplates.value.find((item) => item.id === templateId);
-    if (!template) return;
+  function importResumeDocument(input: ResumeDocumentInput) {
+    const document = normalizeResumeDocument(input);
+    const imported: ResumeDocument = {
+      id: resumeDocumentId++,
+      version: 1,
+      updatedAt: "刚刚",
+      ...document
+    };
+    resumeDocuments.value.unshift(imported);
     addTrace(
-      "简历模板选择",
-      `本地系统模板：${template.id}`,
-      `选择 ${template.nameZh}，只影响版式，不引入或改写简历事实`
+      "成品简历导入",
+      imported.fileName ?? imported.title,
+      "浏览器读取本机文件建立索引，未上传简历全文"
     );
+    return imported;
+  }
+
+  function updateResumeDocument(
+    id: number,
+    patch: ResumeDocumentInput
+  ) {
+    const resume = resumeDocuments.value.find((item) => item.id === id);
+    if (!resume) return;
+    const document = normalizeResumeDocument({
+      ...patch,
+      status: patch.status ?? resume.status,
+      source: patch.source ?? resume.source,
+      fileName: patch.fileName ?? resume.fileName
+    });
+    const contentChanged = document.content !== resume.content;
+    Object.assign(resume, document, {
+      version: contentChanged ? resume.version + 1 : resume.version,
+      updatedAt: "刚刚"
+    });
+    addTrace(
+      "成品简历修改",
+      resume.title,
+      `保存为 v${resume.version}，模板只影响版式，不改写简历事实`
+    );
+    return resume;
   }
 
   function setProcessStageStatus(
@@ -1045,17 +1165,14 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     sending,
     activeIntent,
     evidenceAbilities,
-    resumeAssets,
+    resumeDocuments,
     resumeTemplates,
-    activeResumeTemplateId,
-    activeResumeTemplate,
-    resumeDraft,
+    resumeStatusCount,
     careerStages,
     opportunities,
     traceEvents,
     messages,
     bindingLabel,
-    confirmedFactCount,
     connectCommand,
     latestTrace,
     initializeDevices,
@@ -1066,8 +1183,8 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     formatDeviceTime,
     submitMessage,
     detectIntent,
-    confirmResumeFact,
-    selectResumeTemplate,
+    importResumeDocument,
+    updateResumeDocument,
     setProcessStageStatus,
     markProcessStageOffer,
     addProcessStage,

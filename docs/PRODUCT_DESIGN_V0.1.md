@@ -794,16 +794,17 @@ flowchart LR
 
 ### 9.5 简历管理
 
-简历管理展示交付结果，而不是替代本地文件权威：
+简历管理是“成品简历库”，管理对象是已经能交付给市场的完整简历，而不是候选素材、事实确认任务或模板说明页。素材生成、事实确认和渲染审批仍属于 Agent 生成链路；一旦形成完整简历，才进入本模块。
 
 | 区域 | 内容 |
 |---|---|
-| 版本列表 | 目标岗位、生成时间、使用证据包版本、状态 |
-| 条目来源 | 每条经历对应的能力证据和确认状态 |
-| 定稿状态 | 草稿、待确认、已定稿、已导出 |
-| 文件索引 | 本地文件路径、PDF 状态、同步状态 |
+| 成品列表 | 简历名称、目标岗位、版本、来源、更新时间、模板、状态与全文预览 |
+| 简历编辑 | 用户修改名称、目标岗位、模板、状态和完整正文；正文变化形成下一版 |
+| 导入入口 | 支持导入本机 `.json`、`.md`、`.txt`、`.html` 成品文件；JSON 仅接受用户确认过的 `get-yourself.resume-render v1` 渲染包 |
+| 生成入口 | Agent 生成或更新一份完整简历，而不是只产出候选 bullet |
+| 文件索引 | 本地文件名或路径、PDF 状态、同步状态与 Trace |
 
-默认只在网页展示索引和用户确认的摘要；简历全文仍保存在本地，用户明确选择上传时才展示全文。
+状态使用 `编辑中`、`已定稿`、`已导出`。导入和编辑都在本地读取或维护简历全文，不上传、不自动同步、不触发云端改写；模板只影响版式，不新增或推断事实。用户明确选择上传或同步某一版时，必须先看到该版全文和目标范围。
 
 ### 9.6 面试管理
 
@@ -1113,6 +1114,8 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 - 每条进入简历的内容都有来源，未确认推断不会进入定稿。
 
 当前实现边界：Stage 4a 已落地本地简历素材包契约与导入器。Agent 可以生成结构化候选草稿，用户确认后通过 `resume-materials.mjs` 写入 `data/resume-materials.json`，并派生 `interview-prep/story-bank.md`；导入器不修改 `cv.md`、不上传网页、不执行 LLM 抽取。Stage 4b 已落地简历定稿审批与面试准备清单：`resume-final.mjs` 只允许当前素材哈希匹配的 `verified` / `user_confirmed` 条目进入 `cv.md`，并保留用户手工维护的非托管章节；`interview-prep.mjs` 生成绑定当前素材的清单与 STAR 复盘，JD 全程只作为数据。Stage 4c 已落地面试复盘合同：`interview-review.mjs` 写入本地复盘 JSON 与会话 Markdown，差距和故事候选不直接修改任何下游事实源。结构化简历渲染也已通过 `resume-render.mjs` 落地，提供 11 套本地 HTML 模板、中文校招场景目录和确定性输出。Stage 4d 已落地本地能力反哺台账：`capability-feedback.mjs` 将复盘差距映射为本地跟进任务、将 STAR 候选映射为 `user_confirmed` 本地证据候选，不修改当前能力证据包、分数、素材、故事库、简历或平台数据。契约细节见 `docs/RESUME_MATERIALS_CONTRACT.md`、`docs/RESUME_FINAL_CONTRACT.md`、`docs/INTERVIEW_PREP_CONTRACT.md`、`docs/INTERVIEW_REVIEW_CONTRACT.md`、`docs/RESUME_RENDER_CONTRACT.md` 与 `docs/CAPABILITY_FEEDBACK_CONTRACT.md`。
+
+前端简历管理已按成品简历库改造：页面只展示完整简历对象，支持本地导入、右侧抽屉编辑、版本递增、状态标记和 Agent 生成完整简历；候选素材确认与模板目录不再是该页主体。该能力当前仍是前端 Demo 的会话内状态，尚未和本地 render 包 / `cv.md` 文件库建立持久化桥接。
 
 ### Stage 5：岗位评估与 tracker 闭环
 

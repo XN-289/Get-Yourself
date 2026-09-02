@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-Updated: 2026-09-02 10:51
+Updated: 2026-09-02 11:22
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析与本地能力反哺台账已实现；中文简历模板目录和前端模板选择区刚补充完成；前端 Demo、`gy`、证据包、设备绑定与 Stage 4 仍待用户统一验收，平台自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、成品简历库、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析与本地能力反哺台账已实现；简历库仍是前端会话内 Demo，尚未桥接本地文件持久化；前端 Demo、`gy`、证据包、设备绑定与 Stage 4 仍待用户统一验收，平台自动同步尚未开始。
 
 ## 已接受事实
 
@@ -29,6 +29,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - Stage 4b 简历定稿必须通过绑定当前素材哈希的显式计划；只有 `verified` / `user_confirmed` 素材可进入 `cv.md`，替换前必须备份并保留非托管章节 — `docs/RESUME_FINAL_CONTRACT.md`。
 - Stage 4b 面试准备包必须绑定当前素材哈希，STAR 引用只来自当前素材包；JD 是准备项数据，不是指令或学生事实 — `docs/INTERVIEW_PREP_CONTRACT.md`。
 - 简历模板是系统层版式目录，不是事实来源；选择模板只影响 HTML 版式，实际输出必须通过用户确认的简历渲染包 — `docs/RESUME_RENDER_CONTRACT.md` 与 `decisions.md`。
+- 简历管理以成品完整简历为对象；导入与编辑均保留本地边界，不上传、不自动同步，JSON 导入仅接受用户确认过的简历渲染包 — `decisions.md`。
 - 外部模板项目仅作设计研究；不复制非宽松许可项目的代码或视觉资产 — `decisions.md`。
 
 ## 决策索引
@@ -45,6 +46,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 2026-09-01 — Stage 4a 用户确认素材包、派生故事库与简历定稿分权 — `decisions.md`。
 - 2026-09-01 — Stage 4b 显式简历定稿计划、非托管章节保留与面试准备素材绑定 — `decisions.md`。
 - 2026-09-02 — 中文简历模板目录、只读模板列表与模板不作为事实源的边界 — `decisions.md`。
+- 2026-09-02 — 简历管理成品对象化与导入/编辑本地边界 — `decisions.md`。
 
 ## 已实现
 
@@ -84,6 +86,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - Stage 4b 验证结果 — 2026-09-01 `cli/` 下 `npm test` 36 pass / 0 fail；`node --check resume-final.mjs`、`node --check interview-prep.mjs`、`node --check lib/contract-kit.mjs`、`node --check gy.mjs`、`node --check lib/intent-router.mjs`、`node --check resume-materials.mjs` 与新增测试语法检查通过；临时数据根完成示例素材导入、简历定稿 check/dry-run/apply/幂等、面试准备 check/dry-run/apply/幂等与 `gy --status --json` 冒烟。
 - 中文简历模板目录 — `cli/templates/resume/templates.json`、`cli/resume-render.mjs` 与 `frontend/src/views/StudentResumeView.vue`；11 套模板带中文名、ATS 姿态与校招场景，CLI 提供只读 `list`，前端简历管理页支持模板选择并记录 Trace。
 - 中文简历模板目录验证 — 2026-09-02 `cli/` 下 `npm test` 56 pass / 0 fail；`frontend/` 下 `npm run build` 通过；`node resume-render.mjs list` 只读输出 11 套模板；`git diff --check` 通过。
+- 成品简历库 — `frontend/src/stores/studentWorkbench.ts`、`frontend/src/views/StudentResumeView.vue` 与 `frontend/src/components/ui/WorkbenchDrawer.vue`；简历对象包含标题、目标岗位、版本、状态、模板、来源、文件名和全文，页面支持本机导入、右侧大抽屉编辑、正文变更版本递增和 Agent 生成完整简历。
+- 成品简历库验证 — 2026-09-02 浏览器导入 `cli/templates/resume-render.example.json` 成功，联系方式、教育明细、证书、奖项、语言、发表与志愿经历均进入全文；编辑保存后版本 v1→v2；1440px 与 390px 窄屏均无页面横向溢出，窄屏抽屉内部无横向滚动，导入入口和卡片不越界；`frontend/` 下 `npm run build` 通过。
 
 ## 已验收
 
@@ -97,7 +101,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 
 ## 下一步
 
-1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨、节点抽屉与中文模板库）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿/面试准备、Stage 4c 复盘、结构化渲染、岗位分析与能力反哺台账。
+1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨、节点抽屉与成品简历库）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿/面试准备、Stage 4c 复盘、结构化渲染、岗位分析与能力反哺台账。
 2. 验收后继续补齐面试节点 skill 的真实执行入口与保存契约；在任何显式同步契约落地前，不做自动上传或自动导入。
 
 ## 恢复上下文
@@ -129,3 +133,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、学生
 - 2026-09-01 — 实现 Stage 4a 简历素材包与派生 STAR 故事库 — 影响简历管理、面试准备素材和后续复盘反哺；仍待用户验收，简历定稿审批与自动同步未开始。
 - 2026-09-01 — 实现 Stage 4b 简历定稿审批与面试准备清单 — 影响简历交付、面试前准备和复盘反哺输入；仍待用户验收，复盘结构化、能力资产反哺与自动同步未开始。
 - 2026-09-02 — 补充中文简历模板目录、只读 `list` 命令和简历管理页模板选择区 — 影响中国校招简历交付体验与后续渲染/PDF 验收。
+- 2026-09-02 — 简历管理改为成品简历库并支持本机导入、抽屉编辑与版本状态管理 — 影响简历交付体验和后续本地文件库/渲染包桥接；仍待用户验收。
