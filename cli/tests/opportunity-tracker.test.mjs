@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { importJobAnalysis } from '../job-analysis.mjs';
+import { importJobAnalysis, loadInstalledJobAnalysis } from '../job-analysis.mjs';
 import { importResumeMaterials, loadInstalledResumeMaterials } from '../resume-materials.mjs';
 import {
   canonicalizeOpportunityTracker,
@@ -18,7 +18,7 @@ function installJobAnalysis(root) {
   importResumeMaterials(materialsExamplePath, { root, apply: true });
   const materials = loadInstalledResumeMaterials(root);
   importJobAnalysis(analysisExamplePath, { root, apply: true });
-  return { materials, analysisId: 'job-analysis-demo-2026-09-02' };
+  return { materials, analysis: loadInstalledJobAnalysis(root, materials, 'job-analysis-demo-2026-09-02') };
 }
 
 function buildTracker(analysis, overrides = {}) {
@@ -32,7 +32,7 @@ function buildTracker(analysis, overrides = {}) {
     opportunities: [
       {
         id: 'demo-tech-backend',
-        analysisId: analysis.analysisId,
+        analysisId: analysis.analysis.analysisId,
         analysisContentHash: analysis.contentHash,
         company: analysis.analysis.company,
         role: analysis.analysis.role,
@@ -47,7 +47,7 @@ function buildTracker(analysis, overrides = {}) {
             status: 'passed',
             note: '岗位分析已完成。',
             artifactRefs: [
-              { type: 'job-analysis', id: analysis.analysisId, contentHash: analysis.contentHash },
+              { type: 'job-analysis', id: analysis.analysis.analysisId, contentHash: analysis.contentHash },
             ],
           },
           {
@@ -63,24 +63,20 @@ function buildTracker(analysis, overrides = {}) {
   return { ...tracker, ...overrides };
 }
 
+function dependenciesFor(analysis) {
+  return {
+    analyses: new Map([[analysis.analysis.analysisId, analysis]]),
+    artifacts: new Map([[`job-analysis:${analysis.analysis.analysisId}`, analysis]]),
+  };
+}
+
 test('canonicalizes opportunities with analysis provenance and ordering-sensitive hashes', () => {
   const root = mkdtempSync(join(tmpdir(), 'gy-opportunity-tracker-canonical-'));
   try {
-    const { materials } = installJobAnalysis(root);
-    const analysis = {
-      analysisId: 'job-analysis-demo-2026-09-02',
-      contentHash: 'sha256:538792dc67572464ae59c52bfc1afe777d1075111cb7096ae062cc8493d3125b',
-      analysis: {
-        company: '示例科技',
-        role: 'Java 后端开发实习生',
-      },
-    };
+    const { materials, analysis } = installJobAnalysis(root);
     assert.equal(materials.package.packageId, 'resume-materials-demo-2026-09-01');
 
-    const result = canonicalizeOpportunityTracker(buildTracker(analysis), {
-      analyses: new Map([[analysis.analysisId, analysis]]),
-      artifacts: new Map([[`job-analysis:${analysis.analysisId}`, analysis]]),
-    });
+    const result = canonicalizeOpportunityTracker(buildTracker(analysis), dependenciesFor(analysis));
     assert.equal(result.summary.trackerId, 'opportunity-tracker-demo');
     assert.equal(result.summary.opportunityCount, 1);
     assert.equal(result.summary.stageCount, 2);
@@ -88,10 +84,7 @@ test('canonicalizes opportunities with analysis provenance and ordering-sensitiv
     assert.equal(
       canonicalizeOpportunityTracker(
         buildTracker(analysis, { generatedAt: '2026-09-02T13:00:00.000Z' }),
-        {
-          analyses: new Map([[analysis.analysisId, analysis]]),
-          artifacts: new Map([[`job-analysis:${analysis.analysisId}`, analysis]]),
-        },
+        dependenciesFor(analysis),
       ).contentHash,
       result.contentHash,
     );
@@ -99,10 +92,7 @@ test('canonicalizes opportunities with analysis provenance and ordering-sensitiv
     const reordered = buildTracker(analysis);
     reordered.opportunities[0].stages.reverse();
     assert.notEqual(
-      canonicalizeOpportunityTracker(reordered, {
-        analyses: new Map([[analysis.analysisId, analysis]]),
-        artifacts: new Map([[`job-analysis:${analysis.analysisId}`, analysis]]),
-      }).contentHash,
+      canonicalizeOpportunityTracker(reordered, dependenciesFor(analysis)).contentHash,
       result.contentHash,
     );
     assert.equal(existsSync(join(root, 'data/opportunity-tracker')), false);

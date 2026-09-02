@@ -582,7 +582,7 @@ function readAnalysisFile(filePath, materials) {
   return canonicalizeJobAnalysis(parsed, materials);
 }
 
-function readInstalledAnalysis(root, materials, analysisId) {
+export function loadInstalledJobAnalysis(root, materials, analysisId) {
   const target = packagePathFor(root, analysisId);
   let info;
   try {
@@ -640,7 +640,7 @@ export function inspectJobAnalysis(root = getCareerOpsRoot()) {
       throw analysisError(`Too many job analysis packages (max ${MAX_ANALYSES})`, 'invalid-analysis');
     }
     const analyses = files.map(name => {
-      const installed = readInstalledAnalysis(root, materials, name.replace(/\.json$/, ''));
+      const installed = loadInstalledJobAnalysis(root, materials, name.replace(/\.json$/, ''));
       const markdownPath = markdownPathFor(root, installed.analysis.analysisId);
       const markdown = readOptionalMarkdown(markdownPath);
       const desired = renderJobAnalysis(installed.analysis);
@@ -674,7 +674,7 @@ export function importJobAnalysis(filePath, options = {}) {
   const incoming = readAnalysisFile(filePath, materials);
   const packageTarget = packagePathFor(root, incoming.analysis.analysisId);
   const markdownTarget = markdownPathFor(root, incoming.analysis.analysisId);
-  const existing = readInstalledAnalysis(root, materials, incoming.analysis.analysisId);
+  const existing = loadInstalledJobAnalysis(root, materials, incoming.analysis.analysisId);
   const existingMarkdown = readOptionalMarkdown(markdownTarget);
   const desiredMarkdown = renderJobAnalysis(incoming.analysis);
   const packageChange = !existing || existing.contentHash !== incoming.contentHash;

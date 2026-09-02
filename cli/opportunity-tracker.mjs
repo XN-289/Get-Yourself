@@ -74,7 +74,14 @@ function requireOpportunity(item, path, analyses, artifacts) {
     'invalid-tracker',
   );
   const analysis = analyses.get(analysisId);
-  if (!analysis || analysis.contentHash !== analysisContentHash) {
+  const installedAnalysisId = analysis?.analysis?.analysisId ?? analysis?.summary?.analysisId;
+  const installedCompany = analysis?.analysis?.company ?? analysis?.summary?.company;
+  const installedRole = analysis?.analysis?.role ?? analysis?.summary?.role;
+  if (
+    !analysis
+    || installedAnalysisId !== analysisId
+    || analysis.contentHash !== analysisContentHash
+  ) {
     throw trackerError(`${path} references a missing or stale job analysis`, 'analysis-mismatch', {
       path,
       analysisId,
@@ -82,7 +89,7 @@ function requireOpportunity(item, path, analyses, artifacts) {
   }
   const company = requireString(item.company, `${path}.company`, { min: 1, max: 100 }, ContractToolError, 'invalid-tracker');
   const role = requireString(item.role, `${path}.role`, { min: 1, max: 100 }, ContractToolError, 'invalid-tracker');
-  if (company !== analysis.analysis.company || role !== analysis.analysis.role) {
+  if (company !== installedCompany || role !== installedRole) {
     throw trackerError(`${path}.company and role must match the installed analysis`, 'analysis-mismatch', { path });
   }
   const opportunity = {
