@@ -8,6 +8,7 @@ import { inspectEvidencePackage } from './evidence-package.mjs';
 import { inspectResumeMaterials } from './resume-materials.mjs';
 import { inspectResumeFinal } from './resume-final.mjs';
 import { inspectResumeRender } from './resume-render.mjs';
+import { inspectResumeLibrary } from './resume-library.mjs';
 import { inspectJobAnalysis } from './job-analysis.mjs';
 import { inspectScamChecks } from './scam-check.mjs';
 import { inspectCompanyOpportunities } from './company-opportunity.mjs';
@@ -35,6 +36,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     resumeMaterials: inspectResumeMaterials(root),
     resumeFinal: inspectResumeFinal(root),
     resumeRender: inspectResumeRender(root),
+    resumeLibrary: inspectResumeLibrary(root),
     jobAnalysis: inspectJobAnalysis(root),
     scamCheck: inspectScamChecks(root),
     companyOpportunities: inspectCompanyOpportunities(root),
@@ -112,6 +114,14 @@ function printStatus({ json = false, root } = {}) {
     console.log(`简历渲染：本地文件无效（${resumeRender.error}）`);
   } else {
     console.log('简历渲染：未生成');
+  }
+  const resumeLibrary = payload.resumeLibrary;
+  if (resumeLibrary.state === 'ready') {
+    console.log(`简历版本库：${resumeLibrary.documentCount} 条简历线 / ${resumeLibrary.versionCount} 个版本`);
+  } else if (resumeLibrary.state === 'invalid') {
+    console.log(`简历版本库：本地文件无效（${resumeLibrary.error}）`);
+  } else {
+    console.log('简历版本库：未导入');
   }
   const interviewPrep = payload.interviewPrep;
   const jobAnalysis = payload.jobAnalysis;

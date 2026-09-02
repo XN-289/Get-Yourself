@@ -1,0 +1,38 @@
+{
+  "schema": "get-yourself.resume-library",
+  "schemaVersion": 1,
+  "libraryId": "demo-resume-library-2026-09-02",
+  "generatedAt": "2026-09-02T08:00:00.000Z",
+  "traceId": "trace.resume-library-demo",
+  "confirmation": "user_confirmed",
+  "documents": [
+    {
+      "documentId": "resume-java-backend",
+      "title": "Java 后端主简历",
+      "targetRole": "Java 后端开发",
+      "activeVersionId": "resume-java-backend-v2",
+      "versions": [
+        {
+          "versionId": "resume-java-backend-v1",
+          "version": 1,
+          "status": "final",
+          "templateId": "tech-compact",
+          "updatedAt": "2026-09-01T08:00:00.000Z",
+          "source": "agent",
+          "changeNote": "首版整合实习与项目经历",
+          "content": "# 李雷 · Java 后端开发\n\n## 摘要\n后端实习经历覆盖接口设计和前端联调。\n\n## 实习与项目\n### 校园技术团队 · 后端开发实习生\n- 设计宿舍报修接口，支撑报修流程进入宿舍试用。\n- 与前端约定接口契约，减少接口理解偏差。\n"
+        },
+        {
+          "versionId": "resume-java-backend-v2",
+          "version": 2,
+          "status": "final",
+          "templateId": "tech-compact",
+          "updatedAt": "2026-09-02T08:00:00.000Z",
+          "source": "agent",
+          "changeNote": "补充项目结果表达",
+          "content": "# 李雷 · Java 后端开发\n\n## 摘要\n后端实习经历覆盖接口设计、前端联调和宿舍试用落地。\n\n## 实习与项目\n### 校园技术团队 · 后端开发实习生\n- 设计宿舍报修接口，支撑报修流程进入宿舍试用。\n- 与前端约定接口契约，减少接口理解偏差。\n\n### 宿舍报修小程序 · 后端负责人\n- 完成报修创建、状态更新和查询接口。\n- 沉淀接口约定和联调记录。\n"
+        }
+      ]
+    }
+  ]
+}

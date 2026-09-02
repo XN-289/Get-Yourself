@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
 import { workbenchDeviceApi, type WorkbenchDevice } from "@/api/workbenchDevice";
+import { formatResumeLibraryTimestamp, type ResumeLibrary } from "@/utils/resumeLibrary";
 
 export type BindingState = "unbound" | "pending" | "bound";
 export type ModuleRoute = "assets" | "resume" | "interview";
@@ -54,6 +55,7 @@ export type ResumeDocumentSource = "agent" | "import" | "manual";
 
 export interface ResumeVersion {
   id: number;
+  libraryVersionId?: string;
   version: number;
   status: ResumeVersionStatus;
   templateId: string;
@@ -66,6 +68,7 @@ export interface ResumeVersion {
 
 export interface ResumeDocument {
   id: number;
+  libraryDocumentId?: string;
   title: string;
   targetRole: string;
   activeVersionId: number;
@@ -1337,6 +1340,38 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     );
   }
 
+  function replaceResumeDocumentsFromLibrary(imported: ResumeLibrary) {
+    const documents = imported.documents.map(document => {
+      const versions = document.versions.map(version => ({
+        id: resumeVersionId++,
+        libraryVersionId: version.versionId,
+        version: version.version,
+        status: version.status,
+        templateId: version.templateId,
+        updatedAt: formatResumeLibraryTimestamp(version.updatedAt),
+        source: version.source,
+        ...(version.fileName ? { fileName: version.fileName } : {}),
+        changeNote: version.changeNote,
+        content: version.content
+      }));
+      return {
+        id: resumeDocumentId++,
+        libraryDocumentId: document.documentId,
+        title: document.title,
+        targetRole: document.targetRole,
+        activeVersionId: versions.find(version => version.libraryVersionId === document.activeVersionId)?.id ?? versions[0].id,
+        versions
+      };
+    });
+    resumeDocuments.value = documents;
+    addTrace(
+      "本地简历版本库读取",
+      imported.libraryId,
+      `读取 ${documents.length} 条简历线 / ${documents.reduce((total, document) => total + document.versions.length, 0)} 个版本；浏览器未写本地文件`
+    );
+    return documents;
+  }
+
   function setProcessStageStatus(
     opportunityId: number,
     stageId: number,
@@ -1486,6 +1521,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     skillPlanStatusLabel,
     detectIntent,
     importResumeDocument,
+    replaceResumeDocumentsFromLibrary,
     createResumeDraft,
     updateResumeDraft,
     finalizeResumeVersion,

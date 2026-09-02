@@ -38,6 +38,7 @@ withDefaults(
 .workbench-panel {
   min-width: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 13px;
   padding: 16px;

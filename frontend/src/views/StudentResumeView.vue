@@ -3,6 +3,7 @@ import { CircleCheck, FilePenLine, FileText, FileUp, GitBranch, Save, Send } fro
 import { computed, reactive, ref } from "vue";
 import { storeToRefs } from "pinia";
 
+import LocalResumeLibraryBridge from "@/components/resume/LocalResumeLibraryBridge.vue";
 import StudentWorkbenchModule from "@/components/student/StudentWorkbenchModule.vue";
 import WorkbenchButton from "@/components/ui/WorkbenchButton.vue";
 import WorkbenchDrawer from "@/components/ui/WorkbenchDrawer.vue";
@@ -541,6 +542,8 @@ function statusTone(status: ResumeVersionStatus) {
         暂无成品简历
       </div>
     </WorkbenchPanel>
+
+    <LocalResumeLibraryBridge />
 
     <WorkbenchDrawer
       v-model:open="editorOpen"
