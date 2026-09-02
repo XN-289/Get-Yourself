@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowUp,
   Download,
+  FileText,
   FileUp,
   HardDrive,
   Plus,
@@ -20,6 +21,7 @@ import {
   importLocalOpportunity,
   type CompanyOpportunityNodeMutationPlan,
   type ImportedLocalOpportunity,
+  type LocalArtifactKind,
   type LocalProcessNode,
   type LocalProcessNodeStatus,
   type LocalProcessNodeType
@@ -51,6 +53,14 @@ const nodeTypeOptions: Array<{ value: LocalProcessNodeType; label: string }> = [
   { value: "custom", label: "自定义" }
 ];
 
+const artifactKindOptions: Array<{ value: LocalArtifactKind; label: string }> = [
+  { value: "job_analysis", label: "JD 分析" },
+  { value: "resume_render", label: "简历" },
+  { value: "interview_prep", label: "面试准备" },
+  { value: "interview_review", label: "面试复盘" },
+  { value: "capability_feedback", label: "能力反哺" }
+];
+
 const statusOptions: Array<{ value: LocalProcessNodeStatus; label: string }> = [
   { value: "todo", label: "待开始" },
   { value: "active", label: "进行中" },
@@ -65,6 +75,16 @@ const sourceIds = computed(() => sourceNodes.value.map(node => node.id).join("|"
 const targetIds = computed(() => draftNodes.value.map(node => node.id).join("|"));
 const targetIdsSet = computed(() => new Set(draftNodes.value.map(node => node.id)));
 const sourceNodesById = computed(() => new Map(sourceNodes.value.map(node => [node.id, node])));
+const mountedArtifacts = computed(() => {
+  if (!imported.value) return [];
+  return imported.value.opportunity.processNodes.flatMap(node =>
+    (node.artifacts ?? []).map(artifact => ({
+      ...artifact,
+      nodeTitle: node.title,
+      nodeId: node.id
+    }))
+  );
+});
 
 const changeStats = computed(() => {
   if (!imported.value) {
@@ -112,6 +132,10 @@ function statusTone(status: LocalProcessNodeStatus) {
   return "neutral" as const;
 }
 
+function artifactKindLabel(kind: LocalArtifactKind) {
+  return artifactKindOptions.find(option => option.value === kind)?.label ?? kind;
+}
+
 async function handleImportChange(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -126,7 +150,10 @@ async function handleImportChange(event: Event) {
   try {
     const result = await importLocalOpportunity(await file.text(), file.name);
     imported.value = result;
-    draftNodes.value = result.opportunity.processNodes.map(node => ({ ...node }));
+    draftNodes.value = result.opportunity.processNodes.map(node => {
+      const { artifacts: _artifacts, ...editableNode } = node;
+      return { ...editableNode };
+    });
     changeSummary.value = `更新 ${result.opportunity.processNodes.length} 个流程节点`;
     exportedPlan.value = null;
     exportedAt.value = "";
@@ -255,6 +282,7 @@ function downloadPlan() {
                 <th scope="col">节点</th>
                 <th scope="col">类型</th>
                 <th scope="col">状态</th>
+                <th scope="col">已挂产物</th>
                 <th scope="col">操作</th>
               </tr>
             </thead>
@@ -280,6 +308,22 @@ function downloadPlan() {
                       {{ option.label }}
                     </option>
                   </select>
+                </td>
+                <td>
+                  <div
+                    v-if="sourceNodesById.get(node.id)?.artifacts?.length"
+                    class="artifact-list"
+                  >
+                    <span
+                      v-for="artifact in sourceNodesById.get(node.id)?.artifacts"
+                      :key="artifact.mountId"
+                      :title="`${artifact.title} · ${artifact.path} · ${artifact.contentHash}`"
+                    >
+                      <FileText :size="12" />
+                      {{ artifact.title }}
+                    </span>
+                  </div>
+                  <span v-else class="artifact-empty">-</span>
                 </td>
                 <td>
                   <div class="row-actions">
@@ -323,6 +367,22 @@ function downloadPlan() {
         <input v-model="changeSummary" maxlength="500" type="text">
       </label>
 
+      <section v-if="mountedArtifacts.length" class="artifact-summary" aria-label="已挂载本地产物">
+        <header>
+          <strong>本地产物</strong>
+          <span>{{ mountedArtifacts.length }} 个 · 只读</span>
+        </header>
+        <ul>
+          <li v-for="artifact in mountedArtifacts" :key="artifact.mountId">
+            <div>
+              <strong>{{ artifact.title }}</strong>
+              <span>{{ artifactKindLabel(artifact.kind) }} · {{ artifact.nodeTitle }}</span>
+            </div>
+            <code :title="artifact.path">{{ artifact.path }}</code>
+          </li>
+        </ul>
+      </section>
+
       <footer class="bridge-footer">
         <div v-if="exportedPlan" class="command-list">
           <span>{{ planFileName }} · {{ exportedAt }}</span>
@@ -360,7 +420,7 @@ function downloadPlan() {
         </div>
       </dl>
       <p>
-        计划会绑定当前机会哈希；下载后先 dry-run，确认结果再用显式 --apply 写回本地。投递清单状态、skill 执行和产物挂载不在本次计划内。
+        计划会绑定当前机会哈希；下载后先 dry-run，确认结果再用显式 --apply 写回本地。已挂载产物不在计划 JSON 内，CLI 会按节点 ID 自动保留；投递清单状态和 skill 执行也不在本次计划内。
       </p>
       <template #footer>
         <WorkbenchButton size="sm" @click="confirmOpen = false">取消</WorkbenchButton>
@@ -463,7 +523,7 @@ function downloadPlan() {
 
 table {
   width: 100%;
-  min-width: 720px;
+  min-width: 820px;
   border-collapse: collapse;
 }
 
@@ -514,13 +574,46 @@ td input {
   width: 180px;
 }
 
-td:nth-child(4) {
+td:nth-child(5) {
   min-width: 154px;
 }
 
-td:nth-child(4) select {
+td:nth-child(5) select {
   margin-top: 5px;
   width: 104px;
+}
+
+td:nth-child(4) {
+  max-width: 210px;
+}
+
+.artifact-list {
+  display: grid;
+  gap: 4px;
+}
+
+.artifact-list span {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--teal-dark);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.artifact-list span svg {
+  flex: none;
+}
+
+.artifact-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-empty {
+  color: var(--muted);
 }
 
 .row-actions {
@@ -581,6 +674,80 @@ td:nth-child(4) select {
 
 .change-summary input {
   width: 100%;
+}
+
+.artifact-summary {
+  display: grid;
+  gap: 8px;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.artifact-summary header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.artifact-summary header strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.artifact-summary header span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.artifact-summary ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.artifact-summary li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.artifact-summary li > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.artifact-summary li strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-summary li span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.artifact-summary code {
+  max-width: 42%;
+  overflow: hidden;
+  color: var(--teal-dark);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bridge-footer {

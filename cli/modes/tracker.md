@@ -43,6 +43,18 @@ node company-opportunity.mjs mutate-nodes <node-mutation.json> --apply
 
 节点计划必须绑定当前机会内容哈希，并给出确认后的完整节点列表。该操作只更新机会对象、备份和变更记录，不更新投递清单状态，不执行 skill，不挂载产物。
 
+## 公司机会产物挂载
+
+JD 分析报告、简历渲染、面试准备、面试复盘和能力反哺产物不能混入节点 mutation。真实文件存在后，单独生成 artifact-mount 计划：
+
+```bash
+node company-opportunity.mjs check-artifact <artifact-mount.json>
+node company-opportunity.mjs mount-artifact <artifact-mount.json>
+node company-opportunity.mjs mount-artifact <artifact-mount.json> --apply
+```
+
+计划绑定当前机会哈希、目标节点和真实文件字节哈希；产物路径必须位于该类型允许的本地目录内。挂载只把产物 descriptor 追加到对应节点并保存挂载记录，不改节点状态，不改投递清单，不执行 skill，不上传。
+
 ## 状态语义（校招版）
 
 | 状态 | 含义 |

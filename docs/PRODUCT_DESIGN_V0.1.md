@@ -1171,7 +1171,7 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 - 用户能手工调整同一公司机会内的节点顺序，节点元数据在重排后保持不变。
 - Agent 产物能落到对应节点，但结果状态不由 Agent 自动改写。
 
-当前实现边界：公司机会、横向流程轨、右侧节点抽屉、人工节点扩展、人工排序和人工状态确认已在前端 Demo 落地。本地侧已通过 `job-analysis.mjs` 落地 JD 解析、证据绑定、确定性匹配分和本地 Markdown 报告；`company-opportunity.mjs` 可在用户确认后把已安装分析桥接为本地公司机会 JSON，创建或修复幂等的投递清单关联行，并用完整目标节点列表执行内容哈希绑定的节点 mutation，tracker 后续状态由用户拥有并可从本地对象恢复。面试管理页也提供显式文件桥：用户导入本地机会 JSON，编辑完整目标节点列表后导出 mutation 计划，再回 CLI dry-run / `--apply`；浏览器不直接写本地文件。防骗核查闭环、真实产物挂载和页面内 skill 执行仍未完成，因此 Stage 5 不能记录为产品完成。契约细节见 `docs/JOB_ANALYSIS_CONTRACT.md` 与 `docs/COMPANY_OPPORTUNITY_CONTRACT.md`。
+当前实现边界：公司机会、横向流程轨、右侧节点抽屉、人工节点扩展、人工排序和人工状态确认已在前端 Demo 落地。本地侧已通过 `job-analysis.mjs` 落地 JD 解析、证据绑定、确定性匹配分和本地 Markdown 报告；`company-opportunity.mjs` 可在用户确认后把已安装分析桥接为本地公司机会 JSON，创建或修复幂等的投递清单关联行，并用完整目标节点列表执行内容哈希绑定的节点 mutation，tracker 后续状态由用户拥有并可从本地对象恢复。真实产物挂载也已落地为独立 artifact-mount 契约：计划绑定当前机会、目标节点、真实文件字节哈希和类型允许目录，显式 apply 后只把产物 descriptor 写入节点并保存挂载记录；节点状态、投递清单、skill 执行和云端状态都不被隐含修改。面试管理页也提供显式文件桥：用户导入本地机会 JSON，只读查看已挂产物，编辑完整目标节点列表后导出不含 artifacts 的 mutation 计划，再回 CLI dry-run / `--apply`；浏览器不直接写本地文件。防骗核查闭环和页面内 skill 执行仍未完成，因此 Stage 5 不能记录为产品完成。契约细节见 `docs/JOB_ANALYSIS_CONTRACT.md` 与 `docs/COMPANY_OPPORTUNITY_CONTRACT.md`。
 
 ### Stage 6：同步与 Trace 闭环
 
@@ -1190,7 +1190,7 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 
 ### 14.0 当前验收边界
 
-以下清单是用户验收标准，不因仓库实现完成而自动勾选。当前可开始统一验收 Stage 1 到 Stage 4；Stage 5 可开始验收公司机会流程轨 Demo、本地 JD 分析报告、公司机会到投递清单的本地写入、节点 mutation 合同和前端显式文件桥，不能验收防骗核查、产物挂载或页面内 skill；Stage 6 相关条目仍未开始实现。
+以下清单是用户验收标准，不因仓库实现完成而自动勾选。当前可开始统一验收 Stage 1 到 Stage 4；Stage 5 可开始验收公司机会流程轨 Demo、本地 JD 分析报告、公司机会到投递清单的本地写入、节点 mutation 合同、真实产物挂载和前端显式文件桥，不能验收防骗核查或页面内 skill；Stage 6 相关条目仍未开始实现。
 
 ### 14.1 核心路径
 

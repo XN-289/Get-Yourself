@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { createHash } from 'node:crypto';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { getCareerOpsRoot, resolveTrackerPathForWrite } from './path-resolver.mjs';
 import { loadInstalledJobAnalysis } from './job-analysis.mjs';
 import { loadInstalledResumeMaterials } from './resume-materials.mjs';
@@ -37,9 +38,12 @@ export const COMPANY_OPPORTUNITY_SCHEMA = 'get-yourself.company-opportunity';
 export const COMPANY_OPPORTUNITY_SCHEMA_VERSION = 1;
 export const COMPANY_OPPORTUNITY_NODE_SCHEMA = 'get-yourself.company-opportunity-node-mutation';
 export const COMPANY_OPPORTUNITY_NODE_SCHEMA_VERSION = 1;
+export const COMPANY_OPPORTUNITY_ARTIFACT_SCHEMA = 'get-yourself.company-opportunity-artifact-mount';
+export const COMPANY_OPPORTUNITY_ARTIFACT_SCHEMA_VERSION = 1;
 export const COMPANY_OPPORTUNITY_PACKAGE_DIR = 'data/company-opportunities';
 export const COMPANY_OPPORTUNITY_BACKUP_DIR = 'data/company-opportunities-backups';
 export const COMPANY_OPPORTUNITY_MUTATION_DIR = 'data/company-opportunity-mutations';
+export const COMPANY_OPPORTUNITY_ARTIFACT_MOUNT_DIR = 'data/company-opportunity-artifact-mounts';
 export const INITIAL_TRACKER_STATUS = 'Evaluated';
 
 const MAX_PACKAGE_BYTES = 128 * 1024;
@@ -47,6 +51,7 @@ const MAX_TRACKER_BYTES = 2 * 1024 * 1024;
 const MAX_OPPORTUNITIES = 200;
 const MAX_NODES = 50;
 const MAX_BACKUPS_PER_OPPORTUNITY = 10;
+const MAX_ARTIFACT_BYTES = 5 * 1024 * 1024;
 const CONTENT_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const CONFIRMATIONS = new Set(['user_confirmed']);
 const NODE_TYPES = new Set([
@@ -59,6 +64,27 @@ const NODE_TYPES = new Set([
   'custom',
 ]);
 const NODE_STATUSES = new Set(['todo', 'active', 'waiting', 'passed', 'failed', 'offer']);
+const ARTIFACT_KINDS = new Set([
+  'job_analysis',
+  'resume_render',
+  'interview_prep',
+  'interview_review',
+  'capability_feedback',
+]);
+const ARTIFACT_KIND_PREFIXES = new Map([
+  ['job_analysis', ['data/job-analysis/', 'reports/job-analysis/']],
+  ['resume_render', ['data/resume-render/', 'output/resume/']],
+  ['interview_prep', ['data/interview-prep/', 'interview-prep/']],
+  ['interview_review', ['data/interview-review/', 'interview-prep/sessions/']],
+  ['capability_feedback', ['data/capability-feedback/', 'reports/capability-feedback/']],
+]);
+const ARTIFACT_NODE_TYPES = new Map([
+  ['job_analysis', new Set(['jd_analysis', 'custom'])],
+  ['resume_render', new Set(['resume_adaptation', 'submission', 'custom'])],
+  ['interview_prep', new Set(['interview', 'custom'])],
+  ['interview_review', new Set(['interview', 'review_sedimentation', 'custom'])],
+  ['capability_feedback', new Set(['review_sedimentation', 'custom'])],
+]);
 const GENERATED_NOTE_KEYS = /^(?:opportunityId|batch|analysisId|analysisContentHash|location)=/;
 const OPPORTUNITY_MARKER_RE = /(?:^|[;；])\s*opportunityId=([A-Za-z0-9._-]+)/;
 
@@ -66,7 +92,9 @@ const USAGE = `Usage:
   node company-opportunity.mjs check <opportunity.json> [--json]
   node company-opportunity.mjs import <opportunity.json> [--apply] [--replace] [--json]
   node company-opportunity.mjs check-nodes <node-mutation.json> [--json]
-  node company-opportunity.mjs mutate-nodes <node-mutation.json> [--apply] [--json]`;
+  node company-opportunity.mjs mutate-nodes <node-mutation.json> [--apply] [--json]
+  node company-opportunity.mjs check-artifact <artifact-mount.json> [--json]
+  node company-opportunity.mjs mount-artifact <artifact-mount.json> [--apply] [--json]`;
 
 const DEFAULT_TRACKER = [
   '# 求职进度表',
@@ -88,12 +116,112 @@ function requireInitialTrackerStatus(value) {
   return text;
 }
 
-function requireContentHash(value, path) {
-  const text = requireString(value, path, { min: 71, max: 71 }, ContractToolError, 'invalid-node-mutation');
+function requireContentHash(value, path, errorCode = 'invalid-node-mutation') {
+  const text = requireString(value, path, { min: 71, max: 71 }, ContractToolError, errorCode);
   if (!CONTENT_HASH_PATTERN.test(text)) {
-    throw new ContractToolError(`${path} must be a sha256 content hash`, 'invalid-node-mutation', { path });
+    throw new ContractToolError(`${path} must be a sha256 content hash`, errorCode, { path });
   }
   return text;
+}
+
+function artifactError(message, code = 'invalid-artifact-mount', details = {}) {
+  return new ContractToolError(message, code, details);
+}
+
+function canonicalizeArtifact(value, path, { requireMountId = false } = {}) {
+  requireObjectWithOptional(
+    value,
+    path,
+    ['kind', 'title', 'path', 'contentHash', ...(requireMountId ? ['mountId'] : [])],
+    [],
+    ContractToolError,
+    'invalid-artifact-mount',
+  );
+  const artifact = {
+    kind: requireEnum(value.kind, `${path}.kind`, ARTIFACT_KINDS, ContractToolError, 'invalid-artifact-mount'),
+    title: requireString(value.title, `${path}.title`, { min: 2, max: 80 }, ContractToolError, 'invalid-artifact-mount'),
+    path: requireString(value.path, `${path}.path`, { min: 5, max: 240 }, ContractToolError, 'invalid-artifact-mount'),
+    contentHash: requireContentHash(value.contentHash, `${path}.contentHash`, 'invalid-artifact-mount'),
+  };
+  if (requireMountId) {
+    artifact.mountId = requireSafeId(value.mountId, `${path}.mountId`, ContractToolError, 'invalid-artifact-mount');
+  }
+  return artifact;
+}
+
+function normalizeArtifactPath(value, path = '$.artifact.path') {
+  const text = requireString(value, path, { min: 5, max: 240 }, ContractToolError, 'invalid-artifact-mount');
+  if (text.includes('\\')) {
+    throw artifactError(`${path} must use /-separated paths relative to the local data root`);
+  }
+  const segments = text.split('/');
+  if (segments.some(segment => !segment || segment === '.' || segment === '..')) {
+    throw artifactError(`${path} must be a normalized relative path without . or .. segments`);
+  }
+  return text;
+}
+
+function artifactPathFor(root, path) {
+  const target = join(root, path);
+  const relativePath = relative(resolve(root), resolve(target)).replaceAll('\\', '/');
+  if (
+    !relativePath
+    || relativePath === '..'
+    || relativePath.startsWith(`..${sep}`)
+    || !relativePath.startsWith(path)
+  ) {
+    throw artifactError('artifact path must stay inside the approved local artifact directories', 'invalid-artifact-path', {
+      path,
+    });
+  }
+  return target;
+}
+
+function assertArtifactKindPath(kind, path) {
+  const prefixes = ARTIFACT_KIND_PREFIXES.get(kind) ?? [];
+  if (!prefixes.some(prefix => path.startsWith(prefix))) {
+    throw artifactError(
+      `A ${kind} artifact must be stored under one of: ${prefixes.join(', ')}`,
+      'invalid-artifact-path',
+      { path },
+    );
+  }
+}
+
+function verifyArtifactFile(root, artifact) {
+  const path = normalizeArtifactPath(artifact.path);
+  assertArtifactKindPath(artifact.kind, path);
+  const target = artifactPathFor(root, path);
+  let info;
+  try {
+    info = lstatSync(target);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      throw artifactError('Artifact file is missing', 'artifact-missing', { path });
+    }
+    throw artifactError(`Cannot inspect artifact file: ${error.message}`, 'io-error', { path });
+  }
+  if (!info.isFile()) {
+    throw artifactError('Artifact path is not a regular file', 'invalid-artifact-path', { path });
+  }
+  if (info.size > MAX_ARTIFACT_BYTES) {
+    throw artifactError(`Artifact exceeds ${MAX_ARTIFACT_BYTES} bytes`, 'artifact-too-large', { path });
+  }
+  let bytes;
+  try {
+    bytes = readFileSync(target);
+  } catch (error) {
+    throw artifactError(`Cannot read artifact file: ${error.message}`, 'io-error', { path });
+  }
+  const actualHash = `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+  if (actualHash !== artifact.contentHash) {
+    throw artifactError('Artifact changed after the mount plan was drafted', 'artifact-changed', {
+      path,
+      expectedContentHash: artifact.contentHash,
+      actualContentHash: actualHash,
+    });
+  }
+  return { path, absolutePath: target, size: info.size, contentHash: actualHash };
 }
 
 function naturalKeyFor({ company, role, location, recruitmentBatch }) {
@@ -132,7 +260,7 @@ function markerIdFor(row) {
 export function canonicalizeCompanyOpportunity(
   input,
   installedAnalysis,
-  { allowInstalledTrackerState = false } = {},
+  { allowInstalledTrackerState = false, allowInstalledArtifacts = false } = {},
 ) {
   if (!installedAnalysis) throw opportunityError('A matching installed job analysis is required.', 'analysis-missing');
   const requiredFields = [
@@ -210,6 +338,8 @@ export function canonicalizeCompanyOpportunity(
   }
 
   const seenNodeIds = new Set();
+  const seenArtifactMountIds = new Set();
+  const seenArtifactPaths = new Set();
   opportunity.processNodes = requireArray(input.processNodes, '$.processNodes', 1, MAX_NODES, ContractToolError, 'invalid-opportunity')
     .map((item, index) => {
       const path = `$.processNodes[${index}]`;
@@ -217,7 +347,7 @@ export function canonicalizeCompanyOpportunity(
         item,
         path,
         ['id', 'type', 'title', 'status'],
-        ['skillKey', 'note'],
+        ['skillKey', 'note', ...(allowInstalledArtifacts ? ['artifacts'] : [])],
         ContractToolError,
         'invalid-opportunity',
       );
@@ -235,6 +365,43 @@ export function canonicalizeCompanyOpportunity(
       }
       if (item.note !== undefined) {
         node.note = requireString(item.note, `${path}.note`, { min: 1, max: 500 }, ContractToolError, 'invalid-opportunity');
+      }
+      if (allowInstalledArtifacts && item.artifacts !== undefined) {
+        const artifacts = requireArray(
+          item.artifacts,
+          `${path}.artifacts`,
+          0,
+          20,
+          ContractToolError,
+          'invalid-opportunity',
+        );
+        node.artifacts = artifacts.map((artifact, artifactIndex) => {
+          const canonical = canonicalizeArtifact(artifact, `${path}.artifacts[${artifactIndex}]`, {
+            requireMountId: true,
+          });
+          const normalized = {
+            ...canonical,
+            path: normalizeArtifactPath(canonical.path, `${path}.artifacts[${artifactIndex}].path`),
+          };
+          assertArtifactKindPath(normalized.kind, normalized.path);
+          const allowedNodeTypes = ARTIFACT_NODE_TYPES.get(normalized.kind);
+          if (!allowedNodeTypes.has(node.type)) {
+            throw opportunityError(
+              `A ${normalized.kind} artifact cannot be mounted on a ${node.type} node`,
+              'invalid-opportunity',
+            );
+          }
+          if (seenArtifactMountIds.has(normalized.mountId)) {
+            throw opportunityError(`${path}.artifacts[${artifactIndex}].mountId is duplicate: ${normalized.mountId}`);
+          }
+          if (seenArtifactPaths.has(normalized.path)) {
+            throw opportunityError(`${path}.artifacts[${artifactIndex}].path is duplicate`);
+          }
+          seenArtifactMountIds.add(normalized.mountId);
+          seenArtifactPaths.add(normalized.path);
+          return normalized;
+        });
+        if (node.artifacts.length === 0) delete node.artifacts;
       }
       return node;
     });
@@ -321,13 +488,23 @@ export function canonicalizeCompanyOpportunityNodeMutation(input, installedOppor
     );
   }
   requireArray(input.processNodes, '$.processNodes', 1, MAX_NODES, ContractToolError, 'invalid-node-mutation');
+  input.processNodes.forEach((item, index) => {
+    requireObjectWithOptional(
+      item,
+      `$.processNodes[${index}]`,
+      ['id', 'type', 'title', 'status'],
+      ['skillKey', 'note'],
+      ContractToolError,
+      'invalid-node-mutation',
+    );
+  });
   const desired = canonicalizeCompanyOpportunity(
     {
       ...installedOpportunity.opportunity,
-      processNodes: input.processNodes,
+      processNodes: mergeInstalledArtifacts(input.processNodes, installedOpportunity.opportunity.processNodes),
     },
     installedOpportunity.installedAnalysis,
-    { allowInstalledTrackerState: true },
+    { allowInstalledTrackerState: true, allowInstalledArtifacts: true },
   );
   plan.processNodes = desired.opportunity.processNodes;
   const contentHash = semanticHash({ ...plan, generatedAt: undefined });
@@ -345,12 +522,113 @@ export function canonicalizeCompanyOpportunityNodeMutation(input, installedOppor
   };
 }
 
+export function canonicalizeCompanyOpportunityArtifactMount(input, installedOpportunity, root) {
+  if (!installedOpportunity) {
+    throw new ContractToolError('An installed company opportunity is required.', 'opportunity-missing');
+  }
+  const requiredFields = [
+    'schema',
+    'schemaVersion',
+    'mountId',
+    'opportunityId',
+    'nodeId',
+    'generatedAt',
+    'traceId',
+    'confirmation',
+    'expectedOpportunityContentHash',
+    'artifact',
+  ];
+  requireObjectWithOptional(
+    input,
+    '$',
+    requiredFields,
+    [],
+    ContractToolError,
+    'invalid-artifact-mount',
+  );
+  if (input.schema !== COMPANY_OPPORTUNITY_ARTIFACT_SCHEMA) {
+    throw new ContractToolError(
+      `$.schema must be ${COMPANY_OPPORTUNITY_ARTIFACT_SCHEMA}`,
+      'invalid-artifact-mount',
+    );
+  }
+  if (input.schemaVersion !== COMPANY_OPPORTUNITY_ARTIFACT_SCHEMA_VERSION) {
+    throw new ContractToolError('$.schemaVersion must be 1', 'unsupported-version');
+  }
+  requireEnum(input.confirmation, '$.confirmation', CONFIRMATIONS, ContractToolError, 'invalid-artifact-mount');
+  const plan = {
+    schema: COMPANY_OPPORTUNITY_ARTIFACT_SCHEMA,
+    schemaVersion: COMPANY_OPPORTUNITY_ARTIFACT_SCHEMA_VERSION,
+    mountId: requireSafeId(input.mountId, '$.mountId', ContractToolError, 'invalid-artifact-mount'),
+    opportunityId: requireSafeId(input.opportunityId, '$.opportunityId', ContractToolError, 'invalid-artifact-mount'),
+    nodeId: requireSafeId(input.nodeId, '$.nodeId', ContractToolError, 'invalid-artifact-mount'),
+    generatedAt: requireTimestamp(input.generatedAt, '$.generatedAt', ContractToolError, 'invalid-artifact-mount'),
+    traceId: requireSafeId(input.traceId, '$.traceId', ContractToolError, 'invalid-artifact-mount'),
+    confirmation: input.confirmation,
+    expectedOpportunityContentHash: requireContentHash(
+      input.expectedOpportunityContentHash,
+      '$.expectedOpportunityContentHash',
+      'invalid-artifact-mount',
+    ),
+    artifact: canonicalizeArtifact(input.artifact, '$.artifact'),
+  };
+  plan.artifact.path = normalizeArtifactPath(plan.artifact.path);
+  if (plan.opportunityId !== installedOpportunity.opportunity.opportunityId) {
+    throw new ContractToolError(
+      'opportunityId does not match the installed company opportunity',
+      'opportunity-mismatch',
+    );
+  }
+  const node = installedOpportunity.opportunity.processNodes.find(item => item.id === plan.nodeId);
+  if (!node) {
+    throw new ContractToolError('nodeId does not exist in the installed company opportunity', 'node-missing');
+  }
+  const allowedNodeTypes = ARTIFACT_NODE_TYPES.get(plan.artifact.kind);
+  if (!allowedNodeTypes.has(node.type)) {
+    throw new ContractToolError(
+      `A ${plan.artifact.kind} artifact cannot be mounted on a ${node.type} node`,
+      'invalid-artifact-node',
+    );
+  }
+  const verified = verifyArtifactFile(root, plan.artifact);
+  const contentHash = semanticHash({ ...plan, generatedAt: undefined });
+  return {
+    plan,
+    installedOpportunity,
+    verifiedArtifact: verified,
+    canonicalJson: JSON.stringify(plan, null, 2),
+    contentHash,
+    summary: {
+      ...plan,
+      artifactBytes: verified.size,
+      planContentHash: contentHash,
+    },
+  };
+}
+
+function mergeInstalledArtifacts(processNodes, installedNodes) {
+  const artifactsByNodeId = new Map(
+    installedNodes
+      .filter(node => Array.isArray(node.artifacts))
+      .map(node => [node.id, node.artifacts]),
+  );
+  return processNodes.map(node => (
+    artifactsByNodeId.has(node.id)
+      ? { ...node, artifacts: artifactsByNodeId.get(node.id) }
+      : node
+  ));
+}
+
 function packagePathFor(root, opportunityId) {
   return join(root, COMPANY_OPPORTUNITY_PACKAGE_DIR, `${opportunityId}.json`);
 }
 
 function mutationPathFor(root, opportunityId, mutationId) {
   return join(root, COMPANY_OPPORTUNITY_MUTATION_DIR, opportunityId, `${mutationId}.json`);
+}
+
+function artifactMountPathFor(root, opportunityId, mountId) {
+  return join(root, COMPANY_OPPORTUNITY_ARTIFACT_MOUNT_DIR, opportunityId, `${mountId}.json`);
 }
 
 function requireAnalysisForInput(root, input, materials) {
@@ -386,7 +664,10 @@ export function loadCompanyOpportunity(root, opportunityId, materials = loadInst
   if (!info.isFile()) {
     throw opportunityError('Installed company opportunity is not a regular file', 'invalid-opportunity', { path: target });
   }
-  return readOpportunityFile(target, root, materials, { allowInstalledTrackerState: true });
+  return readOpportunityFile(target, root, materials, {
+    allowInstalledTrackerState: true,
+    allowInstalledArtifacts: true,
+  });
 }
 
 function readInstalledOpportunity(root, opportunityId, materials) {
@@ -708,10 +989,13 @@ export async function mutateCompanyOpportunityNodes(filePath, options = {}) {
     const desired = canonicalizeCompanyOpportunity(
       {
         ...installed.opportunity,
-        processNodes: current.desired.opportunity.processNodes,
+        processNodes: mergeInstalledArtifacts(
+          current.desired.opportunity.processNodes,
+          installed.opportunity.processNodes,
+        ),
       },
       installed.installedAnalysis,
-      { allowInstalledTrackerState: true },
+      { allowInstalledTrackerState: true, allowInstalledArtifacts: true },
     );
     const nodesAlreadyCurrent = JSON.stringify(installed.opportunity.processNodes)
       === JSON.stringify(desired.opportunity.processNodes);
@@ -802,6 +1086,222 @@ export async function mutateCompanyOpportunityNodes(filePath, options = {}) {
   }
 }
 
+function readArtifactMountFile(filePath, root, materials) {
+  const input = readJsonContract(filePath, {
+    maxBytes: MAX_PACKAGE_BYTES,
+    ErrorClass: ContractToolError,
+    errorCode: 'invalid-artifact-mount',
+  });
+  const opportunityId = input === null || typeof input !== 'object' || Array.isArray(input) || typeof input.opportunityId !== 'string'
+    ? ''
+    : input.opportunityId;
+  if (!opportunityId) {
+    throw new ContractToolError('$.opportunityId is required', 'invalid-artifact-mount');
+  }
+  requireSafeId(opportunityId, '$.opportunityId', ContractToolError, 'invalid-artifact-mount');
+  const installed = loadCompanyOpportunity(root, opportunityId, materials);
+  if (!installed) {
+    throw new ContractToolError(`Installed company opportunity not found: ${opportunityId}`, 'opportunity-missing');
+  }
+  return canonicalizeCompanyOpportunityArtifactMount(input, installed, root);
+}
+
+function readInstalledArtifactMountRecord(filePath, mount) {
+  let raw;
+  try {
+    raw = readFileSync(filePath, 'utf8');
+  } catch (error) {
+    throw new ContractToolError(`Cannot read installed artifact mount record: ${error.message}`, 'io-error', {
+      path: filePath,
+    });
+  }
+  let record;
+  try {
+    record = JSON.parse(raw);
+  } catch (error) {
+    throw new ContractToolError(
+      `Installed artifact mount record is not valid JSON: ${error.message}`,
+      'invalid-mount-record',
+      { path: filePath },
+    );
+  }
+  if (
+    record === null
+    || typeof record !== 'object'
+    || Array.isArray(record)
+    || record.mountId !== mount.plan.mountId
+    || record.opportunityId !== mount.plan.opportunityId
+    || record.planContentHash !== mount.contentHash
+  ) {
+    throw new ContractToolError(
+      'mountId already belongs to a different artifact mount plan',
+      'mount-conflict',
+      { path: filePath },
+    );
+  }
+  return record;
+}
+
+function sameArtifact(left, right) {
+  return left.kind === right.kind
+    && left.title === right.title
+    && left.path === right.path
+    && left.contentHash === right.contentHash
+    && left.mountId === right.mountId;
+}
+
+export async function mountCompanyOpportunityArtifact(filePath, options = {}) {
+  const root = options.root ?? getCareerOpsRoot();
+  const trackerPath = options.trackerPath ?? resolveTrackerPathForWrite(root);
+  const apply = options.apply === true;
+  const transaction = await openTrackerTransaction(trackerPath, { tracker: trackerPath });
+
+  try {
+    const materials = loadInstalledResumeMaterials(root);
+    const current = readArtifactMountFile(filePath, root, materials);
+    const packageTarget = packagePathFor(root, current.plan.opportunityId);
+    const mountTarget = artifactMountPathFor(
+      root,
+      current.plan.opportunityId,
+      current.plan.mountId,
+    );
+    let existingRecord = null;
+    if (existsSync(mountTarget)) {
+      const info = lstatSync(mountTarget);
+      if (!info.isFile()) {
+        throw new ContractToolError('Installed artifact mount record is not a regular file', 'invalid-mount-record', {
+          path: mountTarget,
+        });
+      }
+      existingRecord = readInstalledArtifactMountRecord(mountTarget, current);
+    }
+
+    // Re-read and re-verify under the shared tracker lock so mounts serialize with other opportunity writes.
+    const installed = loadCompanyOpportunity(root, current.plan.opportunityId, materials);
+    if (!installed) {
+      throw new ContractToolError(
+        `Installed company opportunity not found: ${current.plan.opportunityId}`,
+        'opportunity-missing',
+      );
+    }
+    const verifiedArtifact = verifyArtifactFile(root, current.plan.artifact);
+    const currentNode = installed.opportunity.processNodes.find(node => node.id === current.plan.nodeId);
+    if (!currentNode) {
+      throw new ContractToolError(
+        'nodeId no longer exists in the installed company opportunity',
+        'node-missing',
+      );
+    }
+    const desiredArtifact = { mountId: current.plan.mountId, ...current.plan.artifact };
+    const existingArtifact = currentNode.artifacts?.find(artifact => artifact.mountId === current.plan.mountId);
+    if (
+      existingArtifact
+      && !sameArtifact(existingArtifact, desiredArtifact)
+    ) {
+      throw new ContractToolError(
+        'mountId already belongs to a different mounted artifact',
+        'mount-conflict',
+      );
+    }
+    const artifactAlreadyCurrent = Boolean(existingArtifact);
+    if (
+      !artifactAlreadyCurrent
+      && existingRecord === null
+      && installed.contentHash !== current.plan.expectedOpportunityContentHash
+    ) {
+      throw new ContractToolError(
+        'The company opportunity changed after this artifact mount was drafted; regenerate the plan.',
+        'stale-opportunity',
+        {
+          expectedContentHash: current.plan.expectedOpportunityContentHash,
+          currentContentHash: installed.contentHash,
+        },
+      );
+    }
+
+    if (existingRecord && !artifactAlreadyCurrent) {
+      return {
+        action: 'superseded',
+        applied: true,
+        changed: false,
+        packagePath: packageTarget,
+        mountPath: mountTarget,
+        trackerPath,
+        trackerAction: 'none',
+        backupPath: null,
+        plan: current.summary,
+      };
+    }
+
+    if (!apply) {
+      return {
+        action: existingRecord
+          ? (artifactAlreadyCurrent ? 'dry-run-unchanged' : 'dry-run-superseded')
+          : 'dry-run',
+        applied: false,
+        packagePath: packageTarget,
+        mountPath: mountTarget,
+        trackerPath,
+        trackerAction: 'none',
+        plan: current.summary,
+      };
+    }
+
+    let backupPath = null;
+    let packageChanged = false;
+    const recordAdded = existingRecord === null;
+    let desired = installed;
+    if (!artifactAlreadyCurrent) {
+      desired = canonicalizeCompanyOpportunity(
+        {
+          ...installed.opportunity,
+          processNodes: installed.opportunity.processNodes.map(node => (
+            node.id === current.plan.nodeId
+              ? { ...node, artifacts: [...(node.artifacts ?? []), desiredArtifact] }
+              : node
+          )),
+        },
+        installed.installedAnalysis,
+        { allowInstalledTrackerState: true, allowInstalledArtifacts: true },
+      );
+      backupPath = backupFile(
+        packageTarget,
+        join(root, COMPANY_OPPORTUNITY_BACKUP_DIR, installed.opportunity.opportunityId),
+        'company-opportunity-package',
+        installed.contentHash,
+        MAX_BACKUPS_PER_OPPORTUNITY,
+      );
+      writeContractFile(packageTarget, `${JSON.stringify(desired.opportunity, null, 2)}\n`);
+      packageChanged = true;
+    }
+    if (recordAdded) {
+      const record = {
+        ...current.plan,
+        artifactBytes: verifiedArtifact.size,
+        planContentHash: current.contentHash,
+        resultingOpportunityContentHash: desired.contentHash,
+      };
+      writeContractFile(mountTarget, `${JSON.stringify(record, null, 2)}\n`);
+    }
+
+    return {
+      action: existingRecord
+        ? (artifactAlreadyCurrent ? 'unchanged' : 'superseded')
+        : (packageChanged ? 'mounted' : 'mount-record-completed'),
+      applied: true,
+      changed: packageChanged || recordAdded,
+      packagePath: packageTarget,
+      mountPath: mountTarget,
+      trackerPath,
+      trackerAction: 'none',
+      backupPath,
+      plan: current.summary,
+    };
+  } finally {
+    transaction.close();
+  }
+}
+
 export async function importCompanyOpportunity(filePath, options = {}) {
   const root = options.root ?? getCareerOpsRoot();
   const trackerPath = options.trackerPath ?? resolveTrackerPathForWrite(root);
@@ -840,13 +1340,29 @@ export async function importCompanyOpportunity(filePath, options = {}) {
       throw opportunityError('Tracker has this opportunity marker but the authoritative JSON is missing', 'tracker-orphan');
     }
 
-    const packageChange = !existing || existing.contentHash !== incoming.contentHash;
+    const effectiveIncoming = existing
+      ? canonicalizeCompanyOpportunity(
+        {
+          ...incoming.opportunity,
+          processNodes: mergeInstalledArtifacts(
+            incoming.opportunity.processNodes,
+            existing.opportunity.processNodes,
+          ),
+        },
+        incoming.installedAnalysis,
+        {
+          allowInstalledTrackerState: Boolean(existing.opportunity.trackerStatus),
+          allowInstalledArtifacts: true,
+        },
+      )
+      : incoming;
+    const packageChange = !existing || existing.contentHash !== effectiveIncoming.contentHash;
     const trackerStatus = existingRow?.status
       || existing?.opportunity.trackerStatus
       || incoming.opportunity.initialTrackerStatus;
     const trackerStateChange = Boolean(existing)
       && existing.opportunity.trackerStatus !== trackerStatus;
-    const persistedOpportunity = { ...incoming.opportunity, trackerStatus };
+    const persistedOpportunity = { ...effectiveIncoming.opportunity, trackerStatus };
     let desiredTracker = source;
     let trackerChange = false;
     let rowAction = 'none';
@@ -1007,14 +1523,16 @@ function parseArguments(argv) {
   const apply = args.includes('--apply');
   const replace = args.includes('--replace');
   const positional = args.filter(arg => !['--json', '--apply', '--replace'].includes(arg));
-  const commands = ['check', 'import', 'check-nodes', 'mutate-nodes'];
+  const commands = ['check', 'import', 'check-nodes', 'mutate-nodes', 'check-artifact', 'mount-artifact'];
   if (positional.length !== 2 || !commands.includes(positional[0])) return null;
-  if ((positional[0] === 'check' || positional[0] === 'check-nodes') && (apply || replace)) return null;
+  if ((positional[0] === 'check' || positional[0] === 'check-nodes' || positional[0] === 'check-artifact') && (apply || replace)) return null;
   if (positional[0] === 'mutate-nodes' && replace) return null;
+  if (positional[0] === 'mount-artifact' && replace) return null;
   return {
     command: positional[0],
     packageFile: positional[1],
     mutationFile: positional[1],
+    artifactFile: positional[1],
     json,
     apply,
     replace,
@@ -1072,6 +1590,40 @@ async function main() {
         `目标流程节点：${result.plan.nodeCount} 个`,
         result.backupPath ? `机会备份：${result.backupPath}` : null,
         '本操作只改本地机会节点，不改投递清单状态，不执行 skill，不挂载产物。',
+      ].filter(Boolean).join('\n'));
+      return;
+    }
+
+    if (args.command === 'check-artifact') {
+      const result = readArtifactMountFile(args.artifactFile, root);
+      const payload = { ok: true, action: 'checked', ...result.summary };
+      console.log(args.json ? JSON.stringify(payload, null, 2) : [
+        '公司机会产物挂载计划校验通过。',
+        `Mount ID: ${result.summary.mountId}`,
+        `Opportunity ID: ${result.summary.opportunityId}`,
+        `目标节点：${result.summary.nodeId}`,
+        `产物类型：${result.summary.artifact.kind}`,
+        `产物标题：${result.summary.artifact.title}`,
+        `本地产物：${result.summary.artifact.path}`,
+        `文件哈希：${result.summary.artifact.contentHash}`,
+        `绑定当前机会哈希：${result.summary.expectedOpportunityContentHash}`,
+      ].join('\n'));
+      return;
+    }
+
+    if (args.command === 'mount-artifact') {
+      const result = await mountCompanyOpportunityArtifact(args.artifactFile, { root, apply: args.apply });
+      const payload = { ok: true, ...result };
+      console.log(args.json ? JSON.stringify(payload, null, 2) : [
+        `公司机会产物挂载结果：${result.action}`,
+        `机会对象：${result.packagePath}`,
+        `挂载记录：${result.mountPath}`,
+        `投递清单：${result.trackerPath}（${result.trackerAction}）`,
+        `目标节点：${result.plan.nodeId}`,
+        `产物标题：${result.plan.artifact.title}`,
+        `产物路径：${result.plan.artifact.path}`,
+        result.backupPath ? `机会备份：${result.backupPath}` : null,
+        '本操作只挂载本地产物链接，不改节点状态，不改投递清单，不执行 skill，不上传。',
       ].filter(Boolean).join('\n'));
       return;
     }

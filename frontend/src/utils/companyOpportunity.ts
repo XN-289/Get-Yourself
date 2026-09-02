@@ -19,6 +19,21 @@ export type LocalProcessNodeStatus =
   | "failed"
   | "offer";
 
+export type LocalArtifactKind =
+  | "job_analysis"
+  | "resume_render"
+  | "interview_prep"
+  | "interview_review"
+  | "capability_feedback";
+
+export interface LocalMountedArtifact {
+  kind: LocalArtifactKind;
+  title: string;
+  path: string;
+  contentHash: string;
+  mountId: string;
+}
+
 export interface LocalProcessNode {
   id: string;
   type: LocalProcessNodeType;
@@ -26,6 +41,10 @@ export interface LocalProcessNode {
   status: LocalProcessNodeStatus;
   skillKey?: string;
   note?: string;
+}
+
+export interface LocalInstalledProcessNode extends LocalProcessNode {
+  artifacts?: LocalMountedArtifact[];
 }
 
 export interface LocalCompanyOpportunity {
@@ -43,7 +62,7 @@ export interface LocalCompanyOpportunity {
   location: string;
   initialTrackerStatus: string;
   trackerStatus?: string;
-  processNodes: LocalProcessNode[];
+  processNodes: LocalInstalledProcessNode[];
 }
 
 export interface ImportedLocalOpportunity {
@@ -110,6 +129,28 @@ const OPPORTUNITY_FIELDS = [
 ];
 
 const NODE_FIELDS = ["id", "type", "title", "status", "skillKey", "note"];
+const INSTALLED_NODE_FIELDS = [...NODE_FIELDS, "artifacts"];
+const ARTIFACT_KINDS = new Set<LocalArtifactKind>([
+  "job_analysis",
+  "resume_render",
+  "interview_prep",
+  "interview_review",
+  "capability_feedback"
+]);
+const ARTIFACT_KIND_PREFIXES: Record<LocalArtifactKind, string[]> = {
+  job_analysis: ["data/job-analysis/", "reports/job-analysis/"],
+  resume_render: ["data/resume-render/", "output/resume/"],
+  interview_prep: ["data/interview-prep/", "interview-prep/"],
+  interview_review: ["data/interview-review/", "interview-prep/sessions/"],
+  capability_feedback: ["data/capability-feedback/", "reports/capability-feedback/"]
+};
+const ARTIFACT_NODE_TYPES: Record<LocalArtifactKind, LocalProcessNodeType[]> = {
+  job_analysis: ["jd_analysis", "custom"],
+  resume_render: ["resume_adaptation", "submission", "custom"],
+  interview_prep: ["interview", "custom"],
+  interview_review: ["interview", "review_sedimentation", "custom"],
+  capability_feedback: ["review_sedimentation", "custom"]
+};
 
 function asRecord(value: unknown): UnknownRecord {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -186,6 +227,60 @@ function canonicalizeNode(value: unknown, index: number): LocalProcessNode {
   return node;
 }
 
+function normalizeArtifactPath(value: unknown, path: string) {
+  const text = readString(value, path, { min: 5, max: 240 });
+  if (text.includes("\\") || text.split("/").some(segment => !segment || segment === "." || segment === "..")) {
+    throw new Error(`${path} 必须是本地数据根下的标准化相对路径`);
+  }
+  return text;
+}
+
+function canonicalizeInstalledNode(value: unknown, index: number): LocalInstalledProcessNode {
+  const record = asRecord(value);
+  const path = `流程节点 ${index + 1}`;
+  rejectUnknownFields(record, INSTALLED_NODE_FIELDS, path);
+  const node = canonicalizeNode(
+    Object.fromEntries(NODE_FIELDS.map(field => [field, record[field]])),
+    index
+  );
+  if (record.artifacts === undefined) return node;
+  if (!Array.isArray(record.artifacts) || record.artifacts.length > 20) {
+    throw new Error(`${path}.artifacts 数量无效`);
+  }
+
+  const artifacts = record.artifacts.map((artifact, artifactIndex) => {
+    const artifactRecord = asRecord(artifact);
+    const artifactPath = `${path}.artifacts ${artifactIndex + 1}`;
+    rejectUnknownFields(
+      artifactRecord,
+      ["kind", "title", "path", "contentHash", "mountId"],
+      artifactPath
+    );
+    const kind = readEnumValue(artifactRecord.kind, `${artifactPath}.kind`, ARTIFACT_KINDS);
+    const mountedPath = normalizeArtifactPath(artifactRecord.path, `${artifactPath}.path`);
+    if (!ARTIFACT_KIND_PREFIXES[kind].some(prefix => mountedPath.startsWith(prefix))) {
+      throw new Error(`${artifactPath}.path 不是该产物类型允许的本地目录`);
+    }
+    if (!ARTIFACT_NODE_TYPES[kind].includes(node.type)) {
+      throw new Error(`${artifactPath}.kind 与节点类型不兼容`);
+    }
+    return {
+      kind,
+      title: readString(artifactRecord.title, `${artifactPath}.title`, { min: 2, max: 80 }),
+      path: mountedPath,
+      contentHash: readContentHash(artifactRecord.contentHash, `${artifactPath}.contentHash`),
+      mountId: readSafeId(artifactRecord.mountId, `${artifactPath}.mountId`)
+    };
+  });
+  if (new Set(artifacts.map(artifact => artifact.mountId)).size !== artifacts.length) {
+    throw new Error(`${path}.artifacts 的 mountId 不能重复`);
+  }
+  if (new Set(artifacts.map(artifact => artifact.path)).size !== artifacts.length) {
+    throw new Error(`${path}.artifacts 的产物路径不能重复`);
+  }
+  return { ...node, artifacts };
+}
+
 export function canonicalizeLocalOpportunity(value: unknown): LocalCompanyOpportunity {
   const record = asRecord(value);
   rejectUnknownFields(record, OPPORTUNITY_FIELDS, "本地机会");
@@ -221,7 +316,14 @@ export function canonicalizeLocalOpportunity(value: unknown): LocalCompanyOpport
   if (record.trackerStatus !== undefined) {
     opportunity.trackerStatus = readString(record.trackerStatus, "trackerStatus", { min: 1, max: 40 });
   }
-  opportunity.processNodes = nodes.map(canonicalizeNode);
+  opportunity.processNodes = nodes.map(canonicalizeInstalledNode);
+  const allArtifacts = opportunity.processNodes.flatMap(node => node.artifacts ?? []);
+  if (new Set(allArtifacts.map(artifact => artifact.mountId)).size !== allArtifacts.length) {
+    throw new Error("同一 mountId 不能挂载到多个流程节点");
+  }
+  if (new Set(allArtifacts.map(artifact => artifact.path)).size !== allArtifacts.length) {
+    throw new Error("同一路径的产物不能挂载到多个流程节点");
+  }
   if (new Set(opportunity.processNodes.map(node => node.id)).size !== opportunity.processNodes.length) {
     throw new Error("流程节点 id 不能重复");
   }

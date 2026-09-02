@@ -103,7 +103,7 @@
 - 产物：`data/company-opportunities/{opportunityId}.json`、`data/applications.md` 关联行和备份。
 - 输入必须绑定已安装岗位分析 ID 与内容哈希，公司 / 岗位必须与分析完全一致；自然身份是公司 + 岗位 + 地点 + 招聘批次。
 - `initialTrackerStatus` 和初始流程节点只是种子；用户后续 tracker 状态和节点顺序 / 状态不被重复导入重置。
-- 公司机会只建立本地对象与投递清单关联，不上传、不投递、不挂载产物、不执行 skill、不写云端进度。
+- 公司机会只建立本地对象与投递清单关联，不上传、不投递、不自动挂载产物、不执行 skill、不写云端进度。
 
 ### 公司机会节点 Mutation（CRITICAL）
 
@@ -112,6 +112,15 @@
 - 执行：`node company-opportunity.mjs mutate-nodes <node-mutation.json>` 默认 dry-run；写入必须 `--apply`。
 - 计划必须是用户确认后的完整目标节点列表，并绑定当前机会内容哈希、`mutationId` 和 Trace。
 - 输出只包括更新后的机会 JSON、mutation 记录和机会备份；不改 tracker 状态、不挂产物、不执行 skill、不上传。
+
+### 公司机会产物挂载（CRITICAL）
+
+- 契约：仓库根 `docs/COMPANY_OPPORTUNITY_CONTRACT.md` 的 Artifact Mount Plans 章节。
+- 校验：`node company-opportunity.mjs check-artifact <artifact-mount.json>`，只读。
+- 执行：`node company-opportunity.mjs mount-artifact <artifact-mount.json>` 默认 dry-run；写入必须 `--apply`。
+- 产物：更新后的机会 JSON、`data/company-opportunity-artifact-mounts/{opportunityId}/{mountId}.json` 和机会备份。
+- 计划必须绑定当前机会内容哈希、目标节点、产物类型、允许目录和真实文件字节 SHA-256；同 `mountId` 重复或冲突必须拒绝。
+- 挂载不改节点状态、不改投递清单、不执行 skill、不上传、不复制或移动原始产物文件。
 
 ### 面试准备包（CRITICAL）
 
@@ -261,6 +270,7 @@ node gy.mjs --status --json
 | `data/company-opportunities/*.json` | 用户确认后的公司机会本地对象 |
 | `data/company-opportunities-backups/*` | 显式替换机会包或同步用户 tracker 状态前的备份 |
 | `data/company-opportunity-mutations/*` | 用户确认后的公司机会节点 mutation 记录 |
+| `data/company-opportunity-artifact-mounts/*` | 用户确认后的公司机会产物挂载记录 |
 | `data/interview-prep/*.json` | 用户确认后的面试准备溯源包 |
 | `data/interview-review/*.json` | 用户确认后的面试复盘溯源包 |
 | `data/capability-feedback/*.json` | 用户确认后的能力反哺本地台账 |

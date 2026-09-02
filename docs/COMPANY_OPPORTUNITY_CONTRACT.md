@@ -15,6 +15,9 @@ node company-opportunity.mjs import <opportunity.json> --apply [--replace] [--js
 node company-opportunity.mjs check-nodes <node-mutation.json> [--json]
 node company-opportunity.mjs mutate-nodes <node-mutation.json> [--json]
 node company-opportunity.mjs mutate-nodes <node-mutation.json> --apply [--json]
+node company-opportunity.mjs check-artifact <artifact-mount.json> [--json]
+node company-opportunity.mjs mount-artifact <artifact-mount.json> [--json]
+node company-opportunity.mjs mount-artifact <artifact-mount.json> --apply [--json]
 ```
 
 `check` and `import` without `--apply` are read-only. Import writes only after `--apply`. Replacing a different confirmed package requires `--apply --replace`. Changed package and tracker files are backed up before replacement or status-state synchronization.
@@ -52,10 +55,11 @@ Each node contains:
 
 - `id`, `type`, `title`, `status`
 - optional `skillKey`, `note`
+- optional installed-only `artifacts`
 
 Allowed types are `jd_analysis`, `resume_adaptation`, `submission`, `interview`, `offer`, `review_sedimentation`, and `custom`. Allowed seed statuses are `todo`, `active`, `waiting`, `passed`, `failed`, and `offer`.
 
-These nodes are initial seeds only. Later node addition, ordering, status changes, and artifact links remain user-owned. This importer does not mutate existing node order or node statuses, and no node skill is executed.
+These nodes are initial seeds only. Later node addition, ordering, status changes, and artifact links remain user-owned. This importer does not mutate existing node order or node statuses, and no node skill is executed. Confirmed input files cannot supply `artifacts`; only installed opportunity JSON may carry them after an explicit artifact mount. Node mutation input therefore omits `artifacts`, and the CLI preserves installed artifacts by node ID while applying a confirmed target node list.
 
 ### Node Mutation Plans
 
@@ -71,16 +75,40 @@ Applied results and trace records are:
 
 Node mutation never updates `data/applications.md`, mounts an artifact, executes a node skill, uploads progress, or implies that an application was submitted.
 
+### Artifact Mount Plans
+
+After a real local file exists, mounting it to a process node uses the `get-yourself.company-opportunity-artifact-mount` v1 plan. The plan is separate from node mutation and carries:
+
+- `mountId`, `opportunityId`, `nodeId`
+- `generatedAt`, `traceId`, and `confirmation: user_confirmed`
+- `expectedOpportunityContentHash`
+- `artifact.kind`, `artifact.title`, `artifact.path`, and `artifact.contentHash`
+
+`artifact.contentHash` is the SHA-256 of the actual file bytes. The path must be `/`-separated, relative to the local data root, normalized without `..` or `.` segments, no larger than 5 MB, and stored under a directory approved for its kind:
+
+| Kind | Approved directories | Compatible nodes |
+|---|---|---|
+| `job_analysis` | `data/job-analysis/`, `reports/job-analysis/` | `jd_analysis`, `custom` |
+| `resume_render` | `data/resume-render/`, `output/resume/` | `resume_adaptation`, `submission`, `custom` |
+| `interview_prep` | `data/interview-prep/`, `interview-prep/` | `interview`, `custom` |
+| `interview_review` | `data/interview-review/`, `interview-prep/sessions/` | `interview`, `review_sedimentation`, `custom` |
+| `capability_feedback` | `data/capability-feedback/`, `reports/capability-feedback/` | `review_sedimentation`, `custom` |
+
+`check-artifact` and dry-run are read-only. Explicit `mount-artifact --apply` verifies the opportunity hash, artifact file, regular-file type, size, byte hash, node existence, and kind-node compatibility under the shared tracker lock. It then appends an artifact descriptor with `mountId` to the target node and writes the mount record. Repeating the same plan is idempotent; the same `mountId` with a different plan is rejected. A stale opportunity hash, missing file, changed file bytes, path escape, incompatible node, or duplicate mount is rejected.
+
+Artifact mounting changes only the installed opportunity object, its backup, and the mount record. It never changes a node status, tracker row, skill execution state, cloud record, or external application.
+
 ### Frontend File Bridge
 
 The interview-management frontend may participate in this contract through an explicit file exchange only:
 
 1. The user imports an installed `data/company-opportunities/{opportunityId}.json`.
 2. The frontend validates and canonicalizes the v1 opportunity. It reads `trackerStatus` only as an installed local mirror and excludes both `trackerStatus` and `generatedAt` from its expected content hash, matching the CLI hash.
-3. The user edits the complete ordered target node list: add, delete, move, retype, rename, or change status.
-4. The user confirms the change summary and exports a `get-yourself.company-opportunity-node-mutation v1` JSON download.
-5. The user runs the exported plan through `mutate-nodes` dry-run and, only after review, `mutate-nodes --apply`.
-6. After applying, the user may re-import the updated opportunity JSON so the next plan binds the new content hash.
+3. The frontend shows installed artifact descriptors as read-only local output metadata.
+4. The user edits the complete ordered target node list: add, delete, move, retype, rename, or change status.
+5. The user confirms the change summary and exports a `get-yourself.company-opportunity-node-mutation v1` JSON download without `artifacts`.
+6. The user runs the exported plan through `mutate-nodes` dry-run and, only after review, `mutate-nodes --apply`; the CLI preserves installed artifacts by node ID.
+7. After applying, the user may re-import the updated opportunity JSON so the next plan binds the new content hash.
 
 The browser never writes `cli/data`, never contacts the CLI process directly, and never claims that a download is an applied mutation. The downloaded filename can be passed to the CLI from its actual save location. This bridge does not import a cloud record, upload progress, mount an artifact, or execute a node skill.
 
@@ -112,6 +140,7 @@ Applied files are:
 - `data/company-opportunities/{opportunityId}.json`
 - `data/applications.md`
 - `data/company-opportunity-mutations/{opportunityId}/{mutationId}.json` for applied node plans
+- `data/company-opportunity-artifact-mounts/{opportunityId}/{mountId}.json` for applied artifact mounts
 
 Backups are stored under `data/company-opportunities-backups/{opportunityId}/`. The tracker transaction uses the shared tracker lock, so company-opportunity writes are serialized with other tracker writers.
 

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -12,6 +13,7 @@ import {
   importCompanyOpportunity,
   inspectCompanyOpportunities,
   loadCompanyOpportunity,
+  mountCompanyOpportunityArtifact,
   mutateCompanyOpportunityNodes,
 } from '../company-opportunity.mjs';
 
@@ -20,6 +22,7 @@ const materialsExamplePath = join(cliRoot, 'templates/resume-materials.example.j
 const analysisExamplePath = join(cliRoot, 'templates/job-analysis.example.json');
 const opportunityExamplePath = join(cliRoot, 'templates/company-opportunity.example.json');
 const nodeMutationExamplePath = join(cliRoot, 'templates/company-opportunity-node.example.json');
+const artifactMountExamplePath = join(cliRoot, 'templates/company-opportunity-artifact.example.json');
 
 function installDependencies(root) {
   importResumeMaterials(materialsExamplePath, { root, apply: true });
@@ -52,6 +55,30 @@ function buildNodePlan(installed, overrides = {}) {
   plan.opportunityId = installed.opportunity.opportunityId;
   plan.expectedOpportunityContentHash = installed.contentHash;
   return { ...plan, ...overrides };
+}
+
+function fileContentHash(path) {
+  return `sha256:${createHash('sha256').update(readFileSync(path)).digest('hex')}`;
+}
+
+function buildArtifactPlan(installed, root, artifactPath, overrides = {}) {
+  const plan = JSON.parse(readFileSync(artifactMountExamplePath, 'utf8'));
+  plan.opportunityId = installed.opportunity.opportunityId;
+  plan.expectedOpportunityContentHash = installed.contentHash;
+  plan.artifact.path = artifactPath.replaceAll('\\', '/');
+  plan.artifact.contentHash = fileContentHash(join(root, plan.artifact.path));
+  return { ...plan, ...overrides };
+}
+
+function writeArtifactPlan(root, name, plan) {
+  const path = join(root, name);
+  writeFileSync(path, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+  return path;
+}
+
+function withoutNodeArtifacts(node) {
+  const { artifacts: _artifacts, ...rest } = node;
+  return rest;
 }
 
 function trackerPathFor(root) {
@@ -451,6 +478,164 @@ test('company opportunity node mutation is explicit, hash-bound, and tracker-iso
   }
 });
 
+test('company opportunity artifact mounts are explicit, file-bound, and isolated', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-company-opportunity-artifact-'));
+  try {
+    const { materials, analysis } = installDependencies(root);
+    const source = writeOpportunity(root, 'opportunity.json', buildOpportunity(analysis));
+    await importCompanyOpportunity(source, { root, trackerPath: trackerPathFor(root), apply: true });
+    let installed = loadCompanyOpportunity(root, 'company-opportunity-demo-2026-09-02', materials);
+    const artifactPath = 'reports/job-analysis/job-analysis-demo-2026-09-02.md';
+    const plan = buildArtifactPlan(installed, root, artifactPath);
+    const planPath = writeArtifactPlan(root, 'artifact-mount.json', plan);
+    const trackerBefore = readFileSync(trackerPathFor(root), 'utf8');
+
+    const dryRun = await mountCompanyOpportunityArtifact(planPath, {
+      root,
+      trackerPath: trackerPathFor(root),
+    });
+    assert.equal(dryRun.action, 'dry-run');
+    assert.equal(dryRun.trackerAction, 'none');
+    assert.equal(existsSync(join(root, 'data/company-opportunity-artifact-mounts')), false);
+    assert.equal(readFileSync(trackerPathFor(root), 'utf8'), trackerBefore);
+
+    const applied = await mountCompanyOpportunityArtifact(planPath, {
+      root,
+      trackerPath: trackerPathFor(root),
+      apply: true,
+    });
+    assert.equal(applied.action, 'mounted');
+    assert.equal(applied.trackerAction, 'none');
+    assert.equal(applied.backupPath !== null, true);
+    assert.equal(readFileSync(trackerPathFor(root), 'utf8'), trackerBefore);
+
+    installed = loadCompanyOpportunity(root, installed.opportunity.opportunityId, materials);
+    const mountedNode = installed.opportunity.processNodes.find(node => node.id === 'jd-analysis');
+    assert.equal(mountedNode.status, 'passed');
+    assert.deepEqual(mountedNode.artifacts, [{
+      kind: plan.artifact.kind,
+      title: plan.artifact.title,
+      path: plan.artifact.path,
+      contentHash: plan.artifact.contentHash,
+      mountId: plan.mountId,
+    }]);
+    const mountRecordPath = join(
+      root,
+      `data/company-opportunity-artifact-mounts/${plan.opportunityId}/${plan.mountId}.json`,
+    );
+    assert.equal(JSON.parse(readFileSync(mountRecordPath, 'utf8')).mountId, plan.mountId);
+
+    const packagePath = join(
+      root,
+      `data/company-opportunities/${installed.opportunity.opportunityId}.json`,
+    );
+    const originalPackage = readFileSync(packagePath, 'utf8');
+    const duplicatedMount = JSON.parse(originalPackage);
+    const duplicatedNode = duplicatedMount.processNodes.find(node => node.id === 'first-interview');
+    duplicatedNode.type = 'custom';
+    duplicatedNode.artifacts = [mountedNode.artifacts[0]];
+    writeFileSync(packagePath, `${JSON.stringify(duplicatedMount, null, 2)}\n`, 'utf8');
+    await assert.rejects(
+      async () => loadCompanyOpportunity(root, duplicatedMount.opportunityId, materials),
+      error => error.code === 'invalid-opportunity' && /mountId is duplicate/.test(error.message),
+    );
+    writeFileSync(packagePath, originalPackage, 'utf8');
+
+    const repeat = await mountCompanyOpportunityArtifact(planPath, {
+      root,
+      trackerPath: trackerPathFor(root),
+      apply: true,
+    });
+    assert.equal(repeat.action, 'unchanged');
+    assert.equal(repeat.changed, false);
+
+    const repeatImport = await importCompanyOpportunity(source, {
+      root,
+      trackerPath: trackerPathFor(root),
+      apply: true,
+    });
+    assert.equal(repeatImport.action, 'unchanged');
+    installed = loadCompanyOpportunity(root, installed.opportunity.opportunityId, materials);
+    assert.equal(
+      installed.opportunity.processNodes.find(node => node.id === 'jd-analysis').artifacts?.length,
+      1,
+    );
+
+    const originalArtifact = readFileSync(join(root, artifactPath), 'utf8');
+    writeFileSync(join(root, artifactPath), `${originalArtifact}\n手工修改\n`, 'utf8');
+    await assert.rejects(
+      mountCompanyOpportunityArtifact(planPath, { root, trackerPath: trackerPathFor(root), apply: true }),
+      error => error.code === 'artifact-changed',
+    );
+    writeFileSync(join(root, artifactPath), originalArtifact, 'utf8');
+
+    const collision = buildArtifactPlan(installed, root, artifactPath, {
+      artifact: {
+        ...plan.artifact,
+        contentHash: fileContentHash(join(root, artifactPath)),
+        title: '同名但不同计划',
+      },
+    });
+    await assert.rejects(
+      mountCompanyOpportunityArtifact(
+        writeArtifactPlan(root, 'collision.json', collision),
+        { root, trackerPath: trackerPathFor(root), apply: true },
+      ),
+      error => error.code === 'mount-conflict',
+    );
+
+    const stale = buildArtifactPlan(installed, root, artifactPath, {
+      mountId: 'company-opportunity-artifact-stale',
+      expectedOpportunityContentHash: `sha256:${'0'.repeat(64)}`,
+    });
+    await assert.rejects(
+      mountCompanyOpportunityArtifact(
+        writeArtifactPlan(root, 'stale.json', stale),
+        { root, trackerPath: trackerPathFor(root), apply: true },
+      ),
+      error => error.code === 'stale-opportunity',
+    );
+
+    const escaped = buildArtifactPlan(installed, root, artifactPath, {
+      mountId: 'company-opportunity-artifact-escape',
+      artifact: {
+        ...plan.artifact,
+        path: '../data/applications.md',
+        contentHash: fileContentHash(trackerPathFor(root)),
+      },
+    });
+    await assert.rejects(
+      mountCompanyOpportunityArtifact(
+        writeArtifactPlan(root, 'escape.json', escaped),
+        { root, trackerPath: trackerPathFor(root), apply: true },
+      ),
+      error => error.code === 'invalid-artifact-mount' && /normalized relative path/.test(error.message),
+    );
+
+    const nodePlan = buildNodePlan(installed, {
+      mutationId: 'company-opportunity-node-after-artifact',
+      expectedOpportunityContentHash: installed.contentHash,
+      processNodes: installed.opportunity.processNodes.map(node => (
+        node.id === 'first-interview'
+          ? { ...withoutNodeArtifacts(node), status: 'waiting' }
+          : withoutNodeArtifacts(node)
+      )),
+    });
+    await mutateCompanyOpportunityNodes(
+      writeNodePlan(root, 'node-after-artifact.json', nodePlan),
+      { root, trackerPath: trackerPathFor(root), apply: true },
+    );
+    installed = loadCompanyOpportunity(root, installed.opportunity.opportunityId, materials);
+    assert.equal(
+      installed.opportunity.processNodes.find(node => node.id === 'jd-analysis').artifacts?.length,
+      1,
+    );
+
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('routes company opportunity creation to its contract tool', () => {
   const route = routeIntent('确认后把这家公司写入公司机会');
   assert.equal(route.intent, 'create_company_opportunity');
@@ -467,4 +652,13 @@ test('routes company opportunity node updates to its contract tool', () => {
   assert.equal(route.modeFile, 'company-opportunity.mjs');
   assert.ok(route.suggestedAction.includes('mutate-nodes'));
   assert.ok(route.securityNotes.some(note => note.includes('不更新投递清单') && note.includes('不执行 skill')));
+});
+
+test('routes company opportunity artifact mounts to its contract tool', () => {
+  const route = routeIntent('把面试准备产物挂载到二面节点');
+  assert.equal(route.intent, 'mount_company_opportunity_artifact');
+  assert.equal(route.moduleDestination, 'interview-management');
+  assert.equal(route.modeFile, 'company-opportunity.mjs');
+  assert.ok(route.suggestedAction.includes('mount-artifact'));
+  assert.ok(route.securityNotes.some(note => note.includes('不改节点状态') && note.includes('不上传')));
 });
