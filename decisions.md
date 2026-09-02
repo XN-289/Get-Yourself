@@ -45,5 +45,10 @@ Source: user direction in this project thread on 2026-09-01.
 3. **External template research is design research only.** Code and visual assets from non-permissive or ambiguous external template projects are not copied; template implementation remains based on the MIT-licensed local toolkit plus project-authored Chinese metadata.
 4. **Resume management manages finished resume documents.** Its visible objects are complete resumes with title, target role, version, status, template, source, local file identity, and full text; candidate bullets, fact confirmation tasks, and template catalogs do not occupy the module's main workspace.
 5. **Resume import and editing stay local and explicit.** The frontend may read a local finished `.json`, `.md`, `.txt`, or `.html` file, but JSON must use the user-confirmed `get-yourself.resume-render v1` contract; editing creates a new local version and never uploads or synchronizes the full text without a later explicit contract.
+6. **Resume management is organized as role groups, resume lines, and versions.** A target-role group contains resume lines; each line owns an immutable version history and exactly one active application version.
+7. **The active application version is user-owned.** Only a finalized or exported version can serve as the current application version; a draft cannot. Switching back to a historical finalized or exported version is explicit and traceable.
+8. **Finalized and exported resume versions are read-only.** Continuing work must derive the next draft from a selected version, and one resume line may hold at most one draft at a time.
+9. **Agent resume output never overwrites a user-locked resume.** Agent generation creates or updates the line's sole draft; finalization, export marking, and active-version switching remain user actions.
+10. **A local import starts a new resume line at finalized v1.** JSON imports still require the user-confirmed `get-yourself.resume-render v1` contract, while non-JSON text files remain locally read finished documents.
 
 Source: user direction in this project thread on 2026-09-02.

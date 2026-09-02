@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileText, FileUp, PenLine, Save } from "@lucide/vue";
+import { CircleCheck, FilePenLine, FileText, FileUp, GitBranch, Save, Send } from "@lucide/vue";
 import { computed, reactive, ref } from "vue";
 import { storeToRefs } from "pinia";
 
@@ -8,8 +8,13 @@ import WorkbenchButton from "@/components/ui/WorkbenchButton.vue";
 import WorkbenchDrawer from "@/components/ui/WorkbenchDrawer.vue";
 import WorkbenchPanel from "@/components/ui/WorkbenchPanel.vue";
 import WorkbenchStatus from "@/components/ui/WorkbenchStatus.vue";
+import type {
+  ResumeDocument,
+  ResumeDocumentInput,
+  ResumeVersion,
+  ResumeVersionStatus
+} from "@/stores/studentWorkbench";
 import { useStudentWorkbenchStore } from "@/stores/studentWorkbench";
-import type { ResumeDocument, ResumeDocumentInput, ResumeDocumentStatus } from "@/stores/studentWorkbench";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -20,28 +25,69 @@ const importInput = ref<HTMLInputElement | null>(null);
 const importError = ref("");
 const editorError = ref("");
 const editorOpen = ref(false);
-const editingId = ref<number | null>(null);
+const initialDocument = resumeDocuments.value[0] ?? null;
+const initialVersion =
+  initialDocument?.versions.find((item) => item.status === "draft") ??
+  initialDocument?.versions.find((item) => item.id === initialDocument.activeVersionId) ??
+  null;
+const selectedDocumentId = ref<number | null>(initialDocument?.id ?? null);
+const selectedVersionId = ref<number | null>(initialVersion?.id ?? null);
 const form = reactive({
   title: "",
   targetRole: "",
   templateId: "classic-ats",
-  status: "final" as ResumeDocumentStatus,
+  changeNote: "",
   content: ""
 });
 
-const statusLabel: Record<ResumeDocumentStatus, string> = {
-  editing: "编辑中",
+const statusLabel: Record<ResumeVersionStatus, string> = {
+  draft: "草稿",
   final: "已定稿",
   exported: "已导出"
 };
 
-const sourceLabel: Record<ResumeDocument["source"], string> = {
+const sourceLabel: Record<ResumeVersion["source"], string> = {
   agent: "Agent",
   import: "导入",
   manual: "手工"
 };
 
-const editingResume = computed(() => resumeDocuments.value.find((item) => item.id === editingId.value) ?? null);
+const selectedDocument = computed(
+  () => resumeDocuments.value.find((item) => item.id === selectedDocumentId.value) ?? resumeDocuments.value[0] ?? null
+);
+
+const selectedVersion = computed(() => {
+  const document = selectedDocument.value;
+  if (!document) return null;
+  return (
+    document.versions.find((item) => item.id === selectedVersionId.value) ??
+    document.versions.find((item) => item.id === document.activeVersionId) ??
+    document.versions[0] ??
+    null
+  );
+});
+
+const activeVersion = computed(() => {
+  const document = selectedDocument.value;
+  if (!document) return null;
+  return document.versions.find((item) => item.id === document.activeVersionId) ?? document.versions[0] ?? null;
+});
+
+const lineDraft = computed(() => {
+  const document = selectedDocument.value;
+  if (!document) return null;
+  return document.versions.find((item) => item.status === "draft") ?? null;
+});
+
+const groupedDocuments = computed(() => {
+  const groups = new Map<string, ResumeDocument[]>();
+  for (const document of resumeDocuments.value) {
+    const documents = groups.get(document.targetRole) ?? [];
+    documents.push(document);
+    groups.set(document.targetRole, documents);
+  }
+  return [...groups.entries()].map(([targetRole, documents]) => ({ targetRole, documents }));
+});
 
 function asRecord(value: unknown): UnknownRecord | null {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as UnknownRecord) : null;
@@ -98,11 +144,7 @@ function renderPackageToInput(text: string, fileName: string): ResumeDocumentInp
   const name = asString(header?.name, "未命名学生");
   const headline = asString(header?.headline, "未标注岗位");
   const lines = [`# ${name} · ${headline}`];
-  const contact = joinParts([
-    asString(header?.location),
-    asString(header?.email),
-    asString(header?.phone)
-  ], " / ");
+  const contact = joinParts([asString(header?.location), asString(header?.email), asString(header?.phone)], " / ");
   if (contact) lines.push("", contact);
   const linkRows = asArray(header?.links)
     .map((item) => {
@@ -122,10 +164,7 @@ function renderPackageToInput(text: string, fileName: string): ResumeDocumentInp
     const company = asString(record.company, "未命名组织");
     const role = asString(record.role, "成员");
     const meta = joinParts([formatPeriod(record.start, record.end), asString(record.location)]);
-    return [
-      `### ${joinParts([company, role])}${meta ? ` · ${meta}` : ""}`,
-      ...asBullets(record.bullets)
-    ];
+    return [`### ${joinParts([company, role])}${meta ? ` · ${meta}` : ""}`, ...asBullets(record.bullets)];
   });
   pushSection(lines, "实习与工作", experienceRows);
 
@@ -212,7 +251,6 @@ function renderPackageToInput(text: string, fileName: string): ResumeDocumentInp
     targetRole: headline,
     templateId: asString(root.templateId, "classic-ats"),
     content: lines.join("\n"),
-    status: "final",
     source: "import",
     fileName
   };
@@ -225,8 +263,8 @@ function documentInputFromText(text: string, fileName: string): ResumeDocumentIn
     targetRole: "未标注岗位",
     templateId: "classic-ats",
     content: text,
-    status: "final",
     source: "import",
+    changeNote: "本机成品导入",
     fileName
   };
 }
@@ -238,7 +276,9 @@ async function handleImportChange(event: Event) {
   if (!file) return;
 
   try {
-    store.importResumeDocument(documentInputFromText(await file.text(), file.name));
+    const imported = store.importResumeDocument(documentInputFromText(await file.text(), file.name));
+    selectedDocumentId.value = imported.id;
+    selectedVersionId.value = imported.activeVersionId;
   } catch (error) {
     importError.value = error instanceof Error ? error.message : "简历导入失败";
   } finally {
@@ -246,23 +286,67 @@ async function handleImportChange(event: Event) {
   }
 }
 
-function openEditor(resume: ResumeDocument) {
+function selectDocument(document: ResumeDocument) {
+  selectedDocumentId.value = document.id;
+  selectedVersionId.value = document.activeVersionId;
+}
+
+function selectVersion(document: ResumeDocument, version: ResumeVersion) {
+  selectedDocumentId.value = document.id;
+  selectedVersionId.value = version.id;
+}
+
+function sortedVersions(document: ResumeDocument) {
+  return [...document.versions].sort((a, b) => b.version - a.version);
+}
+
+function currentVersion(document: ResumeDocument) {
+  return document.versions.find((item) => item.id === document.activeVersionId) ?? document.versions[0];
+}
+
+function openDraft(document: ResumeDocument, version: ResumeVersion) {
   editorError.value = "";
-  editingId.value = resume.id;
+  selectedDocumentId.value = document.id;
+  selectedVersionId.value = version.id;
   Object.assign(form, {
-    title: resume.title,
-    targetRole: resume.targetRole,
-    templateId: resume.templateId,
-    status: resume.status,
-    content: resume.content
+    title: document.title,
+    targetRole: document.targetRole,
+    templateId: version.templateId,
+    changeNote: version.changeNote,
+    content: version.content
   });
   editorOpen.value = true;
 }
 
-function saveEditor() {
-  if (editingId.value === null) return;
+function startEditing() {
+  const document = selectedDocument.value;
+  const version = selectedVersion.value;
+  if (!document || !version) return;
   try {
-    store.updateResumeDocument(editingId.value, { ...form });
+    if (version.status === "draft") {
+      openDraft(document, version);
+      return;
+    }
+    const draft = store.createResumeDraft(document.id, version.id, {
+      title: document.title,
+      targetRole: document.targetRole,
+      templateId: version.templateId,
+      content: version.content,
+      source: "manual",
+      changeNote: `从 v${version.version} 继续`
+    });
+    openDraft(document, draft);
+  } catch (error) {
+    editorError.value = error instanceof Error ? error.message : "无法创建草稿";
+  }
+}
+
+function saveEditor() {
+  const document = selectedDocument.value;
+  const version = selectedVersion.value;
+  if (!document || !version) return;
+  try {
+    store.updateResumeDraft(document.id, version.id, { ...form });
     editorOpen.value = false;
   } catch (error) {
     editorError.value = error instanceof Error ? error.message : "简历保存失败";
@@ -273,16 +357,7 @@ function templateName(templateId: string) {
   return resumeTemplates.value.find((template) => template.id === templateId)?.nameZh ?? "经典 ATS";
 }
 
-function resumePreview(content: string) {
-  return content
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 5)
-    .join("\n");
-}
-
-function statusTone(status: ResumeDocumentStatus) {
+function statusTone(status: ResumeVersionStatus) {
   if (status === "exported") return "success" as const;
   if (status === "final") return "accent" as const;
   return "warning" as const;
@@ -291,21 +366,42 @@ function statusTone(status: ResumeDocumentStatus) {
 
 <template>
   <StudentWorkbenchModule
-    eyebrow="Resume Library"
+    eyebrow="Resume Manager"
     title="简历管理"
-    description="以成品简历为管理对象，支持本机导入、编辑和版本标记。"
+    description="按岗位方向管理简历版本线，定稿版本只读，修改必须派生新草稿。"
     agent-action="回 Agent 生成"
     status="本地读取 · 不上传"
   >
+    <div class="resume-summary">
+      <div>
+        <span>简历线</span>
+        <strong>{{ resumeDocuments.length }}</strong>
+        <small>岗位方向下的持续版本</small>
+      </div>
+      <div>
+        <span>草稿</span>
+        <strong>{{ resumeStatusCount.draft }}</strong>
+        <small>待用户确认</small>
+      </div>
+      <div>
+        <span>定稿版</span>
+        <strong>{{ resumeStatusCount.final }}</strong>
+        <small>可设为投递版</small>
+      </div>
+      <div>
+        <span>导出版</span>
+        <strong>{{ resumeStatusCount.exported }}</strong>
+        <small>已离开工作台</small>
+      </div>
+    </div>
+
     <WorkbenchPanel
-      eyebrow="Documents"
-      title="成品简历库"
-      :icon="FileText"
-      description="每一张卡片都是一份完整简历，不再是候选素材或模板说明。"
+      eyebrow="Version Tree"
+      title="成品简历版本库"
+      :icon="GitBranch"
+      description="左侧选择简历线和版本，右侧查看与执行版本动作。"
     >
       <template #actions>
-        <WorkbenchStatus tone="accent">定稿 {{ resumeStatusCount.final }}</WorkbenchStatus>
-        <WorkbenchStatus tone="success">导出 {{ resumeStatusCount.exported }}</WorkbenchStatus>
         <input
           ref="importInput"
           class="file-input"
@@ -315,44 +411,142 @@ function statusTone(status: ResumeDocumentStatus) {
         />
         <WorkbenchButton size="sm" variant="primary" @click="importInput?.click()">
           <FileUp :size="14" />
-          导入
+          导入成品
         </WorkbenchButton>
       </template>
 
-      <p v-if="importError" class="import-error" role="alert">{{ importError }}</p>
-      <ul class="resume-library" aria-label="成品简历">
-        <li v-for="resume in resumeDocuments" :key="resume.id">
-          <article class="resume-card" :class="{ 'is-exported': resume.status === 'exported' }">
-            <header>
-              <div>
-                <h4>{{ resume.title }}</h4>
-                <p>{{ resume.targetRole }} · v{{ resume.version }} · {{ templateName(resume.templateId) }}</p>
-              </div>
-              <WorkbenchStatus :tone="statusTone(resume.status)">{{ statusLabel[resume.status] }}</WorkbenchStatus>
-            </header>
+      <p v-if="importError" class="state-error" role="alert">{{ importError }}</p>
 
-            <pre>{{ resumePreview(resume.content) }}</pre>
+      <div v-if="selectedDocument && selectedVersion" class="resume-manager">
+        <aside class="resume-tree" aria-label="简历版本树">
+          <section v-for="group in groupedDocuments" :key="group.targetRole" class="resume-role">
+            <h4>{{ group.targetRole }}</h4>
+            <article v-for="document in group.documents" :key="document.id" class="resume-line">
+              <button type="button" @click="selectDocument(document)">
+                <strong>{{ document.title }}</strong>
+                <span>当前 v{{ currentVersion(document).version }} · {{ statusLabel[currentVersion(document).status] }}</span>
+              </button>
+              <ol>
+                <li v-for="version in sortedVersions(document)" :key="version.id">
+                  <button
+                    type="button"
+                    :class="{
+                      'is-selected': version.id === selectedVersion?.id,
+                      'is-current': version.id === document.activeVersionId
+                    }"
+                    @click="selectVersion(document, version)"
+                  >
+                    <span class="version-number">v{{ version.version }}</span>
+                    <span class="version-copy">
+                      <strong>{{ statusLabel[version.status] }}</strong>
+                      <small>{{ version.changeNote }}</small>
+                    </span>
+                    <CircleCheck
+                      v-if="version.id === document.activeVersionId"
+                      class="current-mark"
+                      :size="14"
+                      aria-label="当前投递版"
+                    />
+                  </button>
+                </li>
+              </ol>
+            </article>
+          </section>
+        </aside>
 
-            <footer>
-              <span>
-                {{ sourceLabel[resume.source] }} · {{ resume.updatedAt }}
-                <template v-if="resume.fileName"> · {{ resume.fileName }}</template>
-              </span>
-              <WorkbenchButton size="sm" variant="dark" @click="openEditor(resume)">
-                <PenLine :size="14" />
-                编辑
-              </WorkbenchButton>
-            </footer>
-          </article>
-        </li>
-      </ul>
+        <section class="resume-detail">
+          <header>
+            <div>
+              <h3>{{ selectedDocument.title }}</h3>
+              <p>{{ selectedDocument.targetRole }} · v{{ selectedVersion.version }} · {{ templateName(selectedVersion.templateId) }}</p>
+            </div>
+            <WorkbenchStatus :tone="statusTone(selectedVersion.status)">
+              {{ statusLabel[selectedVersion.status] }}
+            </WorkbenchStatus>
+          </header>
+
+          <dl class="detail-grid">
+            <div>
+              <dt>当前投递版</dt>
+              <dd>v{{ activeVersion?.version ?? "-" }} · {{ activeVersion ? statusLabel[activeVersion.status] : "-" }}</dd>
+            </div>
+            <div>
+              <dt>来源</dt>
+              <dd>{{ sourceLabel[selectedVersion.source] }}</dd>
+            </div>
+            <div>
+              <dt>更新时间</dt>
+              <dd>{{ selectedVersion.updatedAt }}</dd>
+            </div>
+            <div>
+              <dt>版本说明</dt>
+              <dd>{{ selectedVersion.changeNote }}</dd>
+            </div>
+          </dl>
+
+          <pre>{{ selectedVersion.content }}</pre>
+
+          <footer>
+            <WorkbenchButton
+              v-if="selectedVersion.status === 'draft'"
+              size="sm"
+              variant="primary"
+              @click="startEditing"
+            >
+              <FilePenLine :size="14" />
+              编辑草稿
+            </WorkbenchButton>
+            <WorkbenchButton v-else size="sm" variant="dark" @click="startEditing">
+              <FilePenLine v-if="lineDraft" :size="14" />
+              <GitBranch v-else :size="14" />
+              {{ lineDraft ? "打开现有草稿" : "派生新草稿" }}
+            </WorkbenchButton>
+
+            <WorkbenchButton
+              v-if="selectedVersion.status === 'draft'"
+              size="sm"
+              variant="secondary"
+              @click="store.finalizeResumeVersion(selectedDocument.id, selectedVersion.id)"
+            >
+              <CircleCheck :size="14" />
+              定稿并设为当前
+            </WorkbenchButton>
+
+            <WorkbenchButton
+              v-if="selectedVersion.status === 'final'"
+              size="sm"
+              variant="secondary"
+              @click="store.markResumeVersionExported(selectedDocument.id, selectedVersion.id)"
+            >
+              <Send :size="14" />
+              标记已导出
+            </WorkbenchButton>
+
+            <WorkbenchButton
+              v-if="selectedVersion.status !== 'draft' && selectedVersion.id !== selectedDocument.activeVersionId"
+              size="sm"
+              variant="ghost"
+              @click="store.setActiveResumeVersion(selectedDocument.id, selectedVersion.id)"
+            >
+              设为当前投递版
+            </WorkbenchButton>
+
+            <span v-if="selectedVersion.fileName" class="file-name">{{ selectedVersion.fileName }}</span>
+          </footer>
+        </section>
+      </div>
+
+      <div v-else class="empty-state">
+        <FileText :size="18" />
+        暂无成品简历
+      </div>
     </WorkbenchPanel>
 
     <WorkbenchDrawer
       v-model:open="editorOpen"
       size="lg"
-      :title="editingResume?.title ?? '编辑简历'"
-      description="修改会形成新的本地版本，不会自动同步到平台。"
+      :title="selectedDocument?.title ?? '编辑简历草稿'"
+      description="保存不会覆盖定稿；确认定稿后才成为当前投递版。"
     >
       <div class="resume-editor">
         <div class="editor-grid">
@@ -373,12 +567,8 @@ function statusTone(status: ResumeDocumentStatus) {
             </select>
           </label>
           <label>
-            状态
-            <select v-model="form.status">
-              <option value="editing">编辑中</option>
-              <option value="final">已定稿</option>
-              <option value="exported">已导出</option>
-            </select>
+            版本说明
+            <input v-model="form.changeNote" type="text" maxlength="36" />
           </label>
         </div>
 
@@ -387,14 +577,14 @@ function statusTone(status: ResumeDocumentStatus) {
           <textarea v-model="form.content" rows="18" spellcheck="false"></textarea>
         </label>
 
-        <p v-if="editorError" class="import-error" role="alert">{{ editorError }}</p>
+        <p v-if="editorError" class="state-error" role="alert">{{ editorError }}</p>
       </div>
 
       <template #footer>
         <WorkbenchButton variant="secondary" @click="editorOpen = false">取消</WorkbenchButton>
         <WorkbenchButton variant="primary" @click="saveEditor">
           <Save :size="15" />
-          保存修改
+          保存草稿
         </WorkbenchButton>
       </template>
     </WorkbenchDrawer>
@@ -406,7 +596,7 @@ function statusTone(status: ResumeDocumentStatus) {
   display: none;
 }
 
-.import-error {
+.state-error {
   margin: 0;
   padding: 9px 11px;
   border: 1px solid rgba(180, 72, 58, 0.28);
@@ -417,89 +607,273 @@ function statusTone(status: ResumeDocumentStatus) {
   line-height: 1.5;
 }
 
-.resume-library {
+.resume-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.resume-card {
+.resume-summary > div {
   min-width: 0;
-  min-height: 242px;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 11px;
+  gap: 3px;
   padding: 13px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
 }
 
-.resume-card.is-exported {
-  border-color: rgba(20, 123, 115, 0.3);
-  background: #fbfdfd;
+.resume-summary span,
+.resume-summary small {
+  color: var(--muted);
+  font-size: 11px;
 }
 
-.resume-card header {
+.resume-summary strong {
+  color: var(--ink);
+  font-size: 23px;
+  line-height: 1;
+}
+
+.resume-manager {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 312px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.resume-tree {
+  min-width: 0;
+  max-height: 680px;
+  overflow-y: auto;
+  padding-right: 3px;
+}
+
+.resume-role + .resume-role {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.resume-role h4 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.resume-line + .resume-line {
+  margin-top: 10px;
+}
+
+.resume-line > button {
+  width: 100%;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.resume-line > button:hover,
+.resume-line > button:focus-visible {
+  border-color: rgba(20, 123, 115, 0.38);
+  outline: none;
+}
+
+.resume-line > button strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resume-line > button span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.resume-line ol {
+  display: grid;
+  gap: 5px;
+  margin: 6px 0 0;
+  padding: 0 0 0 12px;
+  list-style: none;
+}
+
+.resume-line ol button {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 18px;
+  gap: 7px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.resume-line ol button:hover,
+.resume-line ol button:focus-visible,
+.resume-line ol button.is-selected {
+  border-color: rgba(20, 123, 115, 0.3);
+  background: #f6fbfa;
+  outline: none;
+}
+
+.version-number {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.version-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.version-copy strong {
+  color: var(--ink);
+  font-size: 11.5px;
+}
+
+.version-copy small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current-mark {
+  color: var(--teal);
+}
+
+.resume-detail {
+  min-width: 0;
+  display: grid;
+  gap: 13px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.resume-detail > header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
-.resume-card header > div {
+.resume-detail > header > div {
   min-width: 0;
   display: grid;
   gap: 4px;
 }
 
-.resume-card h4 {
+.resume-detail h3 {
   margin: 0;
   color: var(--ink);
-  font-size: 15px;
-  line-height: 1.35;
+  font-size: 19px;
+  line-height: 1.3;
 }
 
-.resume-card header p {
+.resume-detail > header p {
   margin: 0;
   color: var(--muted);
-  font-size: 11.5px;
-  line-height: 1.45;
+  font-size: 12px;
 }
 
-.resume-card pre {
-  min-height: 0;
+.detail-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
   margin: 0;
-  overflow: hidden;
-  padding: 10px;
+}
+
+.detail-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: var(--surface-soft);
+  background: #fff;
+}
+
+.detail-grid dt {
   color: var(--muted);
-  font-family: inherit;
-  font-size: 11.5px;
-  line-height: 1.62;
+  font-size: 10.5px;
+  font-weight: 900;
+}
+
+.detail-grid dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resume-detail pre {
+  max-height: 430px;
+  min-height: 300px;
+  margin: 0;
+  overflow: auto;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.resume-card footer {
+.resume-detail footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
-.resume-card footer > span {
+.file-name {
   min-width: 0;
   overflow: hidden;
   color: var(--muted);
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 36px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .resume-editor {
@@ -557,25 +931,47 @@ function statusTone(status: ResumeDocumentStatus) {
   outline-offset: 1px;
 }
 
-@media (max-width: 900px) {
-  .resume-library {
+@media (max-width: 1080px) {
+  .resume-manager {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .resume-tree {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .resume-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 560px) {
-  .resume-card {
-    min-height: 0;
+  .resume-summary,
+  .detail-grid,
+  .editor-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .resume-card header,
-  .resume-card footer {
-    align-items: flex-start;
+  .resume-detail > header,
+  .resume-detail footer {
+    align-items: stretch;
     flex-direction: column;
   }
 
-  .editor-grid {
+  .resume-detail footer {
+    display: grid;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .resume-line ol button {
+    grid-template-columns: 36px minmax(0, 1fr) 18px;
   }
 }
 </style>

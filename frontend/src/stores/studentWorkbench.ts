@@ -34,20 +34,27 @@ export interface EvidenceAbility {
   source: "growth" | "interview" | "jd";
 }
 
-export type ResumeDocumentStatus = "editing" | "final" | "exported";
+export type ResumeVersionStatus = "draft" | "final" | "exported";
 export type ResumeDocumentSource = "agent" | "import" | "manual";
+
+export interface ResumeVersion {
+  id: number;
+  version: number;
+  status: ResumeVersionStatus;
+  templateId: string;
+  updatedAt: string;
+  source: ResumeDocumentSource;
+  fileName?: string;
+  changeNote: string;
+  content: string;
+}
 
 export interface ResumeDocument {
   id: number;
   title: string;
   targetRole: string;
-  version: number;
-  status: ResumeDocumentStatus;
-  templateId: string;
-  updatedAt: string;
-  source: ResumeDocumentSource;
-  fileName?: string;
-  content: string;
+  activeVersionId: number;
+  versions: ResumeVersion[];
 }
 
 export interface ResumeDocumentInput {
@@ -55,9 +62,9 @@ export interface ResumeDocumentInput {
   targetRole: string;
   templateId: string;
   content: string;
-  status?: ResumeDocumentStatus;
   source?: ResumeDocumentSource;
   fileName?: string;
+  changeNote?: string;
 }
 
 export interface ResumeTemplate {
@@ -139,12 +146,36 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       id: 1,
       title: "Java 后端主简历",
       targetRole: "Java 后端开发",
-      version: 3,
-      status: "final",
-      templateId: "tech-compact",
-      updatedAt: "2026-09-02 09:20",
-      source: "agent",
-      content: `# 李雷 · Java 后端开发
+      activeVersionId: 103,
+      versions: [
+        {
+          id: 101,
+          version: 1,
+          status: "final",
+          templateId: "tech-compact",
+          updatedAt: "2026-08-29 10:12",
+          source: "agent",
+          changeNote: "首版整合实习与项目经历",
+          content: `# 李雷 · Java 后端开发
+
+## 摘要
+后端实习经历覆盖接口设计和前端联调。
+
+## 实习与项目
+### 校园技术团队 · 后端开发实习生
+- 设计宿舍报修接口，支撑报修流程进入宿舍试用。
+- 与前端约定接口契约，减少接口理解偏差。
+`
+        },
+        {
+          id: 102,
+          version: 2,
+          status: "exported",
+          templateId: "tech-compact",
+          updatedAt: "2026-08-31 15:26",
+          source: "agent",
+          changeNote: "补充小程序真实使用进展",
+          content: `# 李雷 · Java 后端开发
 
 ## 摘要
 后端实习经历覆盖接口设计、前端联调和宿舍试用落地。
@@ -157,17 +188,63 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
 ### 宿舍报修小程序 · 后端负责人
 - 完成报修创建、状态更新和查询接口。
 - 沉淀接口约定和联调记录。`
+        },
+        {
+          id: 103,
+          version: 3,
+          status: "final",
+          templateId: "tech-compact",
+          updatedAt: "2026-09-02 09:20",
+          source: "agent",
+          changeNote: "面向秋招补强项目结果",
+          content: `# 李雷 · Java 后端开发
+
+## 摘要
+后端实习经历覆盖接口设计、前端联调和宿舍试用落地，持续沉淀接口文档与联调记录。
+
+## 实习与项目
+### 校园技术团队 · 后端开发实习生
+- 设计宿舍报修接口，支撑报修流程进入宿舍试用。
+- 与前端约定接口契约，减少接口理解偏差。
+
+### 宿舍报修小程序 · 后端负责人
+- 完成报修创建、状态更新和查询接口。
+- 沉淀接口约定和联调记录，降低后续维护成本。`
+        }
+      ]
     },
     {
       id: 2,
       title: "前端实习一页版",
       targetRole: "前端开发实习生",
-      version: 2,
-      status: "final",
-      templateId: "modern-sidebar",
-      updatedAt: "2026-09-01 16:40",
-      source: "agent",
-      content: `# 李雷 · 前端开发实习生
+      activeVersionId: 202,
+      versions: [
+        {
+          id: 201,
+          version: 1,
+          status: "final",
+          templateId: "modern-sidebar",
+          updatedAt: "2026-08-30 19:04",
+          source: "agent",
+          changeNote: "一页版初稿",
+          content: `# 李雷 · 前端开发实习生
+
+## 摘要
+熟悉组件开发与接口联调，能把设计稿落成可试用页面。
+
+## 项目
+### 宿舍报修小程序 · 前端协作者
+- 完成报修表单、状态列表和详情页组件。`
+        },
+        {
+          id: 202,
+          version: 2,
+          status: "final",
+          templateId: "modern-sidebar",
+          updatedAt: "2026-09-01 16:40",
+          source: "agent",
+          changeNote: "补齐联调问题记录",
+          content: `# 李雷 · 前端开发实习生
 
 ## 摘要
 熟悉组件开发与接口联调，能把设计稿落成可试用页面。
@@ -176,21 +253,30 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
 ### 宿舍报修小程序 · 前端协作者
 - 完成报修表单、状态列表和详情页组件。
 - 参与接口契约确认，记录前后端联调问题。`
+        }
+      ]
     },
     {
       id: 3,
       title: "供应链系统简历",
       targetRole: "供应链系统实习生",
-      version: 1,
-      status: "exported",
-      templateId: "classic-ats",
-      updatedAt: "2026-08-30 11:10",
-      source: "import",
-      fileName: "supply-chain-resume.md",
-      content: `# 李雷 · 供应链系统实习生
+      activeVersionId: 301,
+      versions: [
+        {
+          id: 301,
+          version: 1,
+          status: "exported",
+          templateId: "classic-ats",
+          updatedAt: "2026-08-30 11:10",
+          source: "import",
+          fileName: "supply-chain-resume.md",
+          changeNote: "本机成品导入",
+          content: `# 李雷 · 供应链系统实习生
 
 ## 摘要
 具备 Java、SQL 和业务流程建模基础，关注系统落地后的真实使用效果。`
+        }
+      ]
     }
   ]);
 
@@ -617,10 +703,11 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
         bound: activeDevices.value.length > 1 ? `已绑定 ${activeDevices.value.length} 台` : "已绑定"
       })[bindingState.value]
   );
+  const resumeVersions = computed(() => resumeDocuments.value.flatMap((document) => document.versions));
   const resumeStatusCount = computed(() => ({
-    editing: resumeDocuments.value.filter((item) => item.status === "editing").length,
-    final: resumeDocuments.value.filter((item) => item.status === "final").length,
-    exported: resumeDocuments.value.filter((item) => item.status === "exported").length
+    draft: resumeVersions.value.filter((item) => item.status === "draft").length,
+    final: resumeVersions.value.filter((item) => item.status === "final").length,
+    exported: resumeVersions.value.filter((item) => item.status === "exported").length
   }));
   const connectCommand = computed(() =>
     deviceCode.value ? `node cli/gy.mjs connect ${deviceCode.value}` : ""
@@ -631,6 +718,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
   let traceId = 3;
   let processStageId = 500;
   let resumeDocumentId = 4;
+  let resumeVersionId = 400;
   let devicePollTimer: ReturnType<typeof setInterval> | null = null;
 
   function formatDeviceTime(value: string | null) {
@@ -786,18 +874,18 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
   function buildResponse(intent: WorkbenchIntent) {
     if (intent === "resume") {
       return {
-        title: "简历条目草稿",
+        title: "完整简历草稿",
         lines: [
           "独立完成宿舍报修小程序前后端开发，覆盖报修、派单与状态追踪流程。",
           "与同学协作完成接口联调，沉淀接口约定和联调记录；系统已在宿舍楼试用。",
-          "待确认：你个人负责的模块边界、使用人数、故障处理时长。"
+          "待确认后定稿：个人负责的模块边界、使用人数、故障处理时长。"
         ],
         tags: ["证据状态", "不编造结果"],
         target: "resume" as const,
         resultLabel: "已沉淀到简历管理",
-        traceTitle: "简历条目生成",
+        traceTitle: "完整简历草稿生成",
         traceSource: "能力资产 + 用户口述",
-        traceResult: "生成候选 bullet，未确认事实不会进入锁定版本"
+        traceResult: "只写入简历线唯一草稿，不覆盖定稿或已导出版本"
       };
     }
     if (intent === "evaluation") {
@@ -911,47 +999,36 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       return;
     }
     if (intent === "resume") {
-      const title = "Java 后端简历 · Agent 生成版";
+      const title = "Java 后端主简历";
       const existing = resumeDocuments.value.find((item) => item.title === title);
       const content = `# 李雷 · Java 后端开发
 
 ## 摘要
-后端实习经历覆盖接口设计、前端联调和宿舍试用落地。
+后端实习经历覆盖接口设计、前端联调和宿舍试用落地，可继续补充量化结果。
 
 ## 待确认
 - 个人负责的模块边界
 - 宿舍楼试用范围
 - 接口联调过程`;
-      if (existing) {
-        if (existing.content !== content) {
-          existing.version += 1;
-          existing.status = "editing";
-        }
-        existing.content = content;
-        existing.updatedAt = new Intl.DateTimeFormat("zh-CN", {
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit"
-        }).format(new Date());
-      } else {
-        resumeDocuments.value.unshift({
-          id: resumeDocumentId++,
-          title,
-          targetRole: "Java 后端开发",
-          version: 1,
-          status: "editing",
-          templateId: "tech-compact",
-          updatedAt: new Intl.DateTimeFormat("zh-CN", {
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit"
-          }).format(new Date()),
-          source: "agent",
-          content
-        });
-      }
+      if (!existing) return;
+      const base =
+        existing.versions.find((item) => item.id === existing.activeVersionId) ?? existing.versions[0];
+      const draft = existing.versions.find((item) => item.status === "draft");
+      const patch = {
+        title: existing.title,
+        targetRole: existing.targetRole,
+        templateId: base.templateId,
+        content,
+        source: "agent" as const,
+        changeNote: "Agent 生成待确认草稿"
+      };
+      if (draft) updateResumeDraft(existing.id, draft.id, patch);
+      else createResumeDraft(existing.id, base.id, patch);
+      addTrace(
+        "Agent 简历草稿",
+        existing.title,
+        "只写入草稿版本，不覆盖定稿或已导出版本"
+      );
       return;
     }
     if (intent === "review") {
@@ -992,52 +1069,151 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       targetRole,
       templateId: template.id,
       content,
-      status: input.status ?? "final",
       source: input.source ?? "manual",
-      fileName: input.fileName?.trim() || undefined
+      fileName: input.fileName?.trim() || undefined,
+      changeNote: input.changeNote?.trim() || "未记录版本说明"
     };
   }
 
   function importResumeDocument(input: ResumeDocumentInput) {
     const document = normalizeResumeDocument(input);
+    const { title, targetRole, ...versionFields } = document;
+    const version: ResumeVersion = {
+      id: resumeVersionId++,
+      version: 1,
+      status: "final",
+      updatedAt: "刚刚",
+      ...versionFields
+    };
     const imported: ResumeDocument = {
       id: resumeDocumentId++,
-      version: 1,
-      updatedAt: "刚刚",
-      ...document
+      title,
+      targetRole,
+      activeVersionId: version.id,
+      versions: [version]
     };
     resumeDocuments.value.unshift(imported);
     addTrace(
       "成品简历导入",
-      imported.fileName ?? imported.title,
+      imported.versions[0].fileName ?? imported.title,
       "浏览器读取本机文件建立索引，未上传简历全文"
     );
     return imported;
   }
 
-  function updateResumeDocument(
-    id: number,
+  function createResumeDraft(
+    documentId: number,
+    baseVersionId: number,
+    input: ResumeDocumentInput
+  ) {
+    const resume = resumeDocuments.value.find((item) => item.id === documentId);
+    if (!resume) throw new Error("简历不存在");
+    const existingDraft = resume.versions.find((item) => item.status === "draft");
+    if (existingDraft) return existingDraft;
+
+    const base = resume.versions.find((item) => item.id === baseVersionId);
+    if (!base) throw new Error("基准版本不存在");
+    const document = normalizeResumeDocument({
+      ...input,
+      title: input.title || resume.title,
+      targetRole: input.targetRole || resume.targetRole,
+      templateId: input.templateId || base.templateId,
+      content: input.content || base.content,
+      source: input.source ?? "manual",
+      fileName: input.fileName ?? base.fileName,
+      changeNote: input.changeNote ?? `从 v${base.version} 派生`
+    });
+    const { title, targetRole, ...versionFields } = document;
+    const draft: ResumeVersion = {
+      id: resumeVersionId++,
+      version: Math.max(...resume.versions.map((item) => item.version)) + 1,
+      status: "draft",
+      updatedAt: "刚刚",
+      ...versionFields
+    };
+    resume.title = title;
+    resume.targetRole = targetRole;
+    resume.versions.push(draft);
+    addTrace(
+      "简历草稿派生",
+      resume.title,
+      `从 v${base.version} 派生 v${draft.version}，定稿版本保持只读`
+    );
+    return draft;
+  }
+
+  function updateResumeDraft(
+    documentId: number,
+    versionId: number,
     patch: ResumeDocumentInput
   ) {
-    const resume = resumeDocuments.value.find((item) => item.id === id);
-    if (!resume) return;
+    const resume = resumeDocuments.value.find((item) => item.id === documentId);
+    const version = resume?.versions.find((item) => item.id === versionId);
+    if (!resume || !version) throw new Error("简历版本不存在");
+    if (version.status !== "draft") throw new Error("定稿和已导出版本不可直接覆盖");
+
     const document = normalizeResumeDocument({
       ...patch,
-      status: patch.status ?? resume.status,
-      source: patch.source ?? resume.source,
-      fileName: patch.fileName ?? resume.fileName
+      source: patch.source ?? version.source,
+      fileName: patch.fileName ?? version.fileName
     });
-    const contentChanged = document.content !== resume.content;
-    Object.assign(resume, document, {
-      version: contentChanged ? resume.version + 1 : resume.version,
+    const { title, targetRole, ...versionFields } = document;
+    Object.assign(version, versionFields, {
       updatedAt: "刚刚"
     });
+    resume.title = title;
+    resume.targetRole = targetRole;
     addTrace(
-      "成品简历修改",
+      "简历草稿保存",
       resume.title,
-      `保存为 v${resume.version}，模板只影响版式，不改写简历事实`
+      `v${version.version} 保持草稿态，模板只影响版式，不改写简历事实`
     );
-    return resume;
+    return version;
+  }
+
+  function finalizeResumeVersion(documentId: number, versionId: number) {
+    const resume = resumeDocuments.value.find((item) => item.id === documentId);
+    const version = resume?.versions.find((item) => item.id === versionId);
+    if (!resume || !version) return;
+    if (version.status !== "draft") return;
+
+    version.status = "final";
+    version.updatedAt = "刚刚";
+    resume.activeVersionId = version.id;
+    addTrace(
+      "简历版本定稿",
+      resume.title,
+      `v${version.version} 由用户确认定稿，并设为当前投递版`
+    );
+  }
+
+  function markResumeVersionExported(documentId: number, versionId: number) {
+    const resume = resumeDocuments.value.find((item) => item.id === documentId);
+    const version = resume?.versions.find((item) => item.id === versionId);
+    if (!resume || !version || version.status !== "final") return;
+
+    version.status = "exported";
+    version.updatedAt = "刚刚";
+    resume.activeVersionId = version.id;
+    addTrace(
+      "简历版本导出",
+      resume.title,
+      `v${version.version} 标记为已导出，内容保持只读`
+    );
+  }
+
+  function setActiveResumeVersion(documentId: number, versionId: number) {
+    const resume = resumeDocuments.value.find((item) => item.id === documentId);
+    const version = resume?.versions.find((item) => item.id === versionId);
+    if (!resume || !version || version.status === "draft") return;
+    if (resume.activeVersionId === versionId) return;
+
+    resume.activeVersionId = version.id;
+    addTrace(
+      "当前投递版切换",
+      resume.title,
+      `切换到 v${version.version}，草稿不能作为投递版`
+    );
   }
 
   function setProcessStageStatus(
@@ -1166,6 +1342,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     activeIntent,
     evidenceAbilities,
     resumeDocuments,
+    resumeVersions,
     resumeTemplates,
     resumeStatusCount,
     careerStages,
@@ -1184,7 +1361,11 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     submitMessage,
     detectIntent,
     importResumeDocument,
-    updateResumeDocument,
+    createResumeDraft,
+    updateResumeDraft,
+    finalizeResumeVersion,
+    markResumeVersionExported,
+    setActiveResumeVersion,
     setProcessStageStatus,
     markProcessStageOffer,
     addProcessStage,
