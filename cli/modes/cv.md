@@ -20,7 +20,7 @@
 6. **等待确认并导入**：用户确认素材包后先执行 `node resume-materials.mjs import <draft.json>` dry-run，再经确认加 `--apply`；覆盖不同内容必须显式确认 `--replace`。
 7. **生成定稿计划**：需要写入 `cv.md` 时，按 `docs/RESUME_FINAL_CONTRACT.md` 输出章节、条目引用和当前素材哈希，先执行 `node resume-final.mjs check <plan.json>`。
 8. **修改定稿**：用户确认计划后先执行 `node resume-final.mjs apply <plan.json>` dry-run，再经确认加 `--apply`；覆盖不同计划或手工修改过的 `cv.md` 必须显式确认 `--replace`。
-9. **渲染 HTML**：按 `docs/RESUME_RENDER_CONTRACT.md` 先整理并确认结构化 `resume` 数据，选择 11 个系统模板之一，再执行 `node resume-render.mjs check <render.json>` 和 `node resume-render.mjs import <render.json>` dry-run；用户确认后加 `--apply`，替换不同渲染或手工 HTML 必须 `--replace`。
+9. **渲染 HTML**：按 `docs/RESUME_RENDER_CONTRACT.md` 先整理并确认结构化 `resume` 数据，用 `node resume-render.mjs list` 查看中文名、ATS 姿态和适用场景，选择 11 个系统模板之一，再执行 `node resume-render.mjs check <render.json>` 和 `node resume-render.mjs import <render.json>` dry-run；用户确认后加 `--apply`，替换不同渲染或手工 HTML 必须 `--replace`。
 10. **导出 PDF**：使用本地 HTML 调用 `node generate-pdf.mjs <input.html> <output.pdf>`；覆盖已有 PDF 前必须确认。系统不会自动打开浏览器或上传 HTML。
 
 ## 输出结构

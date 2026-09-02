@@ -78,6 +78,7 @@
 ### 简历渲染包（CRITICAL）
 
 - 契约：仓库根 `docs/RESUME_RENDER_CONTRACT.md`。
+- 模板目录：`node resume-render.mjs list`，只读；系统目录含中文名、ATS 姿态和校招场景，不写用户层。
 - 校验：`node resume-render.mjs check <render.json>`，只读。
 - 导入：默认 dry-run；写入必须 `--apply`；覆盖不同渲染包或手工修改过的 HTML 必须 `--apply --replace`。
 - 产物：`data/resume-render/{renderId}.json` 与 `output/resume/{renderId}.html`。

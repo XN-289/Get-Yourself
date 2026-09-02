@@ -49,8 +49,11 @@ const CONFIRMATIONS = new Set(['user_confirmed']);
 const MONTH_PATTERN = /^(?:19|20)\d{2}-(?:0[1-9]|1[0-2])$/;
 const TEMPLATE_MARKER = '<!--GY:RESUME_CONTENT-->';
 const TEMPLATE_DIRECTORY = join(dirname(fileURLToPath(import.meta.url)), 'templates/resume');
+const TEMPLATE_CATALOG_PATH = join(TEMPLATE_DIRECTORY, 'templates.json');
+const ATS_POSTURES = new Set(['friendly', 'acceptable', 'limited']);
 
 const USAGE = `Usage:
+  node resume-render.mjs list [--json]
   node resume-render.mjs check <render.json> [--json]
   node resume-render.mjs import <render.json> [--apply] [--replace] [--json]`;
 
@@ -505,6 +508,58 @@ function readTemplate(templateId) {
   return template;
 }
 
+export function listResumeTemplates() {
+  let catalog;
+  try {
+    catalog = JSON.parse(readFileSync(TEMPLATE_CATALOG_PATH, 'utf8'));
+  } catch (error) {
+    throw renderError(`Cannot read resume template catalog: ${error.message}`, 'invalid-template', {
+      path: TEMPLATE_CATALOG_PATH,
+    });
+  }
+  if (catalog.schema !== 'get-yourself.resume-templates' || catalog.schemaVersion !== 1) {
+    throw renderError('Invalid resume template catalog schema', 'invalid-template', {
+      path: TEMPLATE_CATALOG_PATH,
+    });
+  }
+  if (!Array.isArray(catalog.templates) || catalog.templates.length !== RESUME_TEMPLATE_IDS.length) {
+    throw renderError('Resume template catalog count does not match installed templates', 'invalid-template', {
+      path: TEMPLATE_CATALOG_PATH,
+    });
+  }
+  const ids = catalog.templates.map(template => template.id);
+  if (JSON.stringify(ids) !== JSON.stringify(RESUME_TEMPLATE_IDS)) {
+    throw renderError('Resume template catalog IDs do not match the renderer allowlist', 'invalid-template', {
+      path: TEMPLATE_CATALOG_PATH,
+    });
+  }
+  return catalog.templates.map((template, index) => {
+    const path = `templates[${index}]`;
+    requireObject(template, path, ['id', 'name', 'nameZh', 'atsPosture', 'readableFloorPt', 'recommendedFor'], ContractToolError, 'invalid-template');
+    if (!ATS_POSTURES.has(template.atsPosture)) {
+      throw renderError(`${path}.atsPosture must be friendly, acceptable, or limited`, 'invalid-template', { path });
+    }
+    if (!Number.isFinite(template.readableFloorPt) || template.readableFloorPt < 7 || template.readableFloorPt > 14) {
+      throw renderError(`${path}.readableFloorPt must be between 7 and 14`, 'invalid-template', { path });
+    }
+    return {
+      ...template,
+      name: requireString(template.name, `${path}.name`, { min: 1, max: 60 }, ContractToolError, 'invalid-template'),
+      nameZh: requireString(template.nameZh, `${path}.nameZh`, { min: 1, max: 30 }, ContractToolError, 'invalid-template'),
+      recommendedFor: requireStringList(
+        template.recommendedFor,
+        `${path}.recommendedFor`,
+        1,
+        4,
+        1,
+        20,
+        ContractToolError,
+        'invalid-template',
+      ),
+    };
+  });
+}
+
 export function renderResumeHtml(render) {
   const template = readTemplate(render.templateId);
   return template.replace(TEMPLATE_MARKER, renderResumeBody(render.resume));
@@ -716,6 +771,10 @@ function parseArguments(argv) {
   const apply = args.includes('--apply');
   const replace = args.includes('--replace');
   const positional = args.filter(arg => !['--json', '--apply', '--replace'].includes(arg));
+  if (positional[0] === 'list') {
+    if (positional.length !== 1 || apply || replace) fail('list does not support --apply, --replace, or extra arguments.', json);
+    return { command: 'list', renderFile: '', json, apply, replace };
+  }
   if (positional.length !== 2 || !['check', 'import'].includes(positional[0])) {
     fail(`Invalid arguments.\n${USAGE}`, json);
   }
@@ -727,6 +786,21 @@ function main() {
   const args = parseArguments(process.argv);
   try {
     const root = getCareerOpsRoot();
+    if (args.command === 'list') {
+      const templates = listResumeTemplates();
+      if (args.json) {
+        console.log(JSON.stringify({ ok: true, action: 'listed', templateCount: templates.length, templates }, null, 2));
+      } else {
+        console.log(`可用中文简历模板：${templates.length} 套`);
+        for (const template of templates) {
+          console.log(
+            `${template.id} · ${template.nameZh} · ATS ${template.atsPosture} · ${template.recommendedFor.join(' / ')}`,
+          );
+        }
+      }
+      return;
+    }
+
     const materials = loadInstalledResumeMaterials(root);
     if (args.command === 'check') {
       const result = readRenderFile(args.renderFile, materials);

@@ -49,6 +49,13 @@ export interface ResumeAsset {
   coverage: string;
 }
 
+export interface ResumeTemplate {
+  id: string;
+  nameZh: string;
+  atsPosture: "friendly" | "acceptable" | "limited";
+  useCases: string[];
+}
+
 export type ProcessStageStatus = "todo" | "active" | "waiting" | "passed" | "failed" | "offer";
 
 export interface ProcessStage {
@@ -132,6 +139,76 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       coverage: "覆盖 68% 能力证据"
     }
   ]);
+
+  const resumeTemplates = ref<ResumeTemplate[]>([
+    {
+      id: "classic-ats",
+      nameZh: "经典 ATS",
+      atsPosture: "friendly",
+      useCases: ["通用校招", "国央企", "银行金融", "传统行业"]
+    },
+    {
+      id: "ledger",
+      nameZh: "账目风",
+      atsPosture: "friendly",
+      useCases: ["通用校招", "财务会计", "供应链", "银行金融"]
+    },
+    {
+      id: "tech-compact",
+      nameZh: "技术紧凑",
+      atsPosture: "acceptable",
+      useCases: ["互联网技术", "软件实习", "项目密集", "竞赛密集"]
+    },
+    {
+      id: "modern-sidebar",
+      nameZh: "现代侧栏",
+      atsPosture: "limited",
+      useCases: ["产品设计", "运营市场", "创意岗位", "作品集型简历"]
+    },
+    {
+      id: "pillar",
+      nameZh: "栏式结构",
+      atsPosture: "limited",
+      useCases: ["产品运营", "综合经历密集", "双栏阅读"]
+    },
+    {
+      id: "elegant-serif",
+      nameZh: "雅致衬线",
+      atsPosture: "limited",
+      useCases: ["研究型岗位", "教育公共事务", "文社科背景"]
+    },
+    {
+      id: "atelier",
+      nameZh: "工作室",
+      atsPosture: "limited",
+      useCases: ["设计岗位", "视觉作品集", "创意实习"]
+    },
+    {
+      id: "timeline",
+      nameZh: "时间线",
+      atsPosture: "limited",
+      useCases: ["成长主线清晰", "多段实习", "项目演进叙事"]
+    },
+    {
+      id: "swiss",
+      nameZh: "瑞士网格",
+      atsPosture: "limited",
+      useCases: ["数据严谨岗位", "咨询研究", "结构化表达"]
+    },
+    {
+      id: "executive",
+      nameZh: "稳重型",
+      atsPosture: "limited",
+      useCases: ["管理培训生", "市场商务", "综合能力叙事"]
+    },
+    {
+      id: "colorblock",
+      nameZh: "色块强调",
+      atsPosture: "limited",
+      useCases: ["新媒体运营", "校园招聘会打印版", "视觉强调"]
+    }
+  ]);
+  const activeResumeTemplateId = ref("tech-compact");
 
   const resumeDraft = reactive({
     bullet: "宿舍报修小程序：独立完成前后端开发，协作完成接口联调，系统已进入宿舍试用。",
@@ -498,6 +575,9 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       })[bindingState.value]
   );
   const confirmedFactCount = computed(() => resumeDraft.facts.filter((fact) => fact.confirmed).length);
+  const activeResumeTemplate = computed(
+    () => resumeTemplates.value.find((template) => template.id === activeResumeTemplateId.value) ?? resumeTemplates.value[0]
+  );
   const connectCommand = computed(() =>
     deviceCode.value ? `node cli/gy.mjs connect ${deviceCode.value}` : ""
   );
@@ -828,6 +908,18 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     addTrace("简历事实确认", `本地简历条目：${resumeDraft.bullet.slice(0, 18)}...`, "用户确认事实后才能锁定简历版本");
   }
 
+  function selectResumeTemplate(templateId: string) {
+    if (!resumeTemplates.value.some((template) => template.id === templateId)) return;
+    activeResumeTemplateId.value = templateId;
+    const template = resumeTemplates.value.find((item) => item.id === templateId);
+    if (!template) return;
+    addTrace(
+      "简历模板选择",
+      `本地系统模板：${template.id}`,
+      `选择 ${template.nameZh}，只影响版式，不引入或改写简历事实`
+    );
+  }
+
   function setProcessStageStatus(
     opportunityId: number,
     stageId: number,
@@ -954,6 +1046,9 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     activeIntent,
     evidenceAbilities,
     resumeAssets,
+    resumeTemplates,
+    activeResumeTemplateId,
+    activeResumeTemplate,
     resumeDraft,
     careerStages,
     opportunities,
@@ -972,6 +1067,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     submitMessage,
     detectIntent,
     confirmResumeFact,
+    selectResumeTemplate,
     setProcessStageStatus,
     markProcessStageOffer,
     addProcessStage,

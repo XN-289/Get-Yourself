@@ -30,6 +30,7 @@ node evidence-package.mjs import ../path/to/evidence-package.json
 node evidence-package.mjs import ../path/to/evidence-package.json --apply
 node resume-materials.mjs check ../path/to/resume-materials.json
 node resume-final.mjs check ../path/to/resume-final-plan.json
+node resume-render.mjs list
 node resume-render.mjs check ../path/to/resume-render.json
 node job-analysis.mjs check ../path/to/job-analysis.json
 node interview-prep.mjs check ../path/to/interview-prep.json
@@ -54,7 +55,7 @@ node capability-feedback.mjs import ../path/to/capability-feedback.json --apply
 | 命令 | 作用 |
 |------|------|
 | `eval <JD/URL>` | 校招岗位全维度评估（A-G，1-5 分，含防骗核查） |
-| `cv` | 生成中文学生简历（一页 A4） |
+| `cv` | 生成中文学生简历（11 套 A4 版式） |
 | `scan` | 扫描校招信息源（腾讯/阿里/美团校招官网，零 token） |
 | `tracker` | 求职进度管理（网申→笔试→面试→offer→三方） |
 | `compare` | offer 对比（总包/到手/户口/培养/加班） |

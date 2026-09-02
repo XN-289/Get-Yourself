@@ -53,21 +53,23 @@ Exact field definitions are shown in `cli/templates/resume-render.example.json`.
 
 ## Templates
 
-| ID | Posture |
-|---|---|
-| `classic-ats` | ATS friendly |
-| `ledger` | ATS friendly |
-| `tech-compact` | ATS acceptable |
-| `modern-sidebar` | ATS limited |
-| `pillar` | ATS limited |
-| `elegant-serif` | ATS limited |
-| `atelier` | ATS limited |
-| `timeline` | ATS limited |
-| `swiss` | ATS limited |
-| `executive` | ATS limited |
-| `colorblock` | ATS limited |
+The catalog is stored in `cli/templates/resume/templates.json`. Every template has an ID, Chinese display name, ATS posture, readable font-size floor, and at most four Chinese campus-recruiting use cases. Catalog IDs must exactly match the renderer allowlist.
 
-The eleven visual systems are adapted from the MIT-licensed local offer toolkit. Template files contain no sample people, companies, metrics, or contact details. They only define local CSS and one content-injection marker.
+| ID | Chinese name | Posture | Recommended use |
+|---|---|---|---|
+| `classic-ats` | 经典 ATS | friendly | 通用校招 / 国央企 / 银行金融 / 传统行业 |
+| `ledger` | 账目风 | friendly | 通用校招 / 财务会计 / 供应链 / 银行金融 |
+| `tech-compact` | 技术紧凑 | acceptable | 互联网技术 / 软件实习 / 项目密集 / 竞赛密集 |
+| `modern-sidebar` | 现代侧栏 | limited | 产品设计 / 运营市场 / 创意岗位 / 作品集型简历 |
+| `pillar` | 栏式结构 | limited | 产品运营 / 综合经历密集 / 双栏阅读 |
+| `elegant-serif` | 雅致衬线 | limited | 研究型岗位 / 教育公共事务 / 文社科背景 |
+| `atelier` | 工作室 | limited | 设计岗位 / 视觉作品集 / 创意实习 |
+| `timeline` | 时间线 | limited | 成长主线清晰 / 多段实习 / 项目演进叙事 |
+| `swiss` | 瑞士网格 | limited | 数据严谨岗位 / 咨询研究 / 结构化表达 |
+| `executive` | 稳重型 | limited | 管理培训生 / 市场商务 / 综合能力叙事 |
+| `colorblock` | 色块强调 | limited | 新媒体运营 / 校园招聘会打印版 / 视觉强调 |
+
+The eleven visual systems are adapted from the MIT-licensed local offer toolkit. The Chinese catalog metadata is project-authored. Template files contain no sample people, companies, metrics, or contact details. They only define local CSS and one content-injection marker.
 
 ## Storage
 
@@ -80,9 +82,12 @@ The same canonical package and template always produce byte-identical HTML. `gen
 ## CLI
 
 ```powershell
+node resume-render.mjs list [--json]
 node resume-render.mjs check <render.json> [--json]
 node resume-render.mjs import <render.json> [--apply] [--replace] [--json]
 ```
+
+`list` is read-only and works even when no materials package is installed.
 
 `import` defaults to dry-run. Writing requires `--apply`. Replacing a different package or manually edited HTML requires `--replace`; the importer backs up the replaced user files first.
 

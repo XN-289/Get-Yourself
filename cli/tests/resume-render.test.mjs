@@ -10,6 +10,7 @@ import {
   canonicalizeResumeRender,
   importResumeRender,
   inspectResumeRender,
+  listResumeTemplates,
   renderResumeHtml,
 } from '../resume-render.mjs';
 import { buildStatusPayload } from '../gy.mjs';
@@ -187,6 +188,17 @@ test('renders all eleven templates safely and deterministically', () => {
     const materials = installMaterials(root);
     const metadata = JSON.parse(readFileSync(join(cliRoot, 'templates/resume/templates.json'), 'utf8'));
     assert.deepEqual(metadata.templates.map(template => template.id), TEMPLATE_IDS);
+    const catalog = listResumeTemplates();
+    assert.equal(catalog.length, TEMPLATE_IDS.length);
+    assert.deepEqual(catalog.map(template => template.id), TEMPLATE_IDS);
+    for (const template of catalog) {
+      assert.match(template.id, /^[a-z][a-z0-9-]*$/);
+      assert.match(template.nameZh, /\p{Script=Han}/u);
+      assert.ok(template.recommendedFor.length > 0 && template.recommendedFor.length <= 4);
+    }
+    assert.equal(catalog.find(template => template.id === 'classic-ats').nameZh, '经典 ATS');
+    assert.equal(catalog.find(template => template.id === 'tech-compact').nameZh, '技术紧凑');
+    assert.equal(catalog.find(template => template.id === 'modern-sidebar').nameZh, '现代侧栏');
 
     const minimal = buildRender(materials);
     minimal.resume = {

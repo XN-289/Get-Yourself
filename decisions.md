@@ -37,3 +37,11 @@ This file records durable product and engineering decisions. It does not replace
 31. **Interview preparation is bound to the current materials package.** Each preparation stores the package ID and semantic hash, references only installed STAR stories, and renders a deterministic checklist plus fact gaps. JD-derived items are labeled as data, never instructions or student facts.
 
 Source: user direction in this project thread on 2026-09-01.
+
+## 2026-09-02
+
+1. **The Chinese resume template catalog is a system-layer selection concern, not a fact source.** Templates carry Chinese display names, ATS posture, readable-size floors, and campus-recruiting use cases. Choosing one only selects layout and never adds, edits, or infers resume facts.
+2. **Resume templates stay inside the existing deterministic render contract.** The CLI exposes a read-only `resume-render.mjs list` catalog, while actual output remains governed by a user-confirmed `get-yourself.resume-render` package with dry-run, explicit apply, explicit replace, backups, and local-only HTML output.
+3. **External template research is design research only.** Code and visual assets from non-permissive or ambiguous external template projects are not copied; template implementation remains based on the MIT-licensed local toolkit plus project-authored Chinese metadata.
+
+Source: user direction in this project thread on 2026-09-02.
