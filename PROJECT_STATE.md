@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-Updated: 2026-09-02 15:33
+Updated: 2026-09-02 15:57
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、公司机会/投递清单本地桥接、公司机会节点 mutation 与本地能力反哺台账已实现；简历版本库仍是前端会话内 Demo，尚未桥接本地文件持久化；前端 Demo、`gy`、证据包、设备绑定、Stage 4 与 Stage 5 本地桥接仍待用户统一验收，平台自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、学生端工具台 UI 基座、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、公司机会/投递清单本地桥接、公司机会节点 mutation、面试管理显式文件桥与本地能力反哺台账已实现；简历版本库仍是前端会话内 Demo，尚未桥接本地文件持久化；前端 Demo、`gy`、证据包、设备绑定、Stage 4 与 Stage 5 本地桥接仍待用户统一验收，平台自动同步尚未开始。
 
 ## 已接受事实
 
@@ -35,6 +35,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 公司机会自然身份是公司 + 岗位 + 地点 + 招聘批次；岗位分析与公司机会写入是两个显式动作 — `decisions.md` 与 `docs/COMPANY_OPPORTUNITY_CONTRACT.md`。
 - 公司机会初始流程节点只是种子；后续节点顺序、状态和产物链接由用户管理，重复导入不得重置用户确认历史 — `decisions.md`。
 - 公司机会节点 mutation 使用完整目标节点列表与当前机会内容哈希绑定；显式 apply 只更新机会对象、备份和 mutation 记录，不改 tracker 状态、不执行 skill、不挂载产物、不上传进度 — `decisions.md` 与 `docs/COMPANY_OPPORTUNITY_CONTRACT.md`。
+- 面试管理前端通过显式 JSON 文件桥参与本地节点维护：导入机会、规范化哈希、编辑完整目标列表、导出 mutation 计划；写盘仍必须经 CLI dry-run 和 `--apply`，浏览器不直接写 `cli/data` — `decisions.md` 与 `docs/COMPANY_OPPORTUNITY_CONTRACT.md`。
 - tracker 当前行状态由用户拥有；本地机会 JSON 保存不计入确认包哈希的 `trackerStatus` 镜像，tracker 关联行缺失重建时不得回滚到种子状态 — `decisions.md`。
 
 ## 决策索引
@@ -55,6 +56,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-02 — 简历线、版本树、唯一当前投递版与 Agent 不覆盖定稿边界 — `decisions.md`。
 - 2026-09-02 — 公司机会本地对象、显式分析桥接、自然身份、流程种子与用户-owned tracker 状态恢复边界 — `decisions.md`。
 - 2026-09-02 — 公司机会节点完整目标列表 mutation、机会内容哈希绑定与显式 apply 写入边界 — `decisions.md`。
+- 2026-09-02 — 公司机会前端显式文件桥、CLI 兼容内容哈希与浏览器不直接写本地边界 — `decisions.md`。
 
 ## 已实现
 
@@ -100,6 +102,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - Stage 5 公司机会验证 — 2026-09-02 `cli/` 下 `npm test` 62 pass / 0 fail；`node --test tests/company-opportunity.test.mjs` 6 pass / 0 fail；`node --check company-opportunity.mjs`、`node --check job-analysis.mjs`、`node --check gy.mjs`、`node --check lib/intent-router.mjs`、`node --check tests/company-opportunity.test.mjs` 与 `git diff --check` 通过；`node gy.mjs --status --json` 在素材包缺失时只读返回 `companyOpportunities.state=blocked`。
 - Stage 5 公司机会节点 mutation — `cli/company-opportunity.mjs`、`cli/templates/company-opportunity-node.example.json`、`cli/tests/company-opportunity.test.mjs`、`cli/lib/intent-router.mjs`、`cli/modes/tracker.md`、`cli/AGENTS.md`、`cli/DATA_CONTRACT.md`、`docs/COMPANY_OPPORTUNITY_CONTRACT.md`、`docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`；支持 `check-nodes`、默认 dry-run 的 `mutate-nodes` 与显式 `mutate-nodes --apply`，用完整有序目标节点列表执行新增、删除、重排和状态修改；同一计划幂等、同一 `mutationId` 不同计划冲突、过期计划拒绝、历史计划被新 mutation 取代时只报告不再改写。
 - Stage 5 节点 mutation 验证 — 2026-09-02 `cli/` 下 `npm test` 64 pass / 0 fail；`node --test tests/company-opportunity.test.mjs` 8 pass / 0 fail；`node --check company-opportunity.mjs`、`node --check gy.mjs`、`node --check lib/intent-router.mjs`、`node --check tests/company-opportunity.test.mjs` 与 `git diff --check` 通过。
+- Stage 5 公司机会前端显式文件桥 — `frontend/src/utils/companyOpportunity.ts`、`frontend/src/components/interview/LocalOpportunityBridge.vue`、`frontend/src/views/StudentInterviewView.vue` 与 `frontend/src/stores/studentWorkbench.ts`；支持导入本地机会 JSON、严格校验、计算与 CLI 兼容的内容哈希、编辑完整目标节点列表、确认变更统计并导出节点 mutation 计划下载；页面展示 dry-run / `--apply` 命令与 Trace，浏览器不直接写本地文件。
+- Stage 5 前端文件桥验证 — 2026-09-02 `frontend/` 下 `npm run build` 通过；Playwright 在 `/student/interview` 导入 `cli/templates/company-opportunity.example.json`，页面哈希与 CLI 规范化哈希一致（`sha256:e88a86ce99e4628210ba819977e4c5734fbde776c03f51fe80fbbf71b6162302`），修改节点名称并新增“HR 面”后导出的计划绑定同一哈希、包含 7 个目标节点且确认为 `user_confirmed`；1440px 与 390px 页面整体横向溢出均为 0。
 
 ## 已验收
 
@@ -114,7 +118,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 ## 下一步
 
 1. 用户统一验收前端 Demo（重点检查公司机会横向流程轨、节点抽屉、节点 mutation 与简历版本管理）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿/面试准备、Stage 4c 复盘、结构化渲染、岗位分析、公司机会/tracker/节点 mutation 桥接与能力反哺台账。
-2. 继续补齐公司机会前端持久化桥、真实产物挂载、页面内 skill 执行确认流和防骗核查闭环；在任何显式同步契约落地前，不做自动上传或自动导入。
+2. 继续补齐公司机会真实产物挂载、页面内 skill 执行确认流和防骗核查闭环；在任何显式同步契约落地前，不做自动上传或自动导入。
 
 ## 恢复上下文
 
@@ -150,3 +154,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-02 — PRD 补充当前实现快照与验收边界 — 明确 Stage 1-4 已实现但待统一验收、Stage 5 部分实现、Stage 6 未开始，以及简历版本库仍是前端会话内状态。
 - 2026-09-02 — 实现公司机会 v1 契约与投递清单幂等持久化 — 影响 JD 分析后的面试管理主对象、用户 tracker 状态恢复和后续节点 / 产物 / skill 挂载；仍待用户统一验收。
 - 2026-09-02 — 实现公司机会节点 mutation 契约 — 影响面试流程的新增、删除、重排、状态修改和后续前端持久化桥；仍待用户统一验收。
+- 2026-09-02 — 实现面试管理前端显式文件桥 — 影响公司机会节点的可视化维护与本地契约执行衔接；仍待用户统一验收。

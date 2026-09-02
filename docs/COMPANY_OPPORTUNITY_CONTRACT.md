@@ -71,6 +71,19 @@ Applied results and trace records are:
 
 Node mutation never updates `data/applications.md`, mounts an artifact, executes a node skill, uploads progress, or implies that an application was submitted.
 
+### Frontend File Bridge
+
+The interview-management frontend may participate in this contract through an explicit file exchange only:
+
+1. The user imports an installed `data/company-opportunities/{opportunityId}.json`.
+2. The frontend validates and canonicalizes the v1 opportunity. It reads `trackerStatus` only as an installed local mirror and excludes both `trackerStatus` and `generatedAt` from its expected content hash, matching the CLI hash.
+3. The user edits the complete ordered target node list: add, delete, move, retype, rename, or change status.
+4. The user confirms the change summary and exports a `get-yourself.company-opportunity-node-mutation v1` JSON download.
+5. The user runs the exported plan through `mutate-nodes` dry-run and, only after review, `mutate-nodes --apply`.
+6. After applying, the user may re-import the updated opportunity JSON so the next plan binds the new content hash.
+
+The browser never writes `cli/data`, never contacts the CLI process directly, and never claims that a download is an applied mutation. The downloaded filename can be passed to the CLI from its actual save location. This bridge does not import a cloud record, upload progress, mount an artifact, or execute a node skill.
+
 ## Tracker Persistence
 
 The default tracker is `data/applications.md`. Header-aware parsing supports customized columns and Chinese headers, including `日期`, `公司`, `渠道`, `地点`, `岗位`, `评分`, `状态`, `简历`, `报告`, and `备注`; custom column widths and unrelated rows are preserved.

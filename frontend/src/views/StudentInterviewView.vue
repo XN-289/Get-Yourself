@@ -17,6 +17,7 @@ import { computed, onBeforeUnmount, onMounted, ref, type ComponentPublicInstance
 import { storeToRefs } from "pinia";
 
 import StudentWorkbenchModule from "@/components/student/StudentWorkbenchModule.vue";
+import LocalOpportunityBridge from "@/components/interview/LocalOpportunityBridge.vue";
 import WorkbenchButton from "@/components/ui/WorkbenchButton.vue";
 import WorkbenchDialog from "@/components/ui/WorkbenchDialog.vue";
 import WorkbenchDrawer from "@/components/ui/WorkbenchDrawer.vue";
@@ -187,6 +188,10 @@ function registerStageTree(element: Element | ComponentPublicInstance | null, op
   else stageTreeElements.delete(opportunityId);
 }
 
+function recordBridgeTrace(title: string, source: string, result: string) {
+  store.addTrace(title, source, result);
+}
+
 onMounted(() => {
   for (const [opportunityId, element] of stageTreeElements) {
     stageSortables.push(
@@ -344,6 +349,8 @@ onBeforeUnmount(() => {
         只同步公司、岗位、当前节点、下一步和用户确认的状态；评估报告、简历全文、复盘原稿和本地备注不会上传。
       </p>
     </WorkbenchPanel>
+
+    <LocalOpportunityBridge @trace="recordBridgeTrace" />
 
     <WorkbenchDialog
       v-model:open="syncDialogOpen"

@@ -1352,6 +1352,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     bindingLabel,
     connectCommand,
     latestTrace,
+    addTrace,
     initializeDevices,
     refreshDevices,
     stopDevicePolling,
