@@ -114,6 +114,18 @@ function requireOpportunity(item, path, analyses, artifacts) {
   return opportunity;
 }
 
+function naturalIdentityKey(opportunity) {
+  return [
+    opportunity.company,
+    opportunity.role,
+    opportunity.location ?? '',
+    opportunity.recruitmentBatch ?? '',
+    opportunity.source ?? '',
+  ]
+    .map(value => value.toLowerCase().replace(/\s+/g, ' ').trim())
+    .join('\n');
+}
+
 export function canonicalizeOpportunityTracker(input, dependencies = {}) {
   requireObjectWithOptional(
     input,
@@ -139,6 +151,34 @@ export function canonicalizeOpportunityTracker(input, dependencies = {}) {
       dependencies.analyses ?? new Map(),
       dependencies.artifacts ?? new Map(),
     ));
+  const opportunityIds = new Set();
+  const stageIds = new Set();
+  const identities = new Set();
+  for (const [index, opportunity] of opportunities.entries()) {
+    if (opportunityIds.has(opportunity.id)) {
+      throw trackerError(`$.opportunities[${index}].id is duplicate: ${opportunity.id}`, 'invalid-tracker', {
+        path: `$.opportunities[${index}].id`,
+      });
+    }
+    opportunityIds.add(opportunity.id);
+    const identity = naturalIdentityKey(opportunity);
+    if (identities.has(identity)) {
+      throw trackerError(`$.opportunities[${index}] has a duplicate natural identity`, 'duplicate-opportunity', {
+        path: `$.opportunities[${index}]`,
+        company: opportunity.company,
+        role: opportunity.role,
+      });
+    }
+    identities.add(identity);
+    for (const [stageIndex, stage] of opportunity.stages.entries()) {
+      if (stageIds.has(stage.id)) {
+        throw trackerError(`$.opportunities[${index}].stages[${stageIndex}].id is duplicate: ${stage.id}`, 'invalid-tracker', {
+          path: `$.opportunities[${index}].stages[${stageIndex}].id`,
+        });
+      }
+      stageIds.add(stage.id);
+    }
+  }
   const tracker = {
     schema: OPPORTUNITY_TRACKER_SCHEMA,
     schemaVersion: OPPORTUNITY_TRACKER_SCHEMA_VERSION,

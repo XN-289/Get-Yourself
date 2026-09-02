@@ -100,3 +100,29 @@ test('canonicalizes opportunities with analysis provenance and ordering-sensitiv
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('rejects duplicate natural identities and duplicate object IDs', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-opportunity-tracker-duplicate-'));
+  try {
+    const { analysis } = installJobAnalysis(root);
+    const duplicateIdentity = buildTracker(analysis);
+    const duplicatedOpportunity = structuredClone(duplicateIdentity.opportunities[0]);
+    duplicatedOpportunity.id = 'demo-tech-backend-duplicate';
+    duplicateIdentity.opportunities.push(duplicatedOpportunity);
+    assert.throws(
+      () => canonicalizeOpportunityTracker(duplicateIdentity, dependenciesFor(analysis)),
+      /duplicate natural identity/i,
+    );
+
+    const duplicateStageId = buildTracker(analysis);
+    const duplicatedStage = structuredClone(duplicateStageId.opportunities[0].stages[1]);
+    duplicatedStage.name = '笔试';
+    duplicateStageId.opportunities[0].stages.push(duplicatedStage);
+    assert.throws(
+      () => canonicalizeOpportunityTracker(duplicateStageId, dependenciesFor(analysis)),
+      /id is duplicate: stage-application/i,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
