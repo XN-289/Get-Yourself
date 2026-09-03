@@ -1,6 +1,6 @@
 {
   "schema": "get-yourself.skill-run-plan",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "runId": "skill-run-experience-demo-2026-09-03",
   "generatedAt": "2026-09-03T10:50:00.000Z",
   "traceId": "trace.skill-run-experience-demo",
@@ -19,7 +19,9 @@
       "targetObjects": [
         "data/resume-materials.json",
         "interview-prep/story-bank.md"
-      ]
+      ],
+      "contractFile": "templates/resume-materials.example.json",
+      "contractFileHash": "sha256:e1b3628af65fc9794546507780eb7cba3ec852a079faa805417e81167f223547"
     }
   ],
   "failureRecovery": "记录失败后停在计划态；用户修正素材后重新生成计划，不覆盖已确认素材。"

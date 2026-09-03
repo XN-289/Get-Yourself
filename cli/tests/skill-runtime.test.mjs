@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +19,19 @@ const examplePath = join(cliRoot, 'templates/skill-runtime.example.json');
 
 function buildPlan(overrides = {}, toolOverrides = {}) {
   const plan = JSON.parse(readFileSync(examplePath, 'utf8'));
+  plan.schemaVersion = 1;
+  plan.toolCalls = plan.toolCalls.map(call => {
+    const { contractFile, contractFileHash, ...legacyCall } = call;
+    return { ...legacyCall, ...toolOverrides };
+  });
+  return {
+    ...plan,
+    ...overrides,
+  };
+}
+
+function buildDispatchPlan(overrides = {}, toolOverrides = {}) {
+  const plan = JSON.parse(readFileSync(examplePath, 'utf8'));
   return {
     ...plan,
     ...overrides,
@@ -29,6 +43,29 @@ function writePlan(root, name, plan) {
   const path = join(root, name);
   writeFileSync(path, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
   return path;
+}
+
+function byteHash(path) {
+  return `sha256:${createHash('sha256').update(readFileSync(path)).digest('hex')}`;
+}
+
+function writeMaterialsContract(root, name = 'materials.json', mutate = () => {}) {
+  const materials = JSON.parse(readFileSync(join(cliRoot, 'templates/resume-materials.example.json'), 'utf8'));
+  mutate(materials);
+  const path = join(root, name);
+  writeFileSync(path, `${JSON.stringify(materials, null, 2)}\n`, 'utf8');
+  return { path, materials };
+}
+
+function dispatchPlanFor(root, contractName = 'materials.json', overrides = {}) {
+  const contractPath = join(root, contractName);
+  return buildDispatchPlan({
+    runId: `skill-dispatch-${contractName.replace(/\.json$/, '')}`,
+    ...overrides,
+  }, {
+    contractFile: contractName,
+    contractFileHash: byteHash(contractPath),
+  });
 }
 
 test('runtime registry is a closed repository set', () => {
@@ -49,6 +86,10 @@ test('runtime registry is a closed repository set', () => {
   assert.equal(
     registry.tools.find(tool => tool.toolKey === 'resume-final.import').command,
     'node resume-final.mjs apply <contract.json>',
+  );
+  assert.deepEqual(
+    registry.tools.filter(tool => tool.dispatchable).map(tool => tool.toolKey),
+    ['resume-materials.import'],
   );
 });
 
@@ -106,6 +147,136 @@ test('skill plans require confirmation, registration, tools, and scoped targets'
     }),
     error => error.code === 'target-out-of-scope',
   );
+});
+
+test('dispatch plans are versioned, hash-bound, and limited to one implemented bridge', () => {
+  assert.equal(buildDispatchPlan().schemaVersion, 2);
+  assert.equal(canonicalizeSkillRunPlan(buildDispatchPlan()).summary.dispatchable, true);
+
+  const legacyShapeWithDispatchFields = buildDispatchPlan({ schemaVersion: 1 });
+  assert.throws(
+    () => canonicalizeSkillRunPlan(legacyShapeWithDispatchFields),
+    /unknown field/i,
+  );
+  assert.throws(
+    () => canonicalizeSkillRunPlan(buildDispatchPlan({}, { contractFile: '../materials.json' })),
+    /normalized/,
+  );
+  assert.throws(
+    () => canonicalizeSkillRunPlan(buildDispatchPlan({}, { toolKey: 'shell.exec' })),
+    error => error.code === 'undeclared-tool',
+  );
+  assert.throws(
+    () => canonicalizeSkillRunPlan(buildDispatchPlan({}, {
+      targetObjects: ['data/resume-materials.json'],
+    })),
+    error => error.code === 'invalid-dispatch-targets',
+  );
+});
+
+test('dispatch dry-run is read-only and apply executes the resume materials bridge', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-dispatch-'));
+  try {
+    writeMaterialsContract(root);
+    const source = writePlan(root, 'dispatch-plan.json', dispatchPlanFor(root));
+
+    const dryRun = runSkillPlan(source, { root });
+    assert.equal(dryRun.action, 'dry-run');
+    assert.equal(dryRun.dispatch.action, 'dry-run');
+    assert.deepEqual(
+      dryRun.dispatch.before.map(item => item.state),
+      ['missing', 'missing'],
+    );
+    assert.equal(existsSync(join(root, 'data/skill-runs')), false);
+    assert.equal(existsSync(join(root, 'data/resume-materials.json')), false);
+    assert.equal(existsSync(join(root, 'interview-prep/story-bank.md')), false);
+
+    const applied = runSkillPlan(source, { root, apply: true });
+    assert.equal(applied.action, 'dispatched');
+    assert.equal(applied.record.status, 'dispatched');
+    assert.equal(applied.record.mode, 'contract-dispatch');
+    assert.equal(applied.record.dispatchedToolCount, 1);
+    assert.equal(applied.record.targetWriteCount, 2);
+    assert.equal(existsSync(join(root, 'data/resume-materials.json')), true);
+    assert.equal(existsSync(join(root, 'interview-prep/story-bank.md')), true);
+
+    const recordPath = join(root, 'data/skill-runs/skill-dispatch-materials.json');
+    const record = JSON.parse(readFileSync(recordPath, 'utf8'));
+    assert.equal(record.schemaVersion, 2);
+    assert.equal(record.execution.status, 'dispatched');
+    assert.deepEqual(record.targetFingerprints.before.map(item => item.state), ['missing', 'missing']);
+    assert.deepEqual(record.targetFingerprints.after.map(item => item.state), ['file', 'file']);
+    assert.equal(record.execution.toolResults[0].packageId, 'resume-materials-demo-2026-09-01');
+
+    const unchanged = runSkillPlan(source, { root, apply: true });
+    assert.equal(unchanged.action, 'unchanged');
+    assert.equal(unchanged.changed, false);
+    assert.equal(inspectSkillRuntime(root).state, 'ready');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('dispatch replaces only after explicit confirmation and never silently overwrites drift', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-dispatch-replace-'));
+  try {
+    writeMaterialsContract(root, 'first.json');
+    const firstSource = writePlan(root, 'first-plan.json', dispatchPlanFor(root, 'first.json'));
+    runSkillPlan(firstSource, { root, apply: true });
+
+    writeMaterialsContract(root, 'second.json', materials => {
+      materials.packageId = 'replacement-materials';
+      materials.entries[0].bullet = '设计并实现宿舍报修小程序的后端接口，支撑 30 间宿舍试用';
+    });
+    const secondSource = writePlan(root, 'second-plan.json', dispatchPlanFor(root, 'second.json'));
+
+    const dryRun = runSkillPlan(secondSource, { root });
+    assert.equal(dryRun.action, 'dry-run');
+    assert.equal(dryRun.dispatch.action, 'dry-run-replace-required');
+    assert.throws(
+      () => runSkillPlan(secondSource, { root, apply: true }),
+      error => error.code === 'skill-target-conflict',
+    );
+    assert.equal(JSON.parse(readFileSync(join(root, 'data/resume-materials.json'), 'utf8')).packageId, 'resume-materials-demo-2026-09-01');
+    assert.equal(existsSync(join(root, 'data/skill-runs/skill-dispatch-second.json')), false);
+
+    const replaced = runSkillPlan(secondSource, { root, apply: true, replace: true });
+    assert.equal(replaced.action, 'dispatched');
+    assert.equal(JSON.parse(readFileSync(join(root, 'data/resume-materials.json'), 'utf8')).packageId, 'replacement-materials');
+    const replacementRecord = JSON.parse(readFileSync(join(root, 'data/skill-runs/skill-dispatch-second.json'), 'utf8'));
+    assert.equal(replacementRecord.execution.toolResults[0].backupPaths.materials !== null, true);
+    assert.equal(existsSync(join(root, replacementRecord.execution.toolResults[0].backupPaths.materials)), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('dispatch stops before approval when the contract or target shape is unsafe', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-dispatch-invalid-'));
+  try {
+    writeMaterialsContract(root);
+    const source = writePlan(root, 'dispatch-plan.json', dispatchPlanFor(root));
+    writeMaterialsContract(root, 'materials.json', materials => {
+      materials.entries[0].bullet = '契约文件在计划确认后被修改';
+    });
+    assert.throws(
+      () => runSkillPlan(source, { root, apply: true }),
+      error => error.code === 'dispatch-contract-drift',
+    );
+    assert.equal(existsSync(join(root, 'data/skill-runs')), false);
+
+    writeMaterialsContract(root);
+    const validSource = writePlan(root, 'valid-dispatch-plan.json', dispatchPlanFor(root));
+    mkdirSync(join(root, 'data'), { recursive: true });
+    mkdirSync(join(root, 'data/resume-materials.json'));
+    assert.throws(
+      () => runSkillPlan(validSource, { root, apply: true }),
+      error => error.code === 'invalid-target-state',
+    );
+    assert.equal(existsSync(join(root, 'data/skill-runs')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('skill run records are explicit, idempotent, isolated, and replace-protected', () => {

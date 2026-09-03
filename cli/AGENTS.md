@@ -26,7 +26,7 @@
 ### 当前本地闭环边界
 
 - `gy --status` 只读报告能力证据、简历素材、定稿、渲染、简历版本库、简历事实链、岗位分析、防骗核查、公司机会、面试准备、面试复盘和能力反哺的就绪状态。
-- 已落地链路：能力证据导入 -> 简历素材 / 定稿 / 渲染 / 工作台版本库 -> 简历事实链只读审计 -> 岗位分析 / 防骗核查 -> 公司机会 / 投递清单 / 节点 mutation -> 面试准备 / 复盘 -> 本地能力反哺台账；每个写入合同都要求 dry-run、`--apply` 和覆盖时 `--replace`。本地 Skill Runtime v0.1 已提供封闭注册表、计划校验、dry-run、审批记录和替换保护，但尚不执行契约工具或写目标对象。
+- 已落地链路：能力证据导入 -> 简历素材 / 定稿 / 渲染 / 工作台版本库 -> 简历事实链只读审计 -> 岗位分析 / 防骗核查 -> 公司机会 / 投递清单 / 节点 mutation -> 面试准备 / 复盘 -> 本地能力反哺台账；每个写入合同都要求 dry-run、`--apply` 和覆盖时 `--replace`。本地 Skill Runtime v0.2 已提供封闭注册表、计划校验、dry-run、审批记录、替换保护和一条契约 dispatcher：v2 的 `experience-structuring -> resume-materials.import` 可显式写入素材与故事库；其他 skill 仍只登记审批，不执行目标工具。
 - offer-toolkit 已吸收为本地契约、系统模板和方法文档，不创建 offer-toolkit 的第二套外部运行时，不输出到外部目录。
 - 面试复盘候选、岗位分析结论和 JD 线索都不会自动写入当前能力证据包、投递进度表、简历素材或云端。
 - 能力反哺只落本地台账；公司机会产物挂载、网页同步和页面内 skill 执行仍是后续工作。
@@ -61,9 +61,11 @@
 - 契约：仓库根 `docs/SKILL_RUNTIME_CONTRACT.md`。
 - 发现：`node skill-runtime.mjs list`，只读，只显示仓库内置封闭注册表。
 - 校验：`node skill-runtime.mjs check <plan.json>`，只读。
-- 执行：`node skill-runtime.mjs run <plan.json>` 默认 dry-run；写入审批记录必须 `--apply`；同 `runId` 不同计划必须 `--apply --replace`。
+- 执行：`node skill-runtime.mjs run <plan.json>` 默认 dry-run；执行必须 `--apply`；同 `runId` 不同计划或目标素材 / 故事库已变化时必须 `--apply --replace`。
 - 产物：`data/skill-runs/{runId}.json` 与 `data/skill-run-backups/{runId}/*`。
-- v0.1 只登记用户确认后的计划、输入指纹、工具白名单、目标对象、不变对象和恢复方式；不调用 LLM，不执行 shell，不调用契约工具，不写简历、能力资产、面试管理或 tracker 目标文件。
+- v1 只登记用户确认后的计划、输入指纹、工具白名单、目标对象、不变对象和恢复方式；不调用 LLM，不执行 shell，不调用契约工具，不写目标文件。
+- v2 必须额外绑定契约文件的 `/` 分隔相对路径和精确字节 SHA-256；check / dry-run / apply 都会重新验哈希，审批后变更契约文件必须拒绝。当前唯一可执行桥是 `experience-structuring -> resume-materials.import`，目标只能是 `data/resume-materials.json` 与 `interview-prep/story-bank.md`。
+- v2 执行记录必须包含目标 `before/after` 指纹和 `prepared / dispatched / failed` 状态。工具成功但最终记录写失败时保留 `prepared` 记录并报 `skill-run-record-write-failed`，不得伪造成功。
 - 不从用户输入、JD、网页内容、会话记录或导入包注册新 skill；未注册能力只能输出只读建议。
 - 计划与记录不得保存完整简历全文、JD 原文、HR 消息原文、密钥或终端日志。
 
