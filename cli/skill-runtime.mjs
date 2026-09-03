@@ -1,0 +1,743 @@
+#!/usr/bin/env node
+
+import { existsSync, lstatSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { getCareerOpsRoot } from './path-resolver.mjs';
+import { isMainModule } from './lib/is-main-module.mjs';
+import {
+  backupFile,
+  ContractToolError,
+  readJsonContract,
+  requireArray,
+  requireEnum,
+  requireObjectWithOptional,
+  requireSafeId,
+  requireString,
+  requireTimestamp,
+  semanticHash,
+  writeContractFile,
+} from './lib/contract-kit.mjs';
+
+export const SKILL_PLAN_SCHEMA = 'get-yourself.skill-run-plan';
+export const SKILL_PLAN_SCHEMA_VERSION = 1;
+export const SKILL_RUN_SCHEMA = 'get-yourself.skill-run-record';
+export const SKILL_RUN_SCHEMA_VERSION = 1;
+export const SKILL_RUN_DIR = 'data/skill-runs';
+export const SKILL_RUN_BACKUP_DIR = 'data/skill-run-backups';
+
+const MAX_PLAN_BYTES = 64 * 1024;
+const MAX_RUNS = 500;
+const MAX_INPUTS = 10;
+const MAX_TOOL_CALLS = 3;
+const MAX_TARGET_OBJECTS = 10;
+const MAX_BACKUPS_PER_RUN = 20;
+const CONTENT_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
+const CONFIRMATIONS = new Set(['user_confirmed']);
+
+const USAGE = `Usage:
+  node skill-runtime.mjs list [--json]
+  node skill-runtime.mjs check <plan.json> [--json]
+  node skill-runtime.mjs run <plan.json> [--apply] [--replace] [--json]`;
+
+const TOOLS = new Map([
+  ['resume-materials.import', {
+    command: 'node resume-materials.mjs import <contract.json>',
+    inputKinds: new Set(['experience_text', 'evidence_package']),
+    targets: ['data/resume-materials.json', 'interview-prep/story-bank.md', 'data/resume-materials-backups/'],
+  }],
+  ['job-analysis.import', {
+    command: 'node job-analysis.mjs import <contract.json>',
+    inputKinds: new Set(['pasted_jd']),
+    targets: ['data/job-analysis/', 'reports/job-analysis/', 'data/job-analysis-backups/'],
+  }],
+  ['scam-check.import', {
+    command: 'node scam-check.mjs import <contract.json>',
+    inputKinds: new Set(['pasted_jd', 'company_evidence', 'hr_message']),
+    targets: ['data/scam-check/', 'reports/scam-check/', 'data/scam-check-backups/'],
+  }],
+  ['resume-final.import', {
+    command: 'node resume-final.mjs apply <contract.json>',
+    inputKinds: new Set(['resume_materials', 'pasted_jd']),
+    targets: ['data/resume-final-plan.json', 'cv.md', 'data/resume-final-backups/'],
+  }],
+  ['resume-render.import', {
+    command: 'node resume-render.mjs import <contract.json>',
+    inputKinds: new Set(['resume_materials']),
+    targets: ['data/resume-render/', 'output/resume/', 'data/resume-render-backups/'],
+  }],
+  ['interview-prep.import', {
+    command: 'node interview-prep.mjs import <contract.json>',
+    inputKinds: new Set(['pasted_jd', 'resume_materials']),
+    targets: ['data/interview-prep/', 'interview-prep/', 'data/interview-prep-backups/'],
+  }],
+  ['interview-review.import', {
+    command: 'node interview-review.mjs import <contract.json>',
+    inputKinds: new Set(['interview_notes', 'interview_prep']),
+    targets: ['data/interview-review/', 'interview-prep/sessions/', 'data/interview-review-backups/'],
+  }],
+  ['capability-feedback.import', {
+    command: 'node capability-feedback.mjs import <contract.json>',
+    inputKinds: new Set(['interview_notes', 'interview_prep']),
+    targets: ['data/capability-feedback/', 'reports/capability-feedback/', 'data/capability-feedback-backups/'],
+  }],
+]);
+
+const SKILLS = new Map([
+  ['experience-structuring', {
+    skillKey: 'experience-structuring',
+    name: '经历结构化',
+    purpose: '把用户确认的经历整理为简历素材与 STAR 候选。',
+    targetModules: ['capability-assets', 'resume-management'],
+    writesLocal: true,
+    inputKinds: new Set(['experience_text', 'evidence_package']),
+    tools: new Set(['resume-materials.import']),
+    targets: ['data/resume-materials.json', 'interview-prep/story-bank.md', 'data/resume-materials-backups/'],
+    noWriteTargets: ['cv.md', 'data/resume-final-plan.json', 'data/resume-render/', 'output/resume/', 'data/resume-library.json', 'data/company-opportunities/', 'data/applications.md'],
+    downgrade: '先输出候选经历、证据缺口和补充问题；用户确认后再生成素材导入计划。',
+  }],
+  ['jd-analysis', {
+    skillKey: 'jd-analysis',
+    name: 'JD 分析',
+    purpose: '解析用户粘贴的 JD，生成匹配、差距与证据不足报告。',
+    targetModules: ['interview-management'],
+    writesLocal: true,
+    inputKinds: new Set(['pasted_jd']),
+    tools: new Set(['job-analysis.import']),
+    targets: ['data/job-analysis/', 'reports/job-analysis/', 'data/job-analysis-backups/'],
+    noWriteTargets: ['data/company-opportunities/', 'data/applications.md', 'data/resume-materials.json', 'cv.md'],
+    downgrade: '请用户粘贴 JD；公司、岗位、地点或要求缺失时输出证据不足，不推断。',
+  }],
+  ['scam-check', {
+    skillKey: 'scam-check',
+    name: '防骗核查',
+    purpose: '基于用户提供的证据生成引用式风险报告。',
+    targetModules: ['interview-management'],
+    writesLocal: true,
+    inputKinds: new Set(['pasted_jd', 'company_evidence', 'hr_message']),
+    tools: new Set(['scam-check.import']),
+    targets: ['data/scam-check/', 'reports/scam-check/', 'data/scam-check-backups/'],
+    noWriteTargets: ['data/company-opportunities/', 'data/applications.md', 'data/job-analysis/'],
+    downgrade: '列出不校外联即可完成的核实动作；证据不足不给绿灯。',
+  }],
+  ['resume-generation', {
+    skillKey: 'resume-generation',
+    name: '简历生成与适配',
+    purpose: '基于已确认素材生成定稿计划、渲染计划或新草稿。',
+    targetModules: ['resume-management'],
+    writesLocal: true,
+    inputKinds: new Set(['resume_materials', 'pasted_jd']),
+    tools: new Set(['resume-final.import', 'resume-render.import']),
+    targets: [
+      'data/resume-final-plan.json',
+      'cv.md',
+      'data/resume-final-backups/',
+      'data/resume-render/',
+      'output/resume/',
+      'data/resume-render-backups/',
+    ],
+    noWriteTargets: ['data/resume-library.json', 'data/company-opportunities/', 'data/applications.md', 'data/evidence-package.json'],
+    downgrade: '输出章节选择、条目来源和期望 diff；证据不足的条目不进入定稿。',
+  }],
+  ['interview-preparation', {
+    skillKey: 'interview-preparation',
+    name: '面试准备',
+    purpose: '生成面试准备清单和可追溯 STAR 引用。',
+    targetModules: ['interview-management'],
+    writesLocal: true,
+    inputKinds: new Set(['pasted_jd', 'resume_materials']),
+    tools: new Set(['interview-prep.import']),
+    targets: ['data/interview-prep/', 'interview-prep/', 'data/interview-prep-backups/'],
+    noWriteTargets: ['data/company-opportunities/', 'data/applications.md', 'cv.md'],
+    downgrade: '只输出候选问题、素材引用和需要用户补充的事实。',
+  }],
+  ['interview-review', {
+    skillKey: 'interview-review',
+    name: '面试复盘',
+    purpose: '结构化面试复盘，生成能力差距与反哺候选。',
+    targetModules: ['capability-assets', 'interview-management'],
+    writesLocal: true,
+    inputKinds: new Set(['interview_notes', 'interview_prep']),
+    tools: new Set(['interview-review.import', 'capability-feedback.import']),
+    targets: [
+      'data/interview-review/',
+      'interview-prep/sessions/',
+      'data/interview-review-backups/',
+      'data/capability-feedback/',
+      'reports/capability-feedback/',
+      'data/capability-feedback-backups/',
+    ],
+    noWriteTargets: ['data/evidence-package.json', 'data/resume-materials.json', 'interview-prep/story-bank.md', 'cv.md', 'data/company-opportunities/', 'data/applications.md'],
+    downgrade: '复盘结论和 STAR 候选先停留在本地台账，不写回能力证据或素材包。',
+  }],
+]);
+
+function runtimeError(message, code = 'invalid-skill-plan', details = {}) {
+  return new ContractToolError(message, code, details);
+}
+
+function requireContentHash(value, path, code = 'invalid-skill-plan') {
+  const text = requireString(value, path, { min: 71, max: 71 }, ContractToolError, code);
+  if (!CONTENT_HASH_PATTERN.test(text)) {
+    throw runtimeError(`${path} must be a sha256 content hash`, code, { path });
+  }
+  return text;
+}
+
+function normalizeRelativePath(value, path, code = 'invalid-skill-plan') {
+  const text = requireString(value, path, { min: 3, max: 240 }, ContractToolError, code);
+  if (text.includes('\\') || text.startsWith('/') || /^[A-Za-z]:/.test(text)) {
+    throw runtimeError(`${path} must be a /-separated path relative to the local data root`, code, { path });
+  }
+  const segments = text.split('/');
+  if (segments.some(segment => !segment || segment === '.' || segment === '..')) {
+    throw runtimeError(`${path} must be normalized and must not contain . or .. segments`, code, { path });
+  }
+  return text;
+}
+
+function targetIsAllowed(target, allowedTargets) {
+  return allowedTargets.some(allowed => (
+    allowed.endsWith('/') ? target.startsWith(allowed) : target === allowed
+  ));
+}
+
+function requireTargets(value, path, allowedTargets, code) {
+  const targets = requireArray(value, path, 1, MAX_TARGET_OBJECTS, ContractToolError, code)
+    .map((item, index) => normalizeRelativePath(item, `${path}[${index}]`, code));
+  if (new Set(targets).size !== targets.length) {
+    throw runtimeError(`${path} contains duplicate target objects`, code, { path });
+  }
+  const unexpected = targets.filter(target => !targetIsAllowed(target, allowedTargets));
+  if (unexpected.length > 0) {
+    throw runtimeError(`${path} contains objects outside the declared skill scope: ${unexpected.join(', ')}`, 'target-out-of-scope', {
+      path,
+      targets: unexpected,
+    });
+  }
+  return targets;
+}
+
+function requireInputFingerprints(value, skill) {
+  const inputs = requireArray(value, '$.inputFingerprints', 1, MAX_INPUTS, ContractToolError, 'invalid-skill-plan')
+    .map((item, index) => {
+      const path = `$.inputFingerprints[${index}]`;
+      requireObjectWithOptional(item, path, ['inputKind', 'contentHash'], [], ContractToolError, 'invalid-skill-plan');
+      const inputKind = requireString(item.inputKind, `${path}.inputKind`, { min: 3, max: 40 }, ContractToolError, 'invalid-skill-plan');
+      if (!skill.inputKinds.has(inputKind)) {
+        throw runtimeError(`${path}.inputKind is not allowed for ${skill.skillKey}`, 'invalid-input-kind', { path });
+      }
+      return {
+        inputKind,
+        contentHash: requireContentHash(item.contentHash, `${path}.contentHash`),
+      };
+    });
+  const keys = inputs.map(input => `${input.inputKind}\n${input.contentHash}`);
+  if (new Set(keys).size !== keys.length) {
+    throw runtimeError('$.inputFingerprints contains duplicate input fingerprints');
+  }
+  return inputs;
+}
+
+function requireToolCalls(value, skill, inputs) {
+  const calls = requireArray(value, '$.toolCalls', 1, MAX_TOOL_CALLS, ContractToolError, 'invalid-skill-plan')
+    .map((item, index) => {
+      const path = `$.toolCalls[${index}]`;
+      requireObjectWithOptional(item, path, ['toolKey', 'targetObjects'], [], ContractToolError, 'invalid-skill-plan');
+      const toolKey = requireString(item.toolKey, `${path}.toolKey`, { min: 3, max: 80 }, ContractToolError, 'invalid-skill-plan');
+      if (!skill.tools.has(toolKey)) {
+        throw runtimeError(`${path}.toolKey is not declared by ${skill.skillKey}`, 'undeclared-tool', { path });
+      }
+      const tool = TOOLS.get(toolKey);
+      if (!inputs.some(input => tool.inputKinds.has(input.inputKind))) {
+        throw runtimeError(`${path}.toolKey has no allowed input fingerprint in this plan`, 'invalid-input-kind', { path });
+      }
+      return {
+        toolKey,
+        targetObjects: requireTargets(
+          item.targetObjects,
+          `${path}.targetObjects`,
+          tool.targets.filter(target => targetIsAllowed(target, skill.targets)),
+          'invalid-skill-plan',
+        ),
+      };
+    });
+  if (new Set(calls.map(call => call.toolKey)).size !== calls.length) {
+    throw runtimeError('$.toolCalls contains duplicate tool keys');
+  }
+  const allTargets = calls.flatMap(call => call.targetObjects);
+  if (new Set(allTargets).size !== allTargets.length) {
+    throw runtimeError('$.toolCalls modifies the same target object more than once', 'duplicate-target');
+  }
+  return calls;
+}
+
+export function canonicalizeSkillRunPlan(input) {
+  requireObjectWithOptional(input, '$', [
+    'schema',
+    'schemaVersion',
+    'runId',
+    'generatedAt',
+    'traceId',
+    'confirmation',
+    'userIntent',
+    'skillKey',
+    'inputFingerprints',
+    'toolCalls',
+    'failureRecovery',
+  ], [], ContractToolError, 'invalid-skill-plan');
+  if (input.schema !== SKILL_PLAN_SCHEMA) {
+    throw runtimeError(`$.schema must be ${SKILL_PLAN_SCHEMA}`);
+  }
+  if (input.schemaVersion !== SKILL_PLAN_SCHEMA_VERSION) {
+    throw runtimeError(`$.schemaVersion must be ${SKILL_PLAN_SCHEMA_VERSION}`, 'unsupported-version');
+  }
+  requireEnum(input.confirmation, '$.confirmation', CONFIRMATIONS, ContractToolError, 'invalid-skill-plan');
+
+  const skillKey = requireSafeId(input.skillKey, '$.skillKey', ContractToolError, 'invalid-skill-plan');
+  const skill = SKILLS.get(skillKey);
+  if (!skill) {
+    throw runtimeError(`Skill is not registered: ${skillKey}`, 'unregistered-skill', { skillKey });
+  }
+
+  const plan = {
+    schema: SKILL_PLAN_SCHEMA,
+    schemaVersion: SKILL_PLAN_SCHEMA_VERSION,
+    runId: requireSafeId(input.runId, '$.runId', ContractToolError, 'invalid-skill-plan'),
+    generatedAt: requireTimestamp(input.generatedAt, '$.generatedAt', ContractToolError, 'invalid-skill-plan'),
+    traceId: requireSafeId(input.traceId, '$.traceId', ContractToolError, 'invalid-skill-plan'),
+    confirmation: input.confirmation,
+    userIntent: requireString(input.userIntent, '$.userIntent', { min: 8, max: 200 }, ContractToolError, 'invalid-skill-plan'),
+    skillKey,
+    inputFingerprints: requireInputFingerprints(input.inputFingerprints, skill),
+    toolCalls: [],
+    failureRecovery: requireString(
+      input.failureRecovery,
+      '$.failureRecovery',
+      { min: 10, max: 500 },
+      ContractToolError,
+      'invalid-skill-plan',
+    ),
+  };
+  plan.toolCalls = requireToolCalls(input.toolCalls, skill, plan.inputFingerprints);
+
+  const targetObjects = [...new Set(plan.toolCalls.flatMap(call => call.targetObjects))].sort();
+  const contentHash = semanticHash(plan);
+  return {
+    plan,
+    skill,
+    contentHash,
+    summary: {
+      runId: plan.runId,
+      generatedAt: plan.generatedAt,
+      traceId: plan.traceId,
+      userIntent: plan.userIntent,
+      skillKey,
+      skillName: skill.name,
+      targetModules: [...skill.targetModules],
+      inputCount: plan.inputFingerprints.length,
+      inputKinds: [...new Set(plan.inputFingerprints.map(input => input.inputKind))],
+      toolKeys: plan.toolCalls.map(call => call.toolKey),
+      targetObjects,
+      noWriteTargets: [...skill.noWriteTargets],
+      downgrade: skill.downgrade,
+      contentHash,
+    },
+  };
+}
+
+function readPlanFile(filePath) {
+  return canonicalizeSkillRunPlan(readJsonContract(filePath, { maxBytes: MAX_PLAN_BYTES }));
+}
+
+function buildRunRecord(current, recordedAt, previousPlanHash = null) {
+  const { plan, skill, contentHash } = current;
+  const record = {
+    schema: SKILL_RUN_SCHEMA,
+    schemaVersion: SKILL_RUN_SCHEMA_VERSION,
+    runId: plan.runId,
+    recordedAt: recordedAt,
+    planGeneratedAt: plan.generatedAt,
+    traceId: plan.traceId,
+    userIntent: plan.userIntent,
+    skillKey: plan.skillKey,
+    planContentHash: contentHash,
+    inputFingerprints: plan.inputFingerprints,
+    toolCalls: plan.toolCalls,
+    targetObjects: current.summary.targetObjects,
+    noWriteTargets: [...skill.noWriteTargets],
+    execution: {
+      mode: 'approval-ledger',
+      status: 'recorded',
+      dispatchedToolCount: 0,
+      targetWriteCount: 0,
+    },
+    recovery: plan.failureRecovery,
+  };
+  if (previousPlanHash !== null) record.replacesPlanContentHash = previousPlanHash;
+  return record;
+}
+
+function recordSummary(record) {
+  return {
+    runId: record.runId,
+    recordedAt: record.recordedAt,
+    planGeneratedAt: record.planGeneratedAt,
+    traceId: record.traceId,
+    skillKey: record.skillKey,
+    planContentHash: record.planContentHash,
+    status: record.execution.status,
+    mode: record.execution.mode,
+    dispatchedToolCount: record.execution.dispatchedToolCount,
+    targetWriteCount: record.execution.targetWriteCount,
+    targetObjects: record.targetObjects,
+    toolKeys: record.toolCalls.map(call => call.toolKey),
+  };
+}
+
+function assertRecordMatchesPlan(record, current) {
+  const expected = buildRunRecord(current, record.recordedAt, record.replacesPlanContentHash ?? null);
+  if (semanticHash(record) !== semanticHash(expected)) {
+    throw runtimeError('The existing run record does not match its declared plan hash.', 'invalid-run-record');
+  }
+}
+
+export function canonicalizeSkillRunRecord(input) {
+  requireObjectWithOptional(input, '$', [
+    'schema',
+    'schemaVersion',
+    'runId',
+    'recordedAt',
+    'planGeneratedAt',
+    'traceId',
+    'userIntent',
+    'skillKey',
+    'planContentHash',
+    'inputFingerprints',
+    'toolCalls',
+    'targetObjects',
+    'noWriteTargets',
+    'execution',
+    'recovery',
+  ], ['replacesPlanContentHash'], ContractToolError, 'invalid-run-record');
+  if (input.schema !== SKILL_RUN_SCHEMA) {
+    throw runtimeError(`$.schema must be ${SKILL_RUN_SCHEMA}`, 'invalid-run-record');
+  }
+  if (input.schemaVersion !== SKILL_RUN_SCHEMA_VERSION) {
+    throw runtimeError(`$.schemaVersion must be ${SKILL_RUN_SCHEMA_VERSION}`, 'invalid-run-record', undefined);
+  }
+  const skillKey = requireSafeId(input.skillKey, '$.skillKey', ContractToolError, 'invalid-run-record');
+  const skill = SKILLS.get(skillKey);
+  if (!skill) throw runtimeError(`Skill is not registered: ${skillKey}`, 'unregistered-skill');
+
+  requireObjectWithOptional(
+    input.execution,
+    '$.execution',
+    ['mode', 'status', 'dispatchedToolCount', 'targetWriteCount'],
+    [],
+    ContractToolError,
+    'invalid-run-record',
+  );
+
+  const planLike = {
+    schema: SKILL_PLAN_SCHEMA,
+    schemaVersion: SKILL_PLAN_SCHEMA_VERSION,
+    runId: input.runId,
+    generatedAt: input.planGeneratedAt,
+    traceId: input.traceId,
+    confirmation: 'user_confirmed',
+    userIntent: input.userIntent,
+    skillKey,
+    inputFingerprints: requireInputFingerprints(input.inputFingerprints, skill),
+    toolCalls: [],
+    failureRecovery: input.recovery,
+  };
+  planLike.toolCalls = requireToolCalls(input.toolCalls, skill, planLike.inputFingerprints);
+
+  requireEnum(input.execution.mode, '$.execution.mode', new Set(['approval-ledger']), ContractToolError, 'invalid-run-record');
+  requireEnum(input.execution.status, '$.execution.status', new Set(['recorded']), ContractToolError, 'invalid-run-record');
+  if (input.execution.dispatchedToolCount !== 0 || input.execution.targetWriteCount !== 0) {
+    throw runtimeError('v1 approval-ledger records cannot claim contract dispatch or target writes', 'invalid-run-record');
+  }
+
+  const record = {
+    schema: SKILL_RUN_SCHEMA,
+    schemaVersion: SKILL_RUN_SCHEMA_VERSION,
+    runId: requireSafeId(input.runId, '$.runId', ContractToolError, 'invalid-run-record'),
+    recordedAt: requireTimestamp(input.recordedAt, '$.recordedAt', ContractToolError, 'invalid-run-record'),
+    planGeneratedAt: requireTimestamp(input.planGeneratedAt, '$.planGeneratedAt', ContractToolError, 'invalid-run-record'),
+    traceId: requireSafeId(input.traceId, '$.traceId', ContractToolError, 'invalid-run-record'),
+    userIntent: requireString(input.userIntent, '$.userIntent', { min: 8, max: 200 }, ContractToolError, 'invalid-run-record'),
+    skillKey,
+    planContentHash: requireContentHash(input.planContentHash, '$.planContentHash', 'invalid-run-record'),
+    inputFingerprints: planLike.inputFingerprints,
+    toolCalls: planLike.toolCalls,
+    targetObjects: requireTargets(input.targetObjects, '$.targetObjects', skill.targets, 'invalid-run-record'),
+    noWriteTargets: [...skill.noWriteTargets],
+    execution: {
+      mode: input.execution.mode,
+      status: input.execution.status,
+      dispatchedToolCount: input.execution.dispatchedToolCount,
+      targetWriteCount: input.execution.targetWriteCount,
+    },
+    recovery: requireString(input.recovery, '$.recovery', { min: 10, max: 500 }, ContractToolError, 'invalid-run-record'),
+  };
+  if (input.replacesPlanContentHash !== undefined) {
+    record.replacesPlanContentHash = requireContentHash(
+      input.replacesPlanContentHash,
+      '$.replacesPlanContentHash',
+      'invalid-run-record',
+    );
+  }
+  const declaredTargetObjects = [
+    ...new Set(record.toolCalls.flatMap(call => call.targetObjects)),
+  ].sort();
+  if (JSON.stringify(record.targetObjects) !== JSON.stringify(declaredTargetObjects)) {
+    throw runtimeError(
+      '$.targetObjects must exactly match the union of tool-call targets.',
+      'invalid-run-record',
+    );
+  }
+  record.targetObjects = declaredTargetObjects;
+  const impliedPlan = {
+    schema: SKILL_PLAN_SCHEMA,
+    schemaVersion: SKILL_PLAN_SCHEMA_VERSION,
+    runId: record.runId,
+    generatedAt: record.planGeneratedAt,
+    traceId: record.traceId,
+    confirmation: 'user_confirmed',
+    userIntent: record.userIntent,
+    skillKey: record.skillKey,
+    inputFingerprints: record.inputFingerprints,
+    toolCalls: record.toolCalls,
+    failureRecovery: record.recovery,
+  };
+  if (semanticHash(impliedPlan) !== record.planContentHash) {
+    throw runtimeError('Skill run record fields do not match planContentHash.', 'invalid-run-record');
+  }
+  return record;
+}
+
+function readRecordFile(filePath) {
+  return canonicalizeSkillRunRecord(readJsonContract(filePath, { maxBytes: MAX_PLAN_BYTES }));
+}
+
+function runRecordPathFor(root, runId) {
+  return join(root, SKILL_RUN_DIR, `${runId}.json`);
+}
+
+export function listSkillRegistry() {
+  return {
+    skillCount: SKILLS.size,
+    skills: [...SKILLS.values()].map(skill => ({
+      skillKey: skill.skillKey,
+      name: skill.name,
+      purpose: skill.purpose,
+      targetModules: [...skill.targetModules],
+      writesLocal: skill.writesLocal,
+      allowedInputKinds: [...skill.inputKinds],
+      allowedTools: [...skill.tools],
+      allowedTargets: [...skill.targets],
+      noWriteTargets: [...skill.noWriteTargets],
+      downgrade: skill.downgrade,
+    })),
+    tools: [...TOOLS.entries()].map(([toolKey, tool]) => ({
+      toolKey,
+      command: tool.command,
+      inputKinds: [...tool.inputKinds],
+      targets: [...tool.targets],
+    })),
+  };
+}
+
+export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = false, replace = false } = {}) {
+  if (replace && !apply) throw runtimeError('--replace requires --apply', 'usage');
+  const current = readPlanFile(filePath);
+  const target = runRecordPathFor(root, current.plan.runId);
+  let existing = null;
+  if (existsSync(target)) {
+    const info = lstatSync(target);
+    if (!info.isFile()) {
+      throw runtimeError('Skill run record path is not a regular file', 'invalid-run-record', { path: target });
+    }
+    existing = readRecordFile(target);
+    if (existing.planContentHash === current.contentHash) {
+      assertRecordMatchesPlan(existing, current);
+    }
+  }
+  const samePlan = Boolean(existing && existing.planContentHash === current.contentHash);
+  if (!apply) {
+    return {
+      action: !existing
+        ? 'dry-run'
+        : (samePlan ? 'dry-run-unchanged' : 'dry-run-replace'),
+      applied: false,
+      recordPath: target,
+      plan: current.summary,
+    };
+  }
+  if (samePlan) {
+    return {
+      action: 'unchanged',
+      applied: true,
+      changed: false,
+      recordPath: target,
+      backupPath: null,
+      plan: current.summary,
+      record: recordSummary(existing),
+    };
+  }
+  if (existing && !replace) {
+    throw runtimeError('A different plan already uses this runId; add --replace after user confirmation.', 'skill-run-conflict');
+  }
+
+  const record = buildRunRecord(current, new Date().toISOString(), existing?.planContentHash ?? null);
+  let backupPath = null;
+  if (existing) {
+    backupPath = backupFile(
+      target,
+      join(root, SKILL_RUN_BACKUP_DIR, current.plan.runId),
+      'skill-run',
+      existing.planContentHash,
+      MAX_BACKUPS_PER_RUN,
+    );
+  }
+  writeContractFile(target, `${JSON.stringify(record, null, 2)}\n`);
+  return {
+    action: existing ? 'replaced' : 'recorded',
+    applied: true,
+    changed: true,
+    recordPath: target,
+    backupPath,
+    plan: current.summary,
+    record: recordSummary(record),
+  };
+}
+
+export function inspectSkillRuntime(root = getCareerOpsRoot()) {
+  try {
+    const directory = join(root, SKILL_RUN_DIR);
+    if (!existsSync(directory)) {
+      return {
+        state: 'missing',
+        available: false,
+        registeredSkillCount: SKILLS.size,
+        runCount: 0,
+        runs: [],
+      };
+    }
+    const info = lstatSync(directory);
+    if (!info.isDirectory()) {
+      throw runtimeError('Skill run directory is not a directory', 'invalid-run-record', { path: directory });
+    }
+    const entries = readdirSync(directory, { withFileTypes: true })
+      .filter(entry => !entry.name.startsWith('.'));
+    if (entries.length > MAX_RUNS) {
+      throw runtimeError(`Skill run count exceeds ${MAX_RUNS}`, 'too-many-runs');
+    }
+    const records = entries.map(entry => {
+      if (!entry.isFile() || !new RegExp(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\\.json$`).test(entry.name)) {
+        throw runtimeError(`Unexpected skill run directory entry: ${entry.name}`, 'invalid-run-record');
+      }
+      const record = readRecordFile(join(directory, entry.name));
+      if (entry.name !== `${record.runId}.json`) {
+        throw runtimeError('Skill run file name does not match runId', 'invalid-run-record', { path: entry.name });
+      }
+      return record;
+    });
+    const runIds = records.map(record => record.runId);
+    if (new Set(runIds).size !== runIds.length) {
+      throw runtimeError('Duplicate skill run record found', 'invalid-run-record');
+    }
+    return {
+      state: records.length > 0 ? 'ready' : 'missing',
+      available: records.length > 0,
+      registeredSkillCount: SKILLS.size,
+      runCount: records.length,
+      runs: records
+        .sort((left, right) => left.recordedAt.localeCompare(right.recordedAt))
+        .map(record => recordSummary(record)),
+    };
+  } catch (error) {
+    return {
+      state: 'invalid',
+      available: false,
+      registeredSkillCount: SKILLS.size,
+      error: error instanceof Error ? error.message : String(error),
+      code: error instanceof ContractToolError ? error.code : 'io-error',
+    };
+  }
+}
+
+function parseArguments(argv) {
+  const args = argv.slice(2);
+  const json = args.includes('--json');
+  const apply = args.includes('--apply');
+  const replace = args.includes('--replace');
+  const positional = args.filter(arg => !['--json', '--apply', '--replace'].includes(arg));
+  if (positional.length === 1 && positional[0] === 'list' && !apply && !replace) {
+    return { command: 'list', json };
+  }
+  if (positional.length !== 2 || !['check', 'run'].includes(positional[0])) return null;
+  if (positional[0] === 'check' && (apply || replace)) return null;
+  return { command: positional[0], planFile: positional[1], json, apply, replace };
+}
+
+function main() {
+  const args = parseArguments(process.argv);
+  if (!args) {
+    console.error(`Invalid arguments.\n${USAGE}`);
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    if (args.command === 'list') {
+      const registry = listSkillRegistry();
+      console.log(args.json ? JSON.stringify(registry, null, 2) : [
+        `注册 skill：${registry.skillCount} 个（仓库封闭集合）`,
+        ...registry.skills.map(skill => `${skill.name}（${skill.skillKey}） -> ${skill.allowedTools.join(', ')}`),
+      ].join('\n'));
+      return;
+    }
+    if (args.command === 'check') {
+      const result = readPlanFile(args.planFile);
+      const payload = { ok: true, action: 'checked', ...result.summary };
+      console.log(args.json ? JSON.stringify(payload, null, 2) : [
+        'Skill 执行计划校验通过。',
+        `Run ID: ${result.summary.runId}`,
+        `Skill：${result.summary.skillName}（${result.summary.skillKey}）`,
+        `用户意图：${result.summary.userIntent}`,
+        `输入指纹：${result.summary.inputCount} 个`,
+        `契约工具：${result.summary.toolKeys.join(', ')}`,
+        `目标对象：${result.summary.targetObjects.join(', ')}`,
+        `计划哈希：${result.summary.contentHash}`,
+        'v0.1 Runtime 只登记审批，不调用模型、不执行契约工具、不写目标对象。',
+      ].join('\n'));
+      return;
+    }
+
+    const result = runSkillPlan(args.planFile, {
+      root: getCareerOpsRoot(),
+      apply: args.apply,
+      replace: args.replace,
+    });
+    const payload = { ok: true, ...result };
+    console.log(args.json ? JSON.stringify(payload, null, 2) : [
+      `Skill Runtime 结果：${result.action}`,
+      `执行记录：${result.recordPath}`,
+      `Skill：${result.plan.skillName}（${result.plan.skillKey}）`,
+      `计划哈希：${result.plan.contentHash}`,
+      result.backupPath ? `替换备份：${result.backupPath}` : null,
+      '本命令只写审批记录；目标对象写入仍必须走对应契约工具的 check / dry-run / apply。',
+    ].filter(Boolean).join('\n'));
+  } catch (error) {
+    const code = error instanceof ContractToolError ? error.code : 'io-error';
+    const details = error.details && Object.keys(error.details).length > 0 ? { details: error.details } : {};
+    if (args.json) console.log(JSON.stringify({ ok: false, error: error.message, code, ...details }, null, 2));
+    else console.error(`Error: ${error.message}`);
+    process.exitCode = ['skill-run-conflict', 'target-out-of-scope', 'unregistered-skill', 'undeclared-tool'].includes(code) ? 2 : 1;
+  }
+}
+
+if (isMainModule(import.meta.url)) {
+  main();
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "get-yourself.skill-run-plan",
+  "schemaVersion": 1,
+  "runId": "skill-run-experience-demo-2026-09-03",
+  "generatedAt": "2026-09-03T10:50:00.000Z",
+  "traceId": "trace.skill-run-experience-demo",
+  "confirmation": "user_confirmed",
+  "userIntent": "把一段用户确认的实习经历整理成简历素材候选",
+  "skillKey": "experience-structuring",
+  "inputFingerprints": [
+    {
+      "inputKind": "experience_text",
+      "contentHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "toolCalls": [
+    {
+      "toolKey": "resume-materials.import",
+      "targetObjects": [
+        "data/resume-materials.json",
+        "interview-prep/story-bank.md"
+      ]
+    }
+  ],
+  "failureRecovery": "记录失败后停在计划态；用户修正素材后重新生成计划，不覆盖已确认素材。"
+}

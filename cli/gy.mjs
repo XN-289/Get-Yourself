@@ -15,6 +15,7 @@ import { inspectCompanyOpportunities } from './company-opportunity.mjs';
 import { inspectInterviewPrep } from './interview-prep.mjs';
 import { inspectInterviewReview } from './interview-review.mjs';
 import { inspectCapabilityFeedback } from './capability-feedback.mjs';
+import { inspectSkillRuntime } from './skill-runtime.mjs';
 import { connectDevice, disconnectDevice, inspectDeviceBinding } from './device-binding.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { formatRoute, routeIntent } from './lib/intent-router.mjs';
@@ -43,6 +44,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     interviewPrep: inspectInterviewPrep(root),
     interviewReview: inspectInterviewReview(root),
     capabilityFeedback: inspectCapabilityFeedback(root),
+    skillRuntime: inspectSkillRuntime(root),
     deviceBinding: inspectDeviceBinding(root),
     suggestions: [
       '整理经历 / 更新简历',
@@ -188,6 +190,14 @@ function printStatus({ json = false, root } = {}) {
     console.log('能力反哺：未生成');
   }
   const binding = payload.deviceBinding;
+  const skillRuntime = payload.skillRuntime;
+  if (skillRuntime.state === 'ready') {
+    console.log(`Skill Runtime：${skillRuntime.registeredSkillCount} 个注册 skill / ${skillRuntime.runCount} 条审批记录`);
+  } else if (skillRuntime.state === 'invalid') {
+    console.log(`Skill Runtime：本地审批记录无效（${skillRuntime.error}）`);
+  } else {
+    console.log(`Skill Runtime：${skillRuntime.registeredSkillCount} 个注册 skill / 0 条审批记录`);
+  }
   if (binding.state === 'ready') {
     console.log(`本地工位：已绑定 ${binding.device.deviceName}（#${binding.device.deviceId}）`);
   } else if (binding.state === 'invalid') {
