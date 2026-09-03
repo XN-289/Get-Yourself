@@ -2,7 +2,7 @@
 
 ## Status
 
-This is the Stage 6 contract baseline. It defines the synchronization unit before any API, database, queue, CLI, or frontend implementation. The repository has not implemented cloud synchronization yet.
+This is the Stage 6 contract baseline. The local deterministic builder and validator are implemented in `cli/sync-unit.mjs` and covered by `cli/tests/sync-unit.test.mjs`; queue-action and tombstone rules are exercised as pure state functions only. The repository has not implemented cloud synchronization, a persistent queue, a user-facing CLI queue command, API, database, or frontend projection.
 
 ## Purpose
 
