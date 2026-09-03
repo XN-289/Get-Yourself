@@ -1,13 +1,13 @@
 # PROJECT_STATE
 
-Updated: 2026-09-03 16:16
+Updated: 2026-09-03 16:40
 Current phase: implementation
 
 ## 一句话现状
 
 Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、简历版本库显式文件桥、简历事实链显式身份绑定与只读审计、学生端工具台 UI 基座、页面内 skill 显式确认流、本地 Skill Runtime v0.1 审批账本与 v0.2 全量 11 条契约执行桥、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥与本地能力反哺台账已实现；前端 Demo、`gy`、证据包、设备绑定、Stage 4、Stage 5 本地桥接、显式事实链身份绑定与 Runtime v0.2 仍待用户统一验收，平台自动同步尚未开始。
 
-2026-09-03 下午补充：Stage 6 同步单元合同 v0.1 已落盘，但同步 API、数据库、CLI 队列与前端投影均未实现；该合同仍待用户统一验收，平台自动同步尚未开始。
+2026-09-03 下午补充：Stage 6 同步单元合同 v0.1 已落盘，PRD 已补充 6a-6d 实施顺序（本地确定性构建 / 校验 -> 显式本地队列 -> 授权 API 与云端投影 -> 网页摘要与 Trace 汇总）。同步 API、数据库、CLI 队列与前端投影均未实现；该合同仍待用户统一验收，平台自动同步尚未开始。
 
 ## 已接受事实
 
@@ -51,8 +51,9 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 事实链 `ready` / `proven` 只来自显式匹配当前定稿计划与 `cv.md`；显式过期绑定输出 `drifted`，导入来源指纹不授予反写权限，事实链始终只读 — `decisions.md` 2026-09-03。
 - v0.1 冷启动分为无证据无旧简历、已有本机旧简历、平台证据成熟三类；粘贴 JD 是 P0 主路径，链接解析是 P1 辅助路径 — `docs/PRODUCT_DESIGN_V0.1.md`。
 - Stage 6 必须先定义同步单元、幂等键、冲突、删除、多设备、断网和重试规则，再设计字段与接口 — `docs/PRODUCT_DESIGN_V0.1.md`。
-- Stage 6 首批同步单元只有公司机会进度摘要与 Trace 决策摘要；前者是自然身份 + basis 内容指纹的可变更快照，后者是设备 + Trace ID 的 append-only 记录，多设备冲突必须由用户选择 — `docs/SYNC_UNIT_CONTRACT.md` 与 `decisions.md` 2026-09-03 第 17-19 条。
-- 同步队列只保存用户确认过的摘要；重试复用同一幂等键，重绑设备后旧队列默认阻断并需重新确认；删除网页摘要只隐藏投影并保留幂等墓碑，不删除本机会、tracker、报告或产物 — `docs/SYNC_UNIT_CONTRACT.md`。
+- Stage 6 首批同步单元只有公司机会进度摘要与 Trace 决策摘要；前者是自然身份 + basis 内容指纹的可变更快照，后者是设备 + Trace ID 的 append-only 记录，多设备冲突必须由用户选择 — `docs/SYNC_UNIT_CONTRACT.md` 与 `decisions.md` 2026-09-03 第 17-18 条。
+- 同步队列只保存用户确认过的摘要；重试复用同一幂等键，重绑设备后旧队列默认阻断并需重新确认；删除网页摘要只隐藏投影并保留幂等墓碑，不删除本机会、tracker、报告或产物 — `docs/SYNC_UNIT_CONTRACT.md` 与 `decisions.md` 2026-09-03 第 19 条。
+- Stage 6 按 6a 本地确定性构建 / 校验、6b 显式本地队列、6c 授权 API 与云端投影、6d 网页摘要与 Trace 汇总顺序推进，前置门槛未通过不得进入后续实现 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 2026-09-03 第 20 条。
 
 ## 决策索引
 
@@ -80,7 +81,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-03 — Skill Runtime 优先级、封闭 skill 集、简历事实链、三类冷启动、粘贴 JD 主路径与 Stage 6 同步单元合同 — `decisions.md` 与 `docs/PRODUCT_DESIGN_V0.1.md`。
 - 2026-09-03 — Skill Runtime v0.2 契约 dispatcher 先开放简历素材与 JD 分析两个导入桥，后续扩展为当前全部 11 个注册工具，并要求契约哈希、契约身份绑定目标、目标指纹与显式替换 — `decisions.md`。
 - 2026-09-03 — 简历来源身份可选兼容扩展、旧文件不补写、显式绑定 ready / proven、显式过期 drifted 与导入指纹不授予反写权限 — `decisions.md`。
-- 2026-09-03 — Stage 6 首批同步单元、basis 冲突、append-only Trace、多设备合并、显式队列与删除墓碑 — `docs/SYNC_UNIT_CONTRACT.md` 与 `decisions.md`。
+- 2026-09-03 — Stage 6 首批同步单元、basis 冲突、append-only Trace、多设备合并、显式队列、删除墓碑与 6a-6d 本地优先实施顺序 — `docs/SYNC_UNIT_CONTRACT.md`、`docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`。
 
 ## 已实现
 
@@ -148,6 +149,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 简历事实链验证 — 2026-09-03 `node --check resume-fact-chain.mjs`、`node --check gy.mjs`、`node --check tests/resume-fact-chain.test.mjs`、`node --check resume-final.mjs`、`node --check resume-render.mjs`、`node --check resume-library.mjs`、`cli/` 下全量 `npm test`（102 pass / 0 fail）与 `frontend/` 下 `npm run build` 通过；测试覆盖旧文件零改写下的 `binding-gap`、完整成组绑定到达 `ready`、显式 stale 定稿 / 渲染绑定在对象与链路层输出 `drifted`、来源字段成组 / 生命周期限制、来源字段参与语义哈希，以及导入文件哈希只作为来源证明。
 - PRD v0.1 状态校准 — `docs/PRODUCT_DESIGN_V0.1.md`；当前实现快照、9.5.1 简历事实链、Stage 4 当前实现边界与 14.0 验收边界补充来源指纹语义哈希、当前投递版对象状态、集合汇总不降级漂移子对象、过期渲染来源绑定与 102 项 CLI 测试证据；本轮为文档校准，不改变产品目标、阶段状态或用户验收结论。
 - Stage 6 同步单元合同 v0.1 — `docs/SYNC_UNIT_CONTRACT.md`；定义首批 `opportunity.progress.v1` 与 `trace.decision.v1`、单元 envelope、canonical 哈希、自然身份、basis 冲突、append-only Trace、多设备合并、显式队列与重试、重绑阻断、删除墓碑、隐私红线和本地构建器实现门槛。此轮为文档与决策落盘，没有 API、数据库、CLI 队列或前端同步实现。
+- Stage 6 PRD 实施顺序校准 — `docs/PRODUCT_DESIGN_V0.1.md`；明确 6a 本地确定性构建 / 校验、6b 显式本地队列、6c 授权 API 与云端投影、6d 网页摘要与 Trace 汇总的先后边界，并补充 6a / 6b 的实现门槛验收点。此轮为文档校准，不代表同步实现开始。
 
 ## 已验收
 
@@ -220,3 +222,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-03 — PRD v0.1 完成事实链实现状态校准 — 补充当前投递版对象 / 集合状态一致性、来源指纹语义哈希敏感性与过期渲染绑定验收点；整体目标与阶段状态不变，仍待用户统一验收。
 - 2026-09-03 — 实现公司机会导入、节点 mutation 与真实产物挂载的 Skill Runtime 派发桥 — Runtime 扩展为 7 个封闭 skill / 11 条注册工具，公司机会目标由同一 `opportunityId` 派生并保留用户-owned 状态；`cli/` 106 项测试通过，仍待用户统一验收。
 - 2026-09-03 — 定义 Stage 6 同步单元合同 v0.1 — 收窄首批同步对象为公司机会进度摘要与 Trace 决策摘要，确定自然身份、basis 冲突、append-only Trace、多设备合并、显式队列、重绑阻断、删除墓碑与隐私红线；下一步才实现本地构建器与校验器。
+- 2026-09-03 — PRD 补充 Stage 6 实施顺序 — 固定本地确定性构建 / 校验、显式本地队列、授权 API 与云端投影、网页摘要与 Trace 汇总的推进顺序，并把每一步的不可越界项写入当前验收边界；不改变产品目标，也不代表同步实现开始。
