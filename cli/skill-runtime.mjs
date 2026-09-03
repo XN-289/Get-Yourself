@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { importResumeMaterials } from './resume-materials.mjs';
+import { importJobAnalysis } from './job-analysis.mjs';
 import {
   backupFile,
   ContractToolError,
@@ -35,11 +36,11 @@ const MAX_TARGET_OBJECTS = 10;
 const MAX_BACKUPS_PER_RUN = 20;
 const CONTENT_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const CONFIRMATIONS = new Set(['user_confirmed']);
-const DISPATCH_TOOL_KEY = 'resume-materials.import';
-const DISPATCH_TARGETS = [
+const MATERIALS_DISPATCH_TARGETS = [
   'data/resume-materials.json',
   'interview-prep/story-bank.md',
 ];
+const SAFE_TARGET_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_CONTRACT_FILE_BYTES = 256 * 1024;
 const MAX_FINGERPRINT_FILE_BYTES = 1024 * 1024;
 
@@ -47,6 +48,22 @@ const USAGE = `Usage:
   node skill-runtime.mjs list [--json]
   node skill-runtime.mjs check <plan.json> [--json]
   node skill-runtime.mjs run <plan.json> [--apply] [--replace] [--json]`;
+
+const DISPATCH_BRIDGES = new Map([
+  ['resume-materials.import', {
+    skillKey: 'experience-structuring',
+    conflictCode: 'different-materials',
+    importer: importResumeMaterials,
+    targetsFor: () => [...MATERIALS_DISPATCH_TARGETS],
+  }],
+  ['job-analysis.import', {
+    skillKey: 'jd-analysis',
+    conflictCode: 'different-analysis',
+    importer: importJobAnalysis,
+    targetsFor: call => jobAnalysisTargetsFromPlan(call),
+    targetsFromContract: contract => jobAnalysisTargetsForId(contract.analysisId),
+  }],
+]);
 
 const TOOLS = new Map([
   ['resume-materials.import', {
@@ -59,6 +76,7 @@ const TOOLS = new Map([
     command: 'node job-analysis.mjs import <contract.json>',
     inputKinds: new Set(['pasted_jd']),
     targets: ['data/job-analysis/', 'reports/job-analysis/', 'data/job-analysis-backups/'],
+    dispatchable: true,
   }],
   ['scam-check.import', {
     command: 'node scam-check.mjs import <contract.json>',
@@ -227,6 +245,63 @@ function requireTargets(value, path, allowedTargets, code) {
   return targets;
 }
 
+function jobAnalysisTargetsForId(analysisId) {
+  const id = requireSafeId(analysisId, '$.analysisId', ContractToolError, 'dispatch-target-contract-mismatch');
+  if (!SAFE_TARGET_ID_PATTERN.test(id)) {
+    throw runtimeError('$.analysisId cannot be used as a target identity', 'dispatch-target-contract-mismatch', {
+      analysisId,
+    });
+  }
+  return [
+    `data/job-analysis/${id}.json`,
+    `reports/job-analysis/${id}.md`,
+  ];
+}
+
+function jobAnalysisTargetsFromPlan(call) {
+  const packagePrefix = 'data/job-analysis/';
+  const reportPrefix = 'reports/job-analysis/';
+  const ids = call.targetObjects.map(target => {
+    if (target.startsWith(packagePrefix) && target.endsWith('.json')) {
+      return target.slice(packagePrefix.length, -'.json'.length);
+    }
+    if (target.startsWith(reportPrefix) && target.endsWith('.md')) {
+      return target.slice(reportPrefix.length, -'.md'.length);
+    }
+    return null;
+  });
+  if (ids.length !== 2 || ids.some(id => id === null || !SAFE_TARGET_ID_PATTERN.test(id))) {
+    throw runtimeError(
+      `${call.targetObjects.length} job-analysis targets are invalid; expected one JSON package and one Markdown report with the same safe analysisId`,
+      'invalid-dispatch-targets',
+      { toolKey: call.toolKey },
+    );
+  }
+  if (ids[0] !== ids[1]) {
+    throw runtimeError('job-analysis targets must use the same analysisId', 'invalid-dispatch-targets', {
+      toolKey: call.toolKey,
+      analysisIds: ids,
+    });
+  }
+  return jobAnalysisTargetsForId(ids[0]);
+}
+
+function requireExactDispatchTargets(call) {
+  const bridge = DISPATCH_BRIDGES.get(call.toolKey);
+  if (!bridge) {
+    throw runtimeError(`${call.toolKey} has no dispatcher in this runtime version`, 'unsupported-dispatch-tool');
+  }
+  const expectedTargets = [...bridge.targetsFor(call)].sort();
+  const actualTargets = [...call.targetObjects].sort();
+  if (JSON.stringify(actualTargets) !== JSON.stringify(expectedTargets)) {
+    throw runtimeError(
+      `${call.toolKey} dispatch targets must exactly match ${expectedTargets.join(', ')}`,
+      'invalid-dispatch-targets',
+      { toolKey: call.toolKey, expectedTargets },
+    );
+  }
+}
+
 function requireInputFingerprints(value, skill) {
   const inputs = requireArray(value, '$.inputFingerprints', 1, MAX_INPUTS, ContractToolError, 'invalid-skill-plan')
     .map((item, index) => {
@@ -274,18 +349,10 @@ function requireToolCalls(value, skill, inputs, dispatchable = false) {
         ),
       };
       if (dispatchable) {
-        if (toolKey !== DISPATCH_TOOL_KEY) {
+        if (!DISPATCH_BRIDGES.has(toolKey)) {
           throw runtimeError(`${path}.toolKey has no dispatcher in this runtime version`, 'unsupported-dispatch-tool', { path });
         }
-        const expectedTargets = [...DISPATCH_TARGETS].sort();
-        const actualTargets = [...call.targetObjects].sort();
-        if (JSON.stringify(actualTargets) !== JSON.stringify(expectedTargets)) {
-          throw runtimeError(
-            `${path}.targetObjects for dispatch must exactly match ${expectedTargets.join(', ')}`,
-            'invalid-dispatch-targets',
-            { path },
-          );
-        }
+        requireExactDispatchTargets(call);
         call.contractFile = normalizeRelativePath(item.contractFile, `${path}.contractFile`);
         if (!call.contractFile.endsWith('.json')) {
           throw runtimeError(`${path}.contractFile must point to a JSON contract`, 'invalid-skill-plan', { path });
@@ -407,6 +474,7 @@ function fileByteHash(path, maxBytes, pathLabel, code) {
 function verifyDispatchContracts(current, root) {
   if (current.plan.schemaVersion !== SKILL_PLAN_SCHEMA_VERSION) return;
   for (const call of current.plan.toolCalls) {
+    const bridge = DISPATCH_BRIDGES.get(call.toolKey);
     const path = join(root, call.contractFile);
     const actualHash = fileByteHash(path, MAX_CONTRACT_FILE_BYTES, `contract file ${call.contractFile}`, 'invalid-dispatch-contract');
     if (actualHash !== call.contractFileHash) {
@@ -414,6 +482,28 @@ function verifyDispatchContracts(current, root) {
         `Contract file no longer matches ${current.plan.runId}: ${call.contractFile}`,
         'dispatch-contract-drift',
         { contractFile: call.contractFile, expectedHash: call.contractFileHash, actualHash },
+      );
+    }
+    if (!bridge.targetsFromContract) continue;
+    let contract;
+    try {
+      contract = readJsonContract(path, {
+        maxBytes: MAX_CONTRACT_FILE_BYTES,
+        ErrorClass: ContractToolError,
+        errorCode: 'invalid-dispatch-contract',
+      });
+    } catch (error) {
+      throw runtimeError(`Cannot parse dispatch contract ${call.contractFile}: ${error.message}`, 'invalid-dispatch-contract', {
+        contractFile: call.contractFile,
+      });
+    }
+    const expectedTargets = [...bridge.targetsFor(call)].sort();
+    const contractTargets = [...bridge.targetsFromContract(contract)].sort();
+    if (JSON.stringify(contractTargets) !== JSON.stringify(expectedTargets)) {
+      throw runtimeError(
+        `Dispatch targets do not match the approved ${call.toolKey} contract: ${call.contractFile}`,
+        'dispatch-target-contract-mismatch',
+        { contractFile: call.contractFile, planTargets: expectedTargets, contractTargets },
       );
     }
   }
@@ -425,7 +515,7 @@ function readPlanFile(filePath, root = getCareerOpsRoot()) {
   return current;
 }
 
-function fingerprintTargetObjects(root, targets = DISPATCH_TARGETS) {
+function fingerprintTargetObjects(root, targets) {
   return targets.map(target => {
     const path = join(root, target);
     let info;
@@ -454,22 +544,45 @@ function relativeRootPath(root, path) {
   return path.replaceAll('\\', '/').replace(`${root.replaceAll('\\', '/')}/`, '');
 }
 
+function relativeBackupPath(root, path) {
+  return path ? relativeRootPath(root, path) : null;
+}
+
 function materialsToolResult(result, root) {
   return {
-    toolKey: DISPATCH_TOOL_KEY,
+    toolKey: 'resume-materials.import',
     action: result.action,
     packageId: result.incoming.packageId,
     contentHash: result.incoming.contentHash,
     backupPaths: {
-      materials: result.backupPaths.materials ? relativeRootPath(root, result.backupPaths.materials) : null,
-      storyBank: result.backupPaths.storyBank ? relativeRootPath(root, result.backupPaths.storyBank) : null,
+      materials: relativeBackupPath(root, result.backupPaths.materials),
+      storyBank: relativeBackupPath(root, result.backupPaths.storyBank),
     },
   };
 }
 
-function requireFingerprintSnapshot(value, path, allowNull) {
+function jobAnalysisToolResult(result, root) {
+  return {
+    toolKey: 'job-analysis.import',
+    action: result.action,
+    objectId: result.incoming.analysisId,
+    contentHash: result.incoming.contentHash,
+    backupPaths: {
+      package: relativeBackupPath(root, result.backupPaths.package),
+      markdown: relativeBackupPath(root, result.backupPaths.markdown),
+    },
+  };
+}
+
+function dispatchToolResult(call, result, root) {
+  return call.toolKey === 'job-analysis.import'
+    ? jobAnalysisToolResult(result, root)
+    : materialsToolResult(result, root);
+}
+
+function requireFingerprintSnapshot(value, path, allowNull, expectedTargets) {
   if (allowNull && value === null) return null;
-  const fingerprints = requireArray(value, path, DISPATCH_TARGETS.length, DISPATCH_TARGETS.length, ContractToolError, 'invalid-run-record')
+  const fingerprints = requireArray(value, path, expectedTargets.length, expectedTargets.length, ContractToolError, 'invalid-run-record')
     .map((item, index) => {
       const itemPath = `${path}[${index}]`;
       requireObjectWithOptional(item, itemPath, ['target', 'state'], ['contentHash'], ContractToolError, 'invalid-run-record');
@@ -486,7 +599,7 @@ function requireFingerprintSnapshot(value, path, allowNull) {
       }
       return contentHash === undefined ? { target, state } : { target, state, contentHash };
     });
-  const expected = [...DISPATCH_TARGETS].sort();
+  const expected = [...expectedTargets].sort();
   const actual = fingerprints.map(item => item.target).sort();
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw runtimeError(`${path} must cover exactly the declared dispatch targets`, 'invalid-run-record', { path });
@@ -518,6 +631,54 @@ function requireExecutionError(value) {
     );
   }
   return error;
+}
+
+function requireOptionalRelativePath(value, path) {
+  return value === null ? null : normalizeRelativePath(value, path, 'invalid-run-record');
+}
+
+function requireToolResult(value, path, call) {
+  if (call.toolKey === 'resume-materials.import') {
+    requireObjectWithOptional(
+      value,
+      path,
+      ['toolKey', 'action', 'packageId', 'contentHash', 'backupPaths'],
+      [],
+      ContractToolError,
+      'invalid-run-record',
+    );
+    requireObjectWithOptional(value.backupPaths, `${path}.backupPaths`, ['materials', 'storyBank'], [], ContractToolError, 'invalid-run-record');
+    return {
+      toolKey: requireEnum(value.toolKey, `${path}.toolKey`, new Set([call.toolKey]), ContractToolError, 'invalid-run-record'),
+      action: requireString(value.action, `${path}.action`, { min: 1, max: 40 }, ContractToolError, 'invalid-run-record'),
+      packageId: requireString(value.packageId, `${path}.packageId`, { min: 1, max: 64 }, ContractToolError, 'invalid-run-record'),
+      contentHash: requireContentHash(value.contentHash, `${path}.contentHash`, 'invalid-run-record'),
+      backupPaths: {
+        materials: requireOptionalRelativePath(value.backupPaths.materials, `${path}.backupPaths.materials`),
+        storyBank: requireOptionalRelativePath(value.backupPaths.storyBank, `${path}.backupPaths.storyBank`),
+      },
+    };
+  }
+
+  requireObjectWithOptional(
+    value,
+    path,
+    ['toolKey', 'action', 'objectId', 'contentHash', 'backupPaths'],
+    [],
+    ContractToolError,
+    'invalid-run-record',
+  );
+  requireObjectWithOptional(value.backupPaths, `${path}.backupPaths`, ['package', 'markdown'], [], ContractToolError, 'invalid-run-record');
+  return {
+    toolKey: requireEnum(value.toolKey, `${path}.toolKey`, new Set([call.toolKey]), ContractToolError, 'invalid-run-record'),
+    action: requireString(value.action, `${path}.action`, { min: 1, max: 40 }, ContractToolError, 'invalid-run-record'),
+    objectId: requireSafeId(value.objectId, `${path}.objectId`, ContractToolError, 'invalid-run-record'),
+    contentHash: requireContentHash(value.contentHash, `${path}.contentHash`, 'invalid-run-record'),
+    backupPaths: {
+      package: requireOptionalRelativePath(value.backupPaths.package, `${path}.backupPaths.package`),
+      markdown: requireOptionalRelativePath(value.backupPaths.markdown, `${path}.backupPaths.markdown`),
+    },
+  };
 }
 
 function buildRunRecord(
@@ -606,6 +767,20 @@ export function canonicalizeSkillRunRecord(input) {
   const skillKey = requireSafeId(input.skillKey, '$.skillKey', ContractToolError, 'invalid-run-record');
   const skill = SKILLS.get(skillKey);
   if (!skill) throw runtimeError(`Skill is not registered: ${skillKey}`, 'unregistered-skill');
+  const planLike = {
+    schema: SKILL_PLAN_SCHEMA,
+    schemaVersion,
+    runId: input.runId,
+    generatedAt: input.planGeneratedAt,
+    traceId: input.traceId,
+    confirmation: 'user_confirmed',
+    userIntent: input.userIntent,
+    skillKey,
+    inputFingerprints: requireInputFingerprints(input.inputFingerprints, skill),
+    toolCalls: [],
+    failureRecovery: input.recovery,
+  };
+  planLike.toolCalls = requireToolCalls(input.toolCalls, skill, planLike.inputFingerprints, dispatchable);
 
   requireObjectWithOptional(
     input.execution,
@@ -626,25 +801,13 @@ export function canonicalizeSkillRunRecord(input) {
       ContractToolError,
       'invalid-run-record',
     );
-    requireFingerprintSnapshot(input.targetFingerprints.before, '$.targetFingerprints.before', false);
-    requireFingerprintSnapshot(input.targetFingerprints.after, '$.targetFingerprints.after', true);
+    const expectedTargets = [
+      ...new Set(planLike.toolCalls.flatMap(call => call.targetObjects)),
+    ].sort();
+    requireFingerprintSnapshot(input.targetFingerprints.before, '$.targetFingerprints.before', false, expectedTargets);
+    requireFingerprintSnapshot(input.targetFingerprints.after, '$.targetFingerprints.after', true, expectedTargets);
     if (input.execution.error !== undefined) input.execution.error = requireExecutionError(input.execution.error);
   }
-
-  const planLike = {
-    schema: SKILL_PLAN_SCHEMA,
-    schemaVersion,
-    runId: input.runId,
-    generatedAt: input.planGeneratedAt,
-    traceId: input.traceId,
-    confirmation: 'user_confirmed',
-    userIntent: input.userIntent,
-    skillKey,
-    inputFingerprints: requireInputFingerprints(input.inputFingerprints, skill),
-    toolCalls: [],
-    failureRecovery: input.recovery,
-  };
-  planLike.toolCalls = requireToolCalls(input.toolCalls, skill, planLike.inputFingerprints, dispatchable);
 
   const mode = requireEnum(
     input.execution.mode,
@@ -678,18 +841,7 @@ export function canonicalizeSkillRunRecord(input) {
       'invalid-run-record',
     ).map((item, index) => {
       const path = `$.execution.toolResults[${index}]`;
-      requireObjectWithOptional(item, path, ['toolKey', 'action', 'packageId', 'contentHash', 'backupPaths'], [], ContractToolError, 'invalid-run-record');
-      requireObjectWithOptional(item.backupPaths, `${path}.backupPaths`, ['materials', 'storyBank'], [], ContractToolError, 'invalid-run-record');
-      return {
-        toolKey: requireEnum(item.toolKey, `${path}.toolKey`, new Set([DISPATCH_TOOL_KEY]), ContractToolError, 'invalid-run-record'),
-        action: requireString(item.action, `${path}.action`, { min: 1, max: 40 }, ContractToolError, 'invalid-run-record'),
-        packageId: requireString(item.packageId, `${path}.packageId`, { min: 1, max: 64 }, ContractToolError, 'invalid-run-record'),
-        contentHash: requireContentHash(item.contentHash, `${path}.contentHash`, 'invalid-run-record'),
-        backupPaths: {
-          materials: item.backupPaths.materials === null ? null : requireString(item.backupPaths.materials, `${path}.backupPaths.materials`, { min: 3, max: 240 }, ContractToolError, 'invalid-run-record'),
-          storyBank: item.backupPaths.storyBank === null ? null : requireString(item.backupPaths.storyBank, `${path}.backupPaths.storyBank`, { min: 3, max: 240 }, ContractToolError, 'invalid-run-record'),
-        },
-      };
+      return requireToolResult(item, path, planLike.toolCalls[0]);
     });
     if (status === 'prepared' && (dispatchedToolCount !== 0 || targetWriteCount !== 0 || toolResults.length !== 0)) {
       throw runtimeError('A prepared dispatch record cannot claim execution or target writes.', 'invalid-run-record');
@@ -811,21 +963,23 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
   const samePlan = Boolean(existing && existing.planContentHash === current.contentHash);
   const dispatchable = current.plan.schemaVersion === SKILL_PLAN_SCHEMA_VERSION;
   const alreadyDispatched = Boolean(samePlan && existing?.execution.status === 'dispatched');
+  const call = dispatchable ? current.plan.toolCalls[0] : null;
+  const bridge = call ? DISPATCH_BRIDGES.get(call.toolKey) : null;
+  const dispatchTargets = call ? [...bridge.targetsFor(call)].sort() : [];
 
   if (!apply) {
     let dispatch = null;
     if (dispatchable && !alreadyDispatched) {
-      const before = fingerprintTargetObjects(root);
-      const call = current.plan.toolCalls[0];
+      const before = fingerprintTargetObjects(root, dispatchTargets);
       try {
-        const toolResult = importResumeMaterials(join(root, call.contractFile), { root, apply: false });
+        const toolResult = bridge.importer(join(root, call.contractFile), { root, apply: false });
         dispatch = { action: 'dry-run', before, toolResult };
       } catch (error) {
-        if (error.code === 'different-materials') {
+        if (error.code === bridge.conflictCode) {
           dispatch = {
             action: 'dry-run-replace-required',
             before,
-            reason: 'The target materials or story bank differ from the approved contract.',
+            reason: 'The declared target content differs from the approved contract.',
           };
         } else {
           throw runtimeError(`Contract tool dry-run failed: ${error.message}`, 'skill-dispatch-failed', {
@@ -884,12 +1038,11 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
     };
   }
 
-  const before = fingerprintTargetObjects(root);
-  const call = current.plan.toolCalls[0];
+  const before = fingerprintTargetObjects(root, dispatchTargets);
   try {
-    importResumeMaterials(join(root, call.contractFile), { root, apply: false });
+    bridge.importer(join(root, call.contractFile), { root, apply: false });
   } catch (error) {
-    if (error.code !== 'different-materials') {
+    if (error.code !== bridge.conflictCode) {
       throw runtimeError(`Contract tool dry-run failed: ${error.message}`, 'skill-dispatch-failed', {
         toolKey: call.toolKey,
         toolErrorCode: error.code ?? 'io-error',
@@ -897,7 +1050,7 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
     }
     if (!replace) {
       throw runtimeError(
-        'The target materials or story bank differ from the approved contract; add --replace after user confirmation.',
+        `The declared ${call.toolKey} targets differ from the approved contract; add --replace after user confirmation.`,
         'skill-target-conflict',
         { toolKey: call.toolKey, toolErrorCode: error.code },
       );
@@ -935,17 +1088,17 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
   let toolResult;
   let after;
   try {
-    toolResult = importResumeMaterials(join(root, call.contractFile), {
+    toolResult = bridge.importer(join(root, call.contractFile), {
       root,
       apply: true,
       replace,
     });
-    after = fingerprintTargetObjects(root);
+    after = fingerprintTargetObjects(root, dispatchTargets);
   } catch (toolError) {
     let afterFingerprints = null;
     let afterFingerprintError = null;
     try {
-      afterFingerprints = fingerprintTargetObjects(root);
+      afterFingerprints = fingerprintTargetObjects(root, dispatchTargets);
     } catch (error) {
       afterFingerprintError = error.message;
     }
@@ -985,7 +1138,7 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
       status: 'dispatched',
       dispatchedToolCount: 1,
       targetWriteCount: observedWriteCount(before, after),
-      toolResults: [materialsToolResult(toolResult, root)],
+      toolResults: [dispatchToolResult(call, toolResult, root)],
     };
     const record = buildRunRecord(
       current,
@@ -1112,7 +1265,7 @@ function main() {
         `目标对象：${result.summary.targetObjects.join(', ')}`,
         `计划哈希：${result.summary.contentHash}`,
         result.summary.dispatchable
-          ? 'v2 dispatch 计划已绑定契约文件字节哈希；当前仅 resume-materials.import 可显式执行。'
+          ? 'v2 dispatch 计划已绑定契约文件字节哈希；当前仅 resume-materials.import 与 job-analysis.import 可显式执行。'
           : 'v1 计划只登记审批，不调用模型、不执行契约工具、不写目标对象。',
       ].join('\n'));
       return;
@@ -1143,6 +1296,7 @@ function main() {
       'skill-run-conflict',
       'skill-target-conflict',
       'dispatch-contract-drift',
+      'dispatch-target-contract-mismatch',
       'invalid-target-state',
       'invalid-dispatch-contract',
       'target-out-of-scope',

@@ -33,7 +33,7 @@
 | Stage 2 | 已实现，待用户统一验收 | 网页显式导出与本地显式导入已形成文件闭环 |
 | Stage 3 | 已实现，待用户统一验收 | 10 分钟一次性绑定码、设备管理与解绑已落地 |
 | Stage 4 | 已实现，待用户统一验收 | 简历素材包、简历定稿审批、面试准备清单、面试复盘、结构化简历渲染、简历版本库文件桥、简历事实链只读审计和本地能力反哺台账已落地；平台同步不属于本阶段 |
-| Stage 5 | 进行中 | 公司机会流程轨、本地 JD 分析合同 / 报告、公司机会对象、tracker 持久化、节点 mutation 合同、真实产物挂载、防骗核查契约、前端显式文件桥、页面内 skill 确认流、Skill Runtime v0.1 审批账本与 v0.2 简历素材执行桥已落地；其他契约工具的 dispatcher 与云端同步未完成 |
+| Stage 5 | 进行中 | 公司机会流程轨、本地 JD 分析合同 / 报告、公司机会对象、tracker 持久化、节点 mutation 合同、真实产物挂载、防骗核查契约、前端显式文件桥、页面内 skill 确认流、Skill Runtime v0.1 审批账本与 v0.2 简历素材 / JD 分析执行桥已落地；其他契约工具的 dispatcher 与云端同步未完成 |
 | Stage 6 | 未开始 | 求职摘要同步、网页进度摘要与 Trace 汇总尚未实现 |
 
 #### 0.0.1 2026-09-03 当前实现快照
@@ -43,7 +43,7 @@
 | 进度分类 | 当前范围 | 关键边界 |
 |---|---|---|
 | 已实现，待用户统一验收 | Agent-first 前端 Demo、四个独立模块、`gy` 本地入口、能力证据包显式导出 / 导入、设备绑定、简历素材与定稿、简历版本库文件桥、简历事实链只读审计、面试准备与复盘、结构化简历渲染、本地能力反哺台账 | Stage 1 到 Stage 4 的仓库实现已完成，但用户尚未明确验收 |
-| 进行中 | 公司机会横向流程轨、节点抽屉、人工节点管理、本地 JD 分析 / 防骗核查 / 公司机会 / tracker / 节点 mutation / 产物挂载合同，导入机会 JSON 与导出节点计划的显式文件桥，页面内 skill 确认流，以及本地 Skill Runtime v0.2 封闭注册表 / 计划校验 / dry-run / 审批记录 / 简历素材执行桥 | 页面内确认流只写前端会话对象；Runtime v0.2 只对 `experience-structuring -> resume-materials.import` 执行目标文件写入并记录前后指纹，其他 5 个 skill 仍是可发现、可计划、不可执行。云端同步未开始。此边界不否定已完成的简历版本库与面试管理显式文件桥 |
+| 进行中 | 公司机会横向流程轨、节点抽屉、人工节点管理、本地 JD 分析 / 防骗核查 / 公司机会 / tracker / 节点 mutation / 产物挂载合同，导入机会 JSON 与导出节点计划的显式文件桥，页面内 skill 确认流，以及本地 Skill Runtime v0.2 封闭注册表 / 计划校验 / dry-run / 审批记录 / 简历素材与 JD 分析执行桥 | 页面内确认流只写前端会话对象；Runtime v0.2 只对 `experience-structuring -> resume-materials.import` 与 `jd-analysis -> job-analysis.import` 执行目标文件写入并记录前后指纹，其他 4 个 skill 仍是可发现、可计划、不可执行。云端同步未开始。此边界不否定已完成的简历版本库与面试管理显式文件桥 |
 | 未开始 | 求职摘要同步、网页进度摘要、Trace 汇总与同步重试闭环 | Stage 6 尚无实现，不能描述为自动同步已开始 |
 
 简历管理当前已形成“岗位方向 / 简历线 / 版本”的前端 Demo，并支持当前投递版、草稿派生、定稿、导出标记、历史投递版切换和本机成品导入。简历线与版本目录可通过 `get-yourself.resume-library v1` 显式导出，经 CLI 校验、dry-run 与 `--apply` 安装到本地；该版本库不替代 `cv.md` 定稿权威，也不自动生成渲染 HTML 或同步云端。对抗检验后，契约身份规则为外部显式 ID 优先锁定、本地默认 ID 避让，时间统一为毫秒精度 UTC，`generatedAt` 与 `traceId` 不参与语义哈希，因此仅时间或 Trace 变化的重导出应保持幂等。
@@ -740,7 +740,7 @@ flowchart LR
 
 本地 Skill Runtime 是 Agent 从“会建议”走到“会干活”的执行层。它不引入新的并行系统，而是把现有 CLI 契约工具统一成一个可发现、可解释、可审批、可恢复的调用层。
 
-当前实现边界：`cli/skill-runtime.mjs` v0.2 已落地 6 个封闭注册 skill、只读发现、计划校验、默认 dry-run、用户确认后的审批记录、幂等导入、同 `runId` 冲突保护和替换备份。v1 计划仍是 approval ledger；v2 计划新增契约文件精确字节哈希和唯一执行桥 `experience-structuring -> resume-materials.import`，可显式写入 `data/resume-materials.json` 与 `interview-prep/story-bank.md`，并记录目标 before / after 指纹与 `prepared / dispatched / failed` 状态。其他 skill 尚不能通过 Runtime 写目标文件。
+当前实现边界：`cli/skill-runtime.mjs` v0.2 已落地 6 个封闭注册 skill、只读发现、计划校验、默认 dry-run、用户确认后的审批记录、幂等导入、同 `runId` 冲突保护和替换备份。v1 计划仍是 approval ledger；v2 计划新增契约文件精确字节哈希与两条执行桥：`experience-structuring -> resume-materials.import` 可显式写入 `data/resume-materials.json` 与 `interview-prep/story-bank.md`，`jd-analysis -> job-analysis.import` 可按同一个安全 `analysisId` 写入 `data/job-analysis/{analysisId}.json` 与 `reports/job-analysis/{analysisId}.md`。两条桥均记录目标 before / after 指纹与 `prepared / dispatched / failed` 状态；其他 skill 尚不能通过 Runtime 写目标文件。
 
 #### 发现与选择
 
@@ -749,7 +749,7 @@ flowchart LR
 3. Agent 根据用户意图选择 skill；当多个 skill 都可能匹配时，展示候选和差异，由用户选择，不静默合并执行。
 4. 未注册的技能只能作为只读建议输出，不能显示为已执行，也不能产生本地写入。
 
-v0.1 注册允许集（其中仅经历结构化的 v2 素材导入桥可执行）：
+v0.1 注册允许集（其中经历结构化的素材导入桥与 JD 分析桥可执行）：
 
 | Skill | 目标模块 | 允许动作 | 不允许动作 |
 |---|---|---|---|
@@ -771,9 +771,9 @@ v0.1 注册允许集（其中仅经历结构化的 v2 素材导入桥可执行�
 v0.2 的执行补充规则：
 
 1. 可执行计划必须绑定契约文件的 `/` 分隔相对路径和精确字节 SHA-256；check、dry-run 和 apply 前都会重新验哈希，审批后漂移直接拒绝。
-2. 当前唯一可执行工具是 `resume-materials.import`，且目标必须精确为简历素材 JSON 与派生故事库两个文件。
+2. 当前可执行工具是 `resume-materials.import` 与 `job-analysis.import`；前者目标必须精确为简历素材 JSON 与派生故事库两个文件，后者目标必须由同一个安全 `analysisId` 精确派生，并与契约内 `analysisId` 一致。
 3. apply 前先检查目标形态并写 `prepared` 记录；工具成功后写 `dispatched`，失败后写 `failed`，工具成功但记录写失败时保留 `prepared` 并显式报错。
-4. 目标素材或故事库不同、同 `runId` 不同计划，都必须由用户加 `--replace`；替换备份路径进入执行记录。
+4. 目标内容不同、同 `runId` 不同计划，都必须由用户加 `--replace`；替换备份路径进入执行记录。
 
 页面内 Agent 确认流和本地 Runtime 分层共存：页面内确认流只能修改当前网页会话对象；能写本地文件的执行必须回到本地 Runtime，并经过 check、dry-run、apply 与必要的替换确认。
 
@@ -1346,7 +1346,7 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 - 用户能手工调整同一公司机会内的节点顺序，节点元数据在重排后保持不变。
 - Agent 产物能落到对应节点，但结果状态不由 Agent 自动改写。
 
-当前实现边界：公司机会、横向流程轨、右侧节点抽屉、人工节点扩展、人工排序和人工状态确认已在前端 Demo 落地。本地侧已通过 `job-analysis.mjs` 落地 JD 解析、证据绑定、确定性匹配分和本地 Markdown 报告；`scam-check.mjs` 落地证据引用式防骗核查，红色信号一票否决推进建议，黄色信号生成核实动作，且证据不足不给绿灯；`company-opportunity.mjs` 可在用户确认后把已安装分析桥接为本地公司机会 JSON，创建或修复幂等的投递清单关联行，并用完整目标节点列表执行内容哈希绑定的节点 mutation，tracker 后续状态由用户拥有并可从本地对象恢复。真实产物挂载也已落地为独立 artifact-mount 契约：计划绑定当前机会、目标节点、真实文件字节哈希和类型允许目录，显式 apply 后只把产物 descriptor 写入节点并保存挂载记录；节点状态、投递清单、skill 执行和云端状态都不被隐含修改。面试管理页也提供显式文件桥：用户导入本地机会 JSON，只读查看已挂产物，编辑完整目标节点列表后导出不含 artifacts 的 mutation 计划，再回 CLI dry-run / `--apply`；浏览器不直接写本地文件。Agent 页面已落地 skill 执行确认流：写入型意图先生成包含目标、写入范围和不变范围的计划，确认后只写入前端会话对象并记录 Trace，取消则不改目标模块；只读输出不生成执行计划，也不显示“已沉淀”。本地 Skill Runtime v0.2 已提供封闭注册表、计划校验、dry-run、审批记录、替换保护和简历素材执行桥；它能通过 `experience-structuring -> resume-materials.import` 写入素材与故事库并记录目标前后指纹，但 JD 分析、防骗核查、简历定稿、面试准备与复盘的 Runtime dispatcher 仍未开放，因此 Stage 5 仍不能记录为产品完成。契约细节见 `docs/JOB_ANALYSIS_CONTRACT.md`、`docs/SCAM_CHECK_CONTRACT.md`、`docs/COMPANY_OPPORTUNITY_CONTRACT.md` 与 `docs/SKILL_RUNTIME_CONTRACT.md`。
+当前实现边界：公司机会、横向流程轨、右侧节点抽屉、人工节点扩展、人工排序和人工状态确认已在前端 Demo 落地。本地侧已通过 `job-analysis.mjs` 落地 JD 解析、证据绑定、确定性匹配分和本地 Markdown 报告；`scam-check.mjs` 落地证据引用式防骗核查，红色信号一票否决推进建议，黄色信号生成核实动作，且证据不足不给绿灯；`company-opportunity.mjs` 可在用户确认后把已安装分析桥接为本地公司机会 JSON，创建或修复幂等的投递清单关联行，并用完整目标节点列表执行内容哈希绑定的节点 mutation，tracker 后续状态由用户拥有并可从本地对象恢复。真实产物挂载也已落地为独立 artifact-mount 契约：计划绑定当前机会、目标节点、真实文件字节哈希和类型允许目录，显式 apply 后只把产物 descriptor 写入节点并保存挂载记录；节点状态、投递清单、skill 执行和云端状态都不被隐含修改。面试管理页也提供显式文件桥：用户导入本地机会 JSON，只读查看已挂产物，编辑完整目标节点列表后导出不含 artifacts 的 mutation 计划，再回 CLI dry-run / `--apply`；浏览器不直接写本地文件。Agent 页面已落地 skill 执行确认流：写入型意图先生成包含目标、写入范围和不变范围的计划，确认后只写入前端会话对象并记录 Trace，取消则不改目标模块；只读输出不生成执行计划，也不显示“已沉淀”。本地 Skill Runtime v0.2 已提供封闭注册表、计划校验、dry-run、审批记录、替换保护、简历素材执行桥与 JD 分析执行桥；它能通过 `experience-structuring -> resume-materials.import` 写入素材与故事库，也能通过 `jd-analysis -> job-analysis.import` 写入岗位分析 JSON 与报告并记录目标前后指纹，但防骗核查、简历定稿、面试准备与复盘的 Runtime dispatcher 仍未开放，因此 Stage 5 仍不能记录为产品完成。契约细节见 `docs/JOB_ANALYSIS_CONTRACT.md`、`docs/SCAM_CHECK_CONTRACT.md`、`docs/COMPANY_OPPORTUNITY_CONTRACT.md` 与 `docs/SKILL_RUNTIME_CONTRACT.md`。
 
 ### Stage 6：同步与 Trace 闭环
 
@@ -1380,7 +1380,7 @@ Stage 6 开工前必须先定义同步单元。一个同步单元不是“整份
 
 ### 14.0 当前验收边界
 
-以下清单是用户验收标准，不因仓库实现完成而自动勾选。当前可开始统一验收 Stage 1 到 Stage 4，其中简历版本库可验收显式导出 / 导入、幂等安装、身份稳定与替换保护；简历事实链可验收只读状态汇总、漂移识别、候选列出与无写入边界，但不能由此验收自动绑定、自动修复或 `ready` 完整链路。Stage 5 可开始验收公司机会流程轨 Demo、本地 JD 分析报告、防骗核查报告、公司机会到投递清单的本地写入、节点 mutation 合同、真实产物挂载、前端显式文件桥、页面内 skill 确认流交互，以及 Skill Runtime v0.2 的注册表、计划校验、v1 审批记录和唯一简历素材执行桥。页面内确认流只代表前端会话对象审批；Runtime v0.2 的目标写入能力不能扩大到其他 5 个 skill，也不能因此验收云端同步；Stage 6 相关条目仍未开始实现。
+以下清单是用户验收标准，不因仓库实现完成而自动勾选。当前可开始统一验收 Stage 1 到 Stage 4，其中简历版本库可验收显式导出 / 导入、幂等安装、身份稳定与替换保护；简历事实链可验收只读状态汇总、漂移识别、候选列出与无写入边界，但不能由此验收自动绑定、自动修复或 `ready` 完整链路。Stage 5 可开始验收公司机会流程轨 Demo、本地 JD 分析报告、防骗核查报告、公司机会到投递清单的本地写入、节点 mutation 合同、真实产物挂载、前端显式文件桥、页面内 skill 确认流交互，以及 Skill Runtime v0.2 的注册表、计划校验、v1 审批记录、简历素材执行桥和 JD 分析执行桥。页面内确认流只代表前端会话对象审批；Runtime v0.2 的目标写入能力不能扩大到其他 4 个 skill，也不能因此验收云端同步；Stage 6 相关条目仍未开始实现。
 
 ### 14.1 核心路径
 

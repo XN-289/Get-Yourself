@@ -7,15 +7,22 @@ The local Skill Runtime is a closed registry, plan validator, approval ledger, a
 Two plan versions are accepted:
 
 - **v1 approval ledger**: records the user-confirmed plan only. It has no target-file dispatcher.
-- **v2 contract dispatch**: may execute exactly one currently implemented deterministic tool bridge.
+- **v2 contract dispatch**: may execute exactly one deterministic tool bridge declared by the approved plan.
 
-The only v2 executable bridge is:
+The v2 executable bridges are:
 
 ```text
 experience-structuring
   -> resume-materials.import
   -> data/resume-materials.json
   -> interview-prep/story-bank.md
+```
+
+```text
+jd-analysis
+  -> job-analysis.import
+  -> data/job-analysis/{analysisId}.json
+  -> reports/job-analysis/{analysisId}.md
 ```
 
 All other registry skills and tools remain discoverable and plannable but are not executable by the Runtime dispatcher. They must continue through their own contract CLI commands until a bridge is explicitly implemented, tested, and documented.
@@ -30,7 +37,7 @@ node skill-runtime.mjs run <plan.json> --apply [--json]
 node skill-runtime.mjs run <plan.json> --apply --replace [--json]
 ```
 
-`list` is read-only and exposes only the repository registry; its `dispatchable` flag identifies the one implemented bridge. `check` is read-only. `run` defaults to dry-run and creates no run record or target object.
+`list` is read-only and exposes only the repository registry; its `dispatchable` flag identifies the two implemented bridges. `check` is read-only. `run` defaults to dry-run and creates no run record or target object.
 
 ## Registry Rules
 
@@ -68,7 +75,9 @@ Required fields:
   - `contractFileHash`: exact-byte SHA-256 hash of that contract file.
 - `failureRecovery`: user-readable recovery path.
 
-Validation rejects unknown fields, unregistered skills, unconfirmed plans, unsupported input kinds, undeclared tools, paths outside the shared skill/tool whitelist, duplicate target writes, and target paths containing traversal or absolute-path syntax. Every tool-call target must be allowed by both the selected skill and that exact tool. A v2 dispatch plan must contain exactly one call, and its target list must exactly match the implemented bridge's two targets. A v1 plan cannot carry v2 dispatch fields.
+Validation rejects unknown fields, unregistered skills, unconfirmed plans, unsupported input kinds, undeclared tools, paths outside the shared skill/tool whitelist, duplicate target writes, and target paths containing traversal or absolute-path syntax. Every tool-call target must be allowed by both the selected skill and that exact tool. A v2 dispatch plan must contain exactly one call, and its target list must exactly match the selected bridge's declared target set. A v1 plan cannot carry v2 dispatch fields.
+
+For `job-analysis.import`, both target paths must use the same safe `analysisId`. Before check, dry-run, and apply, Runtime parses the hash-bound contract, reads its `analysisId`, and compares the contract-derived target paths with the plan-declared paths. A mismatch fails with `dispatch-target-contract-mismatch` before a run record or target object is written.
 
 The plan content hash covers the complete canonical plan, including `generatedAt`. Reusing a `runId` for a different plan is a conflict and requires explicit `--replace`.
 
@@ -126,7 +135,9 @@ If the tool succeeds but the final record cannot be written, the `prepared` reco
 
 Repeated `run --apply` with the same already-dispatched v2 plan is idempotent. A different plan with the same `runId` fails with `skill-run-conflict`; explicit replacement backs up the previous record and records `replacesPlanContentHash`.
 
-Different current materials or a different derived story bank also require explicit `--replace`. Without it, apply fails with `skill-target-conflict` before writing the run record. With explicit replacement, the underlying importer creates its own material/story backups and the run record stores their relative paths.
+Different current bridge targets also require explicit `--replace`. Without it, apply fails with `skill-target-conflict` before writing the run record. With explicit replacement, the underlying importer creates its own target-specific backups and the run record stores their relative paths.
+
+Tool-result records remain bridge-specific. The resume-materials result stores `packageId` plus `materials` / `storyBank` backup paths. The job-analysis result stores `objectId` (the `analysisId`) plus `package` / `markdown` backup paths. Both include the tool key, action, and incoming contract content hash.
 
 Invalid target shape, such as a directory where a target file must be, fails with `invalid-target-state` before approval or target execution.
 

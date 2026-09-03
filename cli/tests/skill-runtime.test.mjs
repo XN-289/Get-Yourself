@@ -57,6 +57,14 @@ function writeMaterialsContract(root, name = 'materials.json', mutate = () => {}
   return { path, materials };
 }
 
+function writeJobAnalysisContract(root, name = 'job-analysis.json', mutate = () => {}) {
+  const analysis = JSON.parse(readFileSync(join(cliRoot, 'templates/job-analysis.example.json'), 'utf8'));
+  mutate(analysis);
+  const path = join(root, name);
+  writeFileSync(path, `${JSON.stringify(analysis, null, 2)}\n`, 'utf8');
+  return { path, analysis };
+}
+
 function dispatchPlanFor(root, contractName = 'materials.json', overrides = {}) {
   const contractPath = join(root, contractName);
   return buildDispatchPlan({
@@ -66,6 +74,37 @@ function dispatchPlanFor(root, contractName = 'materials.json', overrides = {}) 
     contractFile: contractName,
     contractFileHash: byteHash(contractPath),
   });
+}
+
+function jobDispatchPlanFor(root, contractName = 'job-analysis.json', overrides = {}, targetOverrides = {}) {
+  const contractPath = join(root, contractName);
+  return buildDispatchPlan({
+    runId: `skill-dispatch-${contractName.replace(/\.json$/, '')}`,
+    skillKey: 'jd-analysis',
+    userIntent: '分析用户粘贴的岗位描述并沉淀本地报告',
+    inputFingerprints: [{
+      inputKind: 'pasted_jd',
+      contentHash: 'sha256:1111111111111111111111111111111111111111111111111111111111111111',
+    }],
+    ...overrides,
+  }, {
+    toolKey: 'job-analysis.import',
+    targetObjects: [
+      'data/job-analysis/job-analysis-demo-2026-09-02.json',
+      'reports/job-analysis/job-analysis-demo-2026-09-02.md',
+    ],
+    contractFile: contractName,
+    contractFileHash: byteHash(contractPath),
+    ...targetOverrides,
+  });
+}
+
+function installMaterials(root) {
+  writeMaterialsContract(root);
+  const source = writePlan(root, 'materials-plan.json', dispatchPlanFor(root, 'materials.json', {
+    runId: 'skill-dispatch-materials-install',
+  }));
+  return runSkillPlan(source, { root, apply: true });
 }
 
 test('runtime registry is a closed repository set', () => {
@@ -89,7 +128,7 @@ test('runtime registry is a closed repository set', () => {
   );
   assert.deepEqual(
     registry.tools.filter(tool => tool.dispatchable).map(tool => tool.toolKey),
-    ['resume-materials.import'],
+    ['resume-materials.import', 'job-analysis.import'],
   );
 });
 
@@ -149,7 +188,7 @@ test('skill plans require confirmation, registration, tools, and scoped targets'
   );
 });
 
-test('dispatch plans are versioned, hash-bound, and limited to one implemented bridge', () => {
+test('dispatch plans are versioned, hash-bound, and limited to implemented bridges', () => {
   assert.equal(buildDispatchPlan().schemaVersion, 2);
   assert.equal(canonicalizeSkillRunPlan(buildDispatchPlan()).summary.dispatchable, true);
 
@@ -172,6 +211,107 @@ test('dispatch plans are versioned, hash-bound, and limited to one implemented b
     })),
     error => error.code === 'invalid-dispatch-targets',
   );
+  assert.throws(
+    () => canonicalizeSkillRunPlan(jobDispatchPlanFor(cliRoot, 'templates/job-analysis.example.json', {
+      runId: 'skill-dispatch-job-targets',
+    }, {
+      targetObjects: [
+        'data/job-analysis/one-analysis.json',
+        'reports/job-analysis/another-analysis.md',
+      ],
+    })),
+    error => error.code === 'invalid-dispatch-targets',
+  );
+});
+
+test('job-analysis dispatch is read-only by default and writes only its declared targets', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-job-dispatch-'));
+  try {
+    installMaterials(root);
+    writeJobAnalysisContract(root);
+    const source = writePlan(root, 'job-dispatch-plan.json', jobDispatchPlanFor(root));
+
+    const dryRun = runSkillPlan(source, { root });
+    assert.equal(dryRun.action, 'dry-run');
+    assert.equal(dryRun.dispatch.action, 'dry-run');
+    assert.deepEqual(
+      dryRun.dispatch.before.map(item => item.state),
+      ['missing', 'missing'],
+    );
+    assert.equal(existsSync(join(root, 'data/skill-runs/skill-dispatch-job-analysis.json')), false);
+    assert.equal(existsSync(join(root, 'data/job-analysis/job-analysis-demo-2026-09-02.json')), false);
+    assert.equal(existsSync(join(root, 'reports/job-analysis/job-analysis-demo-2026-09-02.md')), false);
+
+    const applied = runSkillPlan(source, { root, apply: true });
+    assert.equal(applied.action, 'dispatched');
+    assert.equal(applied.record.status, 'dispatched');
+    assert.equal(applied.record.targetWriteCount, 2);
+    assert.equal(existsSync(join(root, 'data/job-analysis/job-analysis-demo-2026-09-02.json')), true);
+    assert.equal(existsSync(join(root, 'reports/job-analysis/job-analysis-demo-2026-09-02.md')), true);
+
+    const record = JSON.parse(readFileSync(join(root, 'data/skill-runs/skill-dispatch-job-analysis.json'), 'utf8'));
+    assert.equal(record.execution.toolResults[0].objectId, 'job-analysis-demo-2026-09-02');
+    assert.equal(record.execution.toolResults[0].backupPaths.package, null);
+    assert.equal(record.execution.toolResults[0].backupPaths.markdown, null);
+    assert.deepEqual(record.targetFingerprints.after.map(item => item.state), ['file', 'file']);
+
+    const unchanged = runSkillPlan(source, { root, apply: true });
+    assert.equal(unchanged.action, 'unchanged');
+    assert.equal(unchanged.changed, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('job-analysis replacement requires explicit replace and records backups', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-job-replace-'));
+  try {
+    installMaterials(root);
+    writeJobAnalysisContract(root, 'first-job.json', analysis => {
+      analysis.analysisId = 'same-job-analysis';
+    });
+    const firstSource = writePlan(root, 'first-job-plan.json', jobDispatchPlanFor(root, 'first-job.json', {
+      runId: 'skill-dispatch-first-job',
+    }, {
+      targetObjects: [
+        'data/job-analysis/same-job-analysis.json',
+        'reports/job-analysis/same-job-analysis.md',
+      ],
+    }));
+    runSkillPlan(firstSource, { root, apply: true });
+
+    writeJobAnalysisContract(root, 'second-job.json', analysis => {
+      analysis.analysisId = 'same-job-analysis';
+      analysis.company = '替换示例科技';
+    });
+    const secondSource = writePlan(root, 'second-job-plan.json', jobDispatchPlanFor(root, 'second-job.json', {
+      runId: 'skill-dispatch-second-job',
+    }, {
+      targetObjects: [
+        'data/job-analysis/same-job-analysis.json',
+        'reports/job-analysis/same-job-analysis.md',
+      ],
+    }));
+
+    const dryRun = runSkillPlan(secondSource, { root });
+    assert.equal(dryRun.dispatch.action, 'dry-run-replace-required');
+    assert.throws(
+      () => runSkillPlan(secondSource, { root, apply: true }),
+      error => error.code === 'skill-target-conflict',
+    );
+    assert.equal(JSON.parse(readFileSync(join(root, 'data/job-analysis/same-job-analysis.json'), 'utf8')).company, '示例科技');
+    assert.equal(existsSync(join(root, 'data/skill-runs/skill-dispatch-second-job.json')), false);
+
+    const replaced = runSkillPlan(secondSource, { root, apply: true, replace: true });
+    assert.equal(replaced.action, 'dispatched');
+    assert.equal(JSON.parse(readFileSync(join(root, 'data/job-analysis/same-job-analysis.json'), 'utf8')).company, '替换示例科技');
+    const record = JSON.parse(readFileSync(join(root, 'data/skill-runs/skill-dispatch-second-job.json'), 'utf8'));
+    assert.equal(record.execution.toolResults[0].backupPaths.package !== null, true);
+    assert.equal(existsSync(join(root, record.execution.toolResults[0].backupPaths.package)), true);
+    assert.equal(record.execution.toolResults[0].backupPaths.markdown !== null, true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('dispatch dry-run is read-only and apply executes the resume materials bridge', () => {
@@ -274,6 +414,58 @@ test('dispatch stops before approval when the contract or target shape is unsafe
       error => error.code === 'invalid-target-state',
     );
     assert.equal(existsSync(join(root, 'data/skill-runs')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('job-analysis dispatch binds targets to contract identity, shape, and dependencies', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-job-invalid-'));
+  try {
+    installMaterials(root);
+    writeJobAnalysisContract(root);
+    const mismatchSource = writePlan(root, 'job-mismatch-plan.json', jobDispatchPlanFor(root, 'job-analysis.json', {
+      runId: 'skill-dispatch-job-mismatch',
+    }, {
+      targetObjects: [
+        'data/job-analysis/plan-claimed-analysis.json',
+        'reports/job-analysis/plan-claimed-analysis.md',
+      ],
+    }));
+    assert.throws(
+      () => runSkillPlan(mismatchSource, { root, apply: true }),
+      error => error.code === 'dispatch-target-contract-mismatch',
+    );
+    assert.equal(existsSync(join(root, 'data/skill-runs/skill-dispatch-job-mismatch.json')), false);
+    assert.equal(existsSync(join(root, 'data/job-analysis/plan-claimed-analysis.json')), false);
+
+    const validSource = writePlan(root, 'valid-job-plan.json', jobDispatchPlanFor(root, 'job-analysis.json', {
+      runId: 'skill-dispatch-valid-job',
+    }));
+    mkdirSync(join(root, 'data/job-analysis/job-analysis-demo-2026-09-02.json'), { recursive: true });
+    assert.throws(
+      () => runSkillPlan(validSource, { root, apply: true }),
+      error => error.code === 'invalid-target-state',
+    );
+    assert.equal(existsSync(join(root, 'data/skill-runs/skill-dispatch-valid-job.json')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('job-analysis dispatch does not implicitly install missing resume materials', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-job-dependency-'));
+  try {
+    writeJobAnalysisContract(root);
+    const source = writePlan(root, 'job-dependency-plan.json', jobDispatchPlanFor(root));
+    assert.throws(
+      () => runSkillPlan(source, { root, apply: true }),
+      error => error.code === 'skill-dispatch-failed' && error.details.toolErrorCode === 'materials-missing',
+    );
+    assert.equal(existsSync(join(root, 'data/skill-runs/skill-dispatch-job-analysis.json')), false);
+    assert.equal(existsSync(join(root, 'data/job-analysis/job-analysis-demo-2026-09-02.json')), false);
+    assert.equal(existsSync(join(root, 'reports/job-analysis/job-analysis-demo-2026-09-02.md')), false);
+    assert.equal(existsSync(join(root, 'data/resume-materials.json')), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

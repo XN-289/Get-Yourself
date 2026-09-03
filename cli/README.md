@@ -46,7 +46,7 @@ node skill-runtime.mjs run ../path/to/skill-run-plan.json --apply
 node skill-runtime.mjs run ../path/to/skill-run-plan.json --apply --replace
 ```
 
-当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。`gy` 本身不假装调用 LLM，也不直接写简历、tracker 或个人材料；素材导入、简历定稿与渲染、简历事实链审计、岗位分析、防骗核查、面试准备、面试复盘和能力反哺台账由用户确认或显式调用对应契约工具完成，实际任务由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。`skill-runtime.mjs` v0.2 是封闭注册表、计划校验和窄口径契约 dispatcher：v1 计划只登记审批；v2 计划当前仅能执行 `experience-structuring -> resume-materials.import`，写入简历素材与派生故事库并记录目标前后指纹；其他 skill 仍不执行目标工具。
+当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。`gy` 本身不假装调用 LLM，也不直接写简历、tracker 或个人材料；素材导入、简历定稿与渲染、简历事实链审计、岗位分析、防骗核查、面试准备、面试复盘和能力反哺台账由用户确认或显式调用对应契约工具完成，实际任务由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。`skill-runtime.mjs` v0.2 是封闭注册表、计划校验和窄口径契约 dispatcher：v1 计划只登记审批；v2 计划当前能执行 `experience-structuring -> resume-materials.import` 与 `jd-analysis -> job-analysis.import`，分别写入简历素材 / 故事库和岗位分析 JSON / 报告，并记录目标前后指纹；其他 skill 仍不执行目标工具。
 
 ## 它解决什么问题
 
@@ -129,7 +129,7 @@ get-yourself-cli/
 ├── interview-prep.mjs     # 面试准备包与清单
 ├── interview-review.mjs   # 面试复盘包与会话记录
 ├── capability-feedback.mjs # 复盘候选到本地能力台账的反哺
-├── skill-runtime.mjs      # 封闭 skill 注册表、审批记录与简历素材 dispatcher
+├── skill-runtime.mjs      # 封闭 skill 注册表、审批记录与素材 / JD 分析 dispatcher
 ├── lib/intent-router.mjs  # 确定性意图路由
 ├── AGENTS.md              # AI 指令（规范来源）
 ├── CLAUDE.md / QWEN.md / KIMI.md / CODEX.md   # 各 CLI 入口
