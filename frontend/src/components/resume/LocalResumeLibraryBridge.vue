@@ -29,9 +29,17 @@ const exportedFileName = ref("");
 const currentVersionCount = computed(
   () => resumeDocuments.value.reduce((total, document) => total + document.versions.length, 0)
 );
+const draftOnlyDocumentCount = computed(
+  () => resumeDocuments.value.filter(document =>
+    document.versions.every(version => version.status === "draft")).length
+);
 
 async function downloadLibrary() {
   bridgeError.value = "";
+  if (draftOnlyDocumentCount.value > 0) {
+    bridgeError.value = `还有 ${draftOnlyDocumentCount.value} 份简历只有草稿，请先确认定稿再导出`;
+    return;
+  }
   try {
     const result = await buildResumeLibrary({
       documents: resumeDocuments.value,

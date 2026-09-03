@@ -1329,6 +1329,28 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     return imported;
   }
 
+  function createResumeDocument(input: ResumeDocumentInput) {
+    const document = normalizeResumeDocument(input, "draft");
+    const { title, targetRole, ...versionFields } = document;
+    const version: ResumeVersion = {
+      id: resumeVersionId++,
+      version: 1,
+      status: "draft",
+      updatedAt: "刚刚",
+      ...versionFields
+    };
+    const created: ResumeDocument = {
+      id: resumeDocumentId++,
+      title,
+      targetRole,
+      activeVersionId: version.id,
+      versions: [version]
+    };
+    resumeDocuments.value.unshift(created);
+    addTrace("新建简历", created.title, "已创建空白草稿，定稿前不会作为投递版");
+    return created;
+  }
+
   function createResumeDraft(
     documentId: number,
     baseVersionId: number,
@@ -1639,6 +1661,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     skillPlanStatusLabel,
     detectIntent,
     importResumeDocument,
+    createResumeDocument,
     replaceResumeDocumentsFromLibrary,
     createResumeDraft,
     updateResumeDraft,
