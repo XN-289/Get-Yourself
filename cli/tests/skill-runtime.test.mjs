@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,7 @@ import {
   runSkillPlan,
 } from '../skill-runtime.mjs';
 import { buildStatusPayload } from '../gy.mjs';
+import { importEvidencePackage } from '../evidence-package.mjs';
 
 const cliRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const examplePath = join(cliRoot, 'templates/skill-runtime.example.json');
@@ -107,6 +108,187 @@ function installMaterials(root) {
   return runSkillPlan(source, { root, apply: true });
 }
 
+const TEST_INPUT_HASH = 'sha256:1111111111111111111111111111111111111111111111111111111111111111';
+
+const TOOL_DISPATCH_CASES = new Map([
+  ['scam-check.import', {
+    template: 'scam-check.example.json',
+    skillKey: 'scam-check',
+    inputKind: 'company_evidence',
+    idField: 'checkId',
+    targets: contract => [
+      `data/scam-check/${contract.checkId}.json`,
+      `reports/scam-check/${contract.checkId}.md`,
+    ],
+    documentBackupKey: 'markdown',
+    backupKeys: ['package', 'markdown'],
+  }],
+  ['resume-final.import', {
+    template: 'resume-final.example.json',
+    skillKey: 'resume-generation',
+    inputKind: 'resume_materials',
+    idField: 'planId',
+    targets: () => ['data/resume-final-plan.json', 'cv.md'],
+    documentBackupKey: 'cv',
+    backupKeys: ['plan', 'cv'],
+  }],
+  ['resume-render.import', {
+    template: 'resume-render.example.json',
+    skillKey: 'resume-generation',
+    inputKind: 'resume_materials',
+    idField: 'renderId',
+    targets: contract => [
+      `data/resume-render/${contract.renderId}.json`,
+      `output/resume/${contract.renderId}.html`,
+    ],
+    documentBackupKey: 'html',
+    backupKeys: ['package', 'html'],
+  }],
+  ['interview-prep.import', {
+    template: 'interview-prep.example.json',
+    skillKey: 'interview-preparation',
+    inputKind: 'resume_materials',
+    idField: 'prepId',
+    targets: contract => [
+      `data/interview-prep/${contract.prepId}.json`,
+      `interview-prep/${contract.prepId}.md`,
+    ],
+    documentBackupKey: 'markdown',
+    backupKeys: ['package', 'markdown'],
+  }],
+  ['interview-review.import', {
+    template: 'interview-review.example.json',
+    skillKey: 'interview-review',
+    inputKind: 'interview_notes',
+    idField: 'reviewId',
+    targets: contract => [
+      `data/interview-review/${contract.reviewId}.json`,
+      `interview-prep/sessions/${contract.reviewId}.md`,
+    ],
+    documentBackupKey: 'markdown',
+    backupKeys: ['package', 'markdown'],
+  }],
+  ['capability-feedback.import', {
+    template: 'capability-feedback.example.json',
+    skillKey: 'interview-review',
+    inputKind: 'interview_notes',
+    idField: 'feedbackId',
+    targets: contract => [
+      `data/capability-feedback/${contract.feedbackId}.json`,
+      `reports/capability-feedback/${contract.feedbackId}.md`,
+    ],
+    documentBackupKey: 'markdown',
+    backupKeys: ['package', 'markdown'],
+  }],
+]);
+
+function writeToolContract(root, templateName, name, mutate = () => {}) {
+  const contract = JSON.parse(readFileSync(join(cliRoot, 'templates', templateName), 'utf8'));
+  mutate(contract);
+  const path = join(root, name);
+  writeFileSync(path, `${JSON.stringify(contract, null, 2)}\n`, 'utf8');
+  return { path, contract };
+}
+
+function runtimeToolPlanFor(root, toolKey, contractName, overrides = {}, targetOverrides = {}) {
+  const testCase = TOOL_DISPATCH_CASES.get(toolKey);
+  const contractPath = join(root, contractName);
+  const contract = JSON.parse(readFileSync(contractPath, 'utf8'));
+  return buildDispatchPlan({
+    runId: `skill-dispatch-${contract[testCase.idField]}`,
+    skillKey: testCase.skillKey,
+    userIntent: '执行用户已确认的本地求职合同',
+    inputFingerprints: [{
+      inputKind: testCase.inputKind,
+      contentHash: TEST_INPUT_HASH,
+    }],
+    ...overrides,
+  }, {
+    toolKey,
+    targetObjects: testCase.targets(contract),
+    contractFile: contractName,
+    contractFileHash: byteHash(contractPath),
+    ...targetOverrides,
+  });
+}
+
+function writeRuntimeToolPlan(root, toolKey, contractName, overrides = {}, targetOverrides = {}) {
+  return writePlan(
+    root,
+    `${toolKey.replace(/\./g, '-')}-plan.json`,
+    runtimeToolPlanFor(root, toolKey, contractName, overrides, targetOverrides),
+  );
+}
+
+function installRuntimeMaterials(root) {
+  writeMaterialsContract(root);
+  const source = writePlan(root, 'materials-dependency-plan.json', dispatchPlanFor(root, 'materials.json', {
+    runId: 'skill-dispatch-materials-dependency',
+  }));
+  return runSkillPlan(source, { root, apply: true });
+}
+
+function relativeFileSet(root, prefix = '') {
+  const entries = readdirSync(join(root, prefix), { withFileTypes: true });
+  return new Set(entries.flatMap(entry => {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) return [...relativeFileSet(root, relativePath)];
+    return entry.isFile() ? [relativePath] : [];
+  }));
+}
+
+function assertDispatchLifecycle(root, toolKey, source) {
+  const testCase = TOOL_DISPATCH_CASES.get(toolKey);
+  const plan = JSON.parse(readFileSync(source, 'utf8'));
+  const contract = JSON.parse(readFileSync(join(root, plan.toolCalls[0].contractFile), 'utf8'));
+  const targets = [...plan.toolCalls[0].targetObjects];
+  const recordPath = `data/skill-runs/${plan.runId}.json`;
+  const before = relativeFileSet(root);
+
+  const dryRun = runSkillPlan(source, { root });
+  assert.equal(dryRun.action, 'dry-run');
+  assert.equal(dryRun.dispatch.action, 'dry-run');
+  assert.deepEqual([...relativeFileSet(root)], [...before]);
+  assert.equal(existsSync(join(root, recordPath)), false);
+  for (const target of targets) assert.equal(existsSync(join(root, target)), false);
+
+  const applied = runSkillPlan(source, { root, apply: true });
+  assert.equal(applied.action, 'dispatched');
+  assert.equal(applied.record.status, 'dispatched');
+  assert.deepEqual(
+    [...relativeFileSet(root)].filter(item => !before.has(item)).sort(),
+    [recordPath, ...targets].sort(),
+  );
+  const record = JSON.parse(readFileSync(join(root, recordPath), 'utf8'));
+  assert.deepEqual(Object.keys(record.execution.toolResults[0].backupPaths).sort(), testCase.backupKeys.sort());
+  for (const key of testCase.backupKeys) {
+    assert.equal(record.execution.toolResults[0].backupPaths[key], null);
+  }
+  assert.equal(record.execution.toolResults[0].objectId, contract[testCase.idField]);
+
+  const unchanged = runSkillPlan(source, { root, apply: true });
+  assert.equal(unchanged.action, 'unchanged');
+  assert.equal(unchanged.changed, false);
+
+  writeFileSync(join(root, targets[1]), '# 手工修改的本地产物\n', 'utf8');
+  const driftedDryRun = runSkillPlan(source, { root });
+  assert.equal(driftedDryRun.action, 'dry-run-unchanged');
+  assert.equal(driftedDryRun.dispatch.action, 'dry-run-replace-required');
+  assert.throws(
+    () => runSkillPlan(source, { root, apply: true }),
+    error => error.code === 'skill-target-conflict',
+  );
+  assert.equal(readFileSync(join(root, targets[1]), 'utf8'), '# 手工修改的本地产物\n');
+
+  const repaired = runSkillPlan(source, { root, apply: true, replace: true });
+  assert.equal(repaired.action, 'replaced-and-dispatched');
+  const repairedRecord = JSON.parse(readFileSync(join(root, recordPath), 'utf8'));
+  const documentBackup = repairedRecord.execution.toolResults[0].backupPaths[testCase.documentBackupKey];
+  assert.notEqual(documentBackup, null);
+  assert.equal(existsSync(join(root, documentBackup)), true);
+  assert.notEqual(readFileSync(join(root, targets[1]), 'utf8'), '# 手工修改的本地产物\n');
+}
+
 test('runtime registry is a closed repository set', () => {
   const registry = listSkillRegistry();
   assert.equal(registry.skillCount, 6);
@@ -128,7 +310,16 @@ test('runtime registry is a closed repository set', () => {
   );
   assert.deepEqual(
     registry.tools.filter(tool => tool.dispatchable).map(tool => tool.toolKey),
-    ['resume-materials.import', 'job-analysis.import'],
+    [
+      'resume-materials.import',
+      'job-analysis.import',
+      'scam-check.import',
+      'resume-final.import',
+      'resume-render.import',
+      'interview-prep.import',
+      'interview-review.import',
+      'capability-feedback.import',
+    ],
   );
 });
 
@@ -466,6 +657,195 @@ test('job-analysis dispatch does not implicitly install missing resume materials
     assert.equal(existsSync(join(root, 'data/job-analysis/job-analysis-demo-2026-09-02.json')), false);
     assert.equal(existsSync(join(root, 'reports/job-analysis/job-analysis-demo-2026-09-02.md')), false);
     assert.equal(existsSync(join(root, 'data/resume-materials.json')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('scam-check dispatch is explicit, target-scoped, and drift-protected', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-scam-dispatch-'));
+  try {
+    writeToolContract(root, 'scam-check.example.json', 'scam-check.json');
+    const source = writeRuntimeToolPlan(root, 'scam-check.import', 'scam-check.json', {
+      runId: 'skill-dispatch-scam-lifecycle',
+    });
+    assertDispatchLifecycle(root, 'scam-check.import', source);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('resume final and render dispatches stay separate and write only declared outputs', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-resume-dispatch-'));
+  try {
+    installRuntimeMaterials(root);
+
+    writeToolContract(root, 'resume-final.example.json', 'resume-final.json');
+    const finalSource = writeRuntimeToolPlan(root, 'resume-final.import', 'resume-final.json', {
+      runId: 'skill-dispatch-final-lifecycle',
+    });
+    assertDispatchLifecycle(root, 'resume-final.import', finalSource);
+
+    writeToolContract(root, 'resume-render.example.json', 'resume-render.json');
+    const renderSource = writeRuntimeToolPlan(root, 'resume-render.import', 'resume-render.json', {
+      runId: 'skill-dispatch-render-lifecycle',
+    });
+    assertDispatchLifecycle(root, 'resume-render.import', renderSource);
+
+    const chained = runtimeToolPlanFor(root, 'resume-final.import', 'resume-final.json');
+    chained.toolCalls = [
+      chained.toolCalls[0],
+      runtimeToolPlanFor(root, 'resume-render.import', 'resume-render.json').toolCalls[0],
+    ];
+    assert.throws(
+      () => canonicalizeSkillRunPlan(chained),
+      /exactly one tool call/i,
+    );
+
+    const incompleteFinalTargets = runtimeToolPlanFor(
+      root,
+      'resume-final.import',
+      'resume-final.json',
+      {},
+      { targetObjects: ['data/resume-final-plan.json'] },
+    );
+    assert.throws(
+      () => canonicalizeSkillRunPlan(incompleteFinalTargets),
+      /must exactly match/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('interview preparation dispatch is explicit and drift-protected', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-prep-dispatch-'));
+  try {
+    installRuntimeMaterials(root);
+    writeToolContract(root, 'interview-prep.example.json', 'interview-prep.json');
+    const source = writeRuntimeToolPlan(root, 'interview-prep.import', 'interview-prep.json', {
+      runId: 'skill-dispatch-prep-lifecycle',
+    });
+    assertDispatchLifecycle(root, 'interview-prep.import', source);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('interview review and capability feedback dispatches stay separate', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-review-dispatch-'));
+  try {
+    importEvidencePackage(join(cliRoot, 'templates/evidence-package.example.json'), { root, apply: true });
+    installRuntimeMaterials(root);
+    writeToolContract(root, 'interview-prep.example.json', 'interview-prep.json');
+    runSkillPlan(writeRuntimeToolPlan(root, 'interview-prep.import', 'interview-prep.json', {
+      runId: 'skill-dispatch-prep-dependency',
+    }), { root, apply: true });
+
+    writeToolContract(root, 'interview-review.example.json', 'interview-review.json');
+    const reviewSource = writeRuntimeToolPlan(root, 'interview-review.import', 'interview-review.json', {
+      runId: 'skill-dispatch-review-lifecycle',
+    });
+    assertDispatchLifecycle(root, 'interview-review.import', reviewSource);
+
+    writeToolContract(root, 'capability-feedback.example.json', 'capability-feedback.json');
+    const feedbackSource = writeRuntimeToolPlan(root, 'capability-feedback.import', 'capability-feedback.json', {
+      runId: 'skill-dispatch-feedback-lifecycle',
+    });
+    assertDispatchLifecycle(root, 'capability-feedback.import', feedbackSource);
+
+    const chained = runtimeToolPlanFor(root, 'interview-review.import', 'interview-review.json');
+    chained.toolCalls = [
+      chained.toolCalls[0],
+      runtimeToolPlanFor(root, 'capability-feedback.import', 'capability-feedback.json').toolCalls[0],
+    ];
+    assert.throws(
+      () => canonicalizeSkillRunPlan(chained),
+      /exactly one tool call/i,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('dynamic dispatch targets are bound to their contract identity', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-target-binding-'));
+  try {
+    for (const [toolKey, testCase] of TOOL_DISPATCH_CASES) {
+      if (toolKey === 'resume-final.import') continue;
+      const testCase = TOOL_DISPATCH_CASES.get(toolKey);
+      const contractName = `${toolKey.replace(/\./g, '-')}.json`;
+      const { contract } = writeToolContract(root, testCase.template, contractName);
+      const claimedContract = { ...contract, [testCase.idField]: 'plan-claimed-target' };
+      const source = writeRuntimeToolPlan(root, toolKey, contractName, {
+        runId: `skill-dispatch-${toolKey.replace(/\./g, '-')}-binding`,
+      }, {
+        targetObjects: testCase.targets(claimedContract),
+      });
+      assert.throws(
+        () => runSkillPlan(source, { root, apply: true }),
+        error => error.code === 'dispatch-target-contract-mismatch',
+      );
+      assert.equal(existsSync(join(root, `data/skill-runs/skill-dispatch-${toolKey.replace(/\./g, '-')}-binding.json`)), false);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('dispatchers reject directory target states before writing run records', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-target-directory-'));
+  try {
+    for (const toolKey of TOOL_DISPATCH_CASES.keys()) {
+      const testCase = TOOL_DISPATCH_CASES.get(toolKey);
+      const contractName = `${toolKey.replace(/\./g, '-')}.json`;
+      writeToolContract(root, testCase.template, contractName);
+      const source = writeRuntimeToolPlan(root, toolKey, contractName, {
+        runId: `skill-dispatch-${toolKey.replace(/\./g, '-')}-directory`,
+      });
+      const plan = JSON.parse(readFileSync(source, 'utf8'));
+      const directoryTarget = plan.toolCalls[0].targetObjects[0];
+      mkdirSync(join(root, directoryTarget), { recursive: true });
+      assert.throws(
+        () => runSkillPlan(source, { root, apply: true }),
+        error => error.code === 'invalid-target-state',
+      );
+      assert.equal(existsSync(join(root, `data/skill-runs/${plan.runId}.json`)), false);
+      rmSync(join(root, directoryTarget), { recursive: true, force: true });
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('remaining dispatchers do not implicitly install missing dependencies', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-skill-dependency-missing-'));
+  try {
+    const expectedCodes = new Map([
+      ['resume-final.import', 'materials-missing'],
+      ['interview-prep.import', 'materials-missing'],
+      ['interview-review.import', 'materials-missing'],
+      ['capability-feedback.import', 'evidence-package-missing'],
+    ]);
+    for (const [toolKey, expectedCode] of expectedCodes) {
+      const testCase = TOOL_DISPATCH_CASES.get(toolKey);
+      const contractName = `${toolKey.replace(/\./g, '-')}.json`;
+      writeToolContract(root, testCase.template, contractName);
+      const source = writeRuntimeToolPlan(root, toolKey, contractName, {
+        runId: `skill-dispatch-${toolKey.replace(/\./g, '-')}-missing`,
+      });
+      const plan = JSON.parse(readFileSync(source, 'utf8'));
+      assert.throws(
+        () => runSkillPlan(source, { root, apply: true }),
+        error => error.code === 'skill-dispatch-failed' && error.details.toolErrorCode === expectedCode,
+      );
+      assert.equal(existsSync(join(root, `data/skill-runs/${plan.runId}.json`)), false);
+      for (const target of plan.toolCalls[0].targetObjects) {
+        assert.equal(existsSync(join(root, target)), false);
+      }
+    }
+    assert.equal(existsSync(join(root, 'data/resume-materials.json')), false);
+    assert.equal(existsSync(join(root, 'interview-prep/story-bank.md')), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -7,6 +7,12 @@ import { getCareerOpsRoot } from './path-resolver.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { importResumeMaterials } from './resume-materials.mjs';
 import { importJobAnalysis } from './job-analysis.mjs';
+import { importScamCheck } from './scam-check.mjs';
+import { applyResumeFinalPlan } from './resume-final.mjs';
+import { importResumeRender } from './resume-render.mjs';
+import { importInterviewPrep } from './interview-prep.mjs';
+import { importInterviewReview } from './interview-review.mjs';
+import { importCapabilityFeedback } from './capability-feedback.mjs';
 import {
   backupFile,
   ContractToolError,
@@ -40,6 +46,10 @@ const MATERIALS_DISPATCH_TARGETS = [
   'data/resume-materials.json',
   'interview-prep/story-bank.md',
 ];
+const RESUME_FINAL_DISPATCH_TARGETS = [
+  'data/resume-final-plan.json',
+  'cv.md',
+];
 const SAFE_TARGET_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_CONTRACT_FILE_BYTES = 256 * 1024;
 const MAX_FINGERPRINT_FILE_BYTES = 1024 * 1024;
@@ -60,8 +70,76 @@ const DISPATCH_BRIDGES = new Map([
     skillKey: 'jd-analysis',
     conflictCode: 'different-analysis',
     importer: importJobAnalysis,
-    targetsFor: call => jobAnalysisTargetsFromPlan(call),
-    targetsFromContract: contract => jobAnalysisTargetsForId(contract.analysisId),
+    targetRule: {
+      idField: 'analysisId',
+      packagePrefix: 'data/job-analysis/',
+      documentPrefix: 'reports/job-analysis/',
+      documentExtension: '.md',
+    },
+  }],
+  ['scam-check.import', {
+    skillKey: 'scam-check',
+    conflictCode: 'different-scam-check',
+    importer: importScamCheck,
+    targetRule: {
+      idField: 'checkId',
+      packagePrefix: 'data/scam-check/',
+      documentPrefix: 'reports/scam-check/',
+      documentExtension: '.md',
+    },
+  }],
+  ['resume-final.import', {
+    skillKey: 'resume-generation',
+    conflictCode: 'different-final-plan',
+    importer: applyResumeFinalPlan,
+    backupKeys: ['plan', 'cv'],
+    resultIdField: 'planId',
+    targetsFor: () => [...RESUME_FINAL_DISPATCH_TARGETS],
+  }],
+  ['resume-render.import', {
+    skillKey: 'resume-generation',
+    conflictCode: 'different-render',
+    importer: importResumeRender,
+    backupKeys: ['package', 'html'],
+    targetRule: {
+      idField: 'renderId',
+      packagePrefix: 'data/resume-render/',
+      documentPrefix: 'output/resume/',
+      documentExtension: '.html',
+    },
+  }],
+  ['interview-prep.import', {
+    skillKey: 'interview-preparation',
+    conflictCode: 'different-preparation',
+    importer: importInterviewPrep,
+    targetRule: {
+      idField: 'prepId',
+      packagePrefix: 'data/interview-prep/',
+      documentPrefix: 'interview-prep/',
+      documentExtension: '.md',
+    },
+  }],
+  ['interview-review.import', {
+    skillKey: 'interview-review',
+    conflictCode: 'different-review',
+    importer: importInterviewReview,
+    targetRule: {
+      idField: 'reviewId',
+      packagePrefix: 'data/interview-review/',
+      documentPrefix: 'interview-prep/sessions/',
+      documentExtension: '.md',
+    },
+  }],
+  ['capability-feedback.import', {
+    skillKey: 'interview-review',
+    conflictCode: 'different-feedback',
+    importer: importCapabilityFeedback,
+    targetRule: {
+      idField: 'feedbackId',
+      packagePrefix: 'data/capability-feedback/',
+      documentPrefix: 'reports/capability-feedback/',
+      documentExtension: '.md',
+    },
   }],
 ]);
 
@@ -82,31 +160,37 @@ const TOOLS = new Map([
     command: 'node scam-check.mjs import <contract.json>',
     inputKinds: new Set(['pasted_jd', 'company_evidence', 'hr_message']),
     targets: ['data/scam-check/', 'reports/scam-check/', 'data/scam-check-backups/'],
+    dispatchable: true,
   }],
   ['resume-final.import', {
     command: 'node resume-final.mjs apply <contract.json>',
     inputKinds: new Set(['resume_materials', 'pasted_jd']),
     targets: ['data/resume-final-plan.json', 'cv.md', 'data/resume-final-backups/'],
+    dispatchable: true,
   }],
   ['resume-render.import', {
     command: 'node resume-render.mjs import <contract.json>',
     inputKinds: new Set(['resume_materials']),
     targets: ['data/resume-render/', 'output/resume/', 'data/resume-render-backups/'],
+    dispatchable: true,
   }],
   ['interview-prep.import', {
     command: 'node interview-prep.mjs import <contract.json>',
     inputKinds: new Set(['pasted_jd', 'resume_materials']),
     targets: ['data/interview-prep/', 'interview-prep/', 'data/interview-prep-backups/'],
+    dispatchable: true,
   }],
   ['interview-review.import', {
     command: 'node interview-review.mjs import <contract.json>',
     inputKinds: new Set(['interview_notes', 'interview_prep']),
     targets: ['data/interview-review/', 'interview-prep/sessions/', 'data/interview-review-backups/'],
+    dispatchable: true,
   }],
   ['capability-feedback.import', {
     command: 'node capability-feedback.mjs import <contract.json>',
     inputKinds: new Set(['interview_notes', 'interview_prep']),
     targets: ['data/capability-feedback/', 'reports/capability-feedback/', 'data/capability-feedback-backups/'],
+    dispatchable: true,
   }],
 ]);
 
@@ -245,45 +329,44 @@ function requireTargets(value, path, allowedTargets, code) {
   return targets;
 }
 
-function jobAnalysisTargetsForId(analysisId) {
-  const id = requireSafeId(analysisId, '$.analysisId', ContractToolError, 'dispatch-target-contract-mismatch');
+function pairedDispatchTargetsForId(rule, value) {
+  const idPath = `$.${rule.idField}`;
+  const id = requireSafeId(value, idPath, ContractToolError, 'dispatch-target-contract-mismatch');
   if (!SAFE_TARGET_ID_PATTERN.test(id)) {
-    throw runtimeError('$.analysisId cannot be used as a target identity', 'dispatch-target-contract-mismatch', {
-      analysisId,
+    throw runtimeError(`${idPath} cannot be used as a target identity`, 'dispatch-target-contract-mismatch', {
+      [rule.idField]: value,
     });
   }
   return [
-    `data/job-analysis/${id}.json`,
-    `reports/job-analysis/${id}.md`,
+    `${rule.packagePrefix}${id}.json`,
+    `${rule.documentPrefix}${id}${rule.documentExtension}`,
   ];
 }
 
-function jobAnalysisTargetsFromPlan(call) {
-  const packagePrefix = 'data/job-analysis/';
-  const reportPrefix = 'reports/job-analysis/';
+function pairedDispatchTargetsFromPlan(call, rule) {
   const ids = call.targetObjects.map(target => {
-    if (target.startsWith(packagePrefix) && target.endsWith('.json')) {
-      return target.slice(packagePrefix.length, -'.json'.length);
+    if (target.startsWith(rule.packagePrefix) && target.endsWith('.json')) {
+      return target.slice(rule.packagePrefix.length, -'.json'.length);
     }
-    if (target.startsWith(reportPrefix) && target.endsWith('.md')) {
-      return target.slice(reportPrefix.length, -'.md'.length);
+    if (target.startsWith(rule.documentPrefix) && target.endsWith(rule.documentExtension)) {
+      return target.slice(rule.documentPrefix.length, -rule.documentExtension.length);
     }
     return null;
   });
   if (ids.length !== 2 || ids.some(id => id === null || !SAFE_TARGET_ID_PATTERN.test(id))) {
     throw runtimeError(
-      `${call.targetObjects.length} job-analysis targets are invalid; expected one JSON package and one Markdown report with the same safe analysisId`,
+      `${call.targetObjects.length} ${call.toolKey} targets are invalid; expected one JSON package and one derived document with the same safe ${rule.idField}`,
       'invalid-dispatch-targets',
       { toolKey: call.toolKey },
     );
   }
   if (ids[0] !== ids[1]) {
-    throw runtimeError('job-analysis targets must use the same analysisId', 'invalid-dispatch-targets', {
+    throw runtimeError(`${call.toolKey} targets must use the same ${rule.idField}`, 'invalid-dispatch-targets', {
       toolKey: call.toolKey,
-      analysisIds: ids,
+      objectIds: ids,
     });
   }
-  return jobAnalysisTargetsForId(ids[0]);
+  return pairedDispatchTargetsForId(rule, ids[0]);
 }
 
 function requireExactDispatchTargets(call) {
@@ -291,7 +374,11 @@ function requireExactDispatchTargets(call) {
   if (!bridge) {
     throw runtimeError(`${call.toolKey} has no dispatcher in this runtime version`, 'unsupported-dispatch-tool');
   }
-  const expectedTargets = [...bridge.targetsFor(call)].sort();
+  const expectedTargets = [
+    ...(bridge.targetRule
+      ? pairedDispatchTargetsFromPlan(call, bridge.targetRule)
+      : bridge.targetsFor(call)),
+  ].sort();
   const actualTargets = [...call.targetObjects].sort();
   if (JSON.stringify(actualTargets) !== JSON.stringify(expectedTargets)) {
     throw runtimeError(
@@ -484,7 +571,7 @@ function verifyDispatchContracts(current, root) {
         { contractFile: call.contractFile, expectedHash: call.contractFileHash, actualHash },
       );
     }
-    if (!bridge.targetsFromContract) continue;
+    if (!bridge.targetRule) continue;
     let contract;
     try {
       contract = readJsonContract(path, {
@@ -497,8 +584,12 @@ function verifyDispatchContracts(current, root) {
         contractFile: call.contractFile,
       });
     }
-    const expectedTargets = [...bridge.targetsFor(call)].sort();
-    const contractTargets = [...bridge.targetsFromContract(contract)].sort();
+    const expectedTargets = [
+      ...pairedDispatchTargetsFromPlan(call, bridge.targetRule),
+    ].sort();
+    const contractTargets = [
+      ...pairedDispatchTargetsForId(bridge.targetRule, contract[bridge.targetRule.idField]),
+    ].sort();
     if (JSON.stringify(contractTargets) !== JSON.stringify(expectedTargets)) {
       throw runtimeError(
         `Dispatch targets do not match the approved ${call.toolKey} contract: ${call.contractFile}`,
@@ -561,23 +652,26 @@ function materialsToolResult(result, root) {
   };
 }
 
-function jobAnalysisToolResult(result, root) {
+function genericToolResult(call, result, root) {
+  const bridge = DISPATCH_BRIDGES.get(call.toolKey);
+  const idField = bridge.resultIdField ?? bridge.targetRule.idField;
+  const backupKeys = bridge.backupKeys ?? ['package', 'markdown'];
   return {
-    toolKey: 'job-analysis.import',
+    toolKey: call.toolKey,
     action: result.action,
-    objectId: result.incoming.analysisId,
+    objectId: result.incoming[idField],
     contentHash: result.incoming.contentHash,
-    backupPaths: {
-      package: relativeBackupPath(root, result.backupPaths.package),
-      markdown: relativeBackupPath(root, result.backupPaths.markdown),
-    },
+    backupPaths: Object.fromEntries(backupKeys.map(key => [
+      key,
+      relativeBackupPath(root, result.backupPaths[key]),
+    ])),
   };
 }
 
 function dispatchToolResult(call, result, root) {
-  return call.toolKey === 'job-analysis.import'
-    ? jobAnalysisToolResult(result, root)
-    : materialsToolResult(result, root);
+  return call.toolKey === 'resume-materials.import'
+    ? materialsToolResult(result, root)
+    : genericToolResult(call, result, root);
 }
 
 function requireFingerprintSnapshot(value, path, allowNull, expectedTargets) {
@@ -660,6 +754,8 @@ function requireToolResult(value, path, call) {
     };
   }
 
+  const bridge = DISPATCH_BRIDGES.get(call.toolKey);
+  const backupKeys = bridge.backupKeys ?? ['package', 'markdown'];
   requireObjectWithOptional(
     value,
     path,
@@ -668,16 +764,23 @@ function requireToolResult(value, path, call) {
     ContractToolError,
     'invalid-run-record',
   );
-  requireObjectWithOptional(value.backupPaths, `${path}.backupPaths`, ['package', 'markdown'], [], ContractToolError, 'invalid-run-record');
+  requireObjectWithOptional(
+    value.backupPaths,
+    `${path}.backupPaths`,
+    backupKeys,
+    [],
+    ContractToolError,
+    'invalid-run-record',
+  );
   return {
     toolKey: requireEnum(value.toolKey, `${path}.toolKey`, new Set([call.toolKey]), ContractToolError, 'invalid-run-record'),
     action: requireString(value.action, `${path}.action`, { min: 1, max: 40 }, ContractToolError, 'invalid-run-record'),
     objectId: requireSafeId(value.objectId, `${path}.objectId`, ContractToolError, 'invalid-run-record'),
     contentHash: requireContentHash(value.contentHash, `${path}.contentHash`, 'invalid-run-record'),
-    backupPaths: {
-      package: requireOptionalRelativePath(value.backupPaths.package, `${path}.backupPaths.package`),
-      markdown: requireOptionalRelativePath(value.backupPaths.markdown, `${path}.backupPaths.markdown`),
-    },
+    backupPaths: Object.fromEntries(backupKeys.map(key => [
+      key,
+      requireOptionalRelativePath(value.backupPaths[key], `${path}.backupPaths.${key}`),
+    ])),
   };
 }
 
@@ -965,15 +1068,19 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
   const alreadyDispatched = Boolean(samePlan && existing?.execution.status === 'dispatched');
   const call = dispatchable ? current.plan.toolCalls[0] : null;
   const bridge = call ? DISPATCH_BRIDGES.get(call.toolKey) : null;
-  const dispatchTargets = call ? [...bridge.targetsFor(call)].sort() : [];
+  const dispatchTargets = call ? [
+    ...(bridge.targetRule
+      ? pairedDispatchTargetsFromPlan(call, bridge.targetRule)
+      : bridge.targetsFor(call)),
+  ].sort() : [];
 
   if (!apply) {
     let dispatch = null;
-    if (dispatchable && !alreadyDispatched) {
+    if (dispatchable) {
       const before = fingerprintTargetObjects(root, dispatchTargets);
       try {
         const toolResult = bridge.importer(join(root, call.contractFile), { root, apply: false });
-        dispatch = { action: 'dry-run', before, toolResult };
+        dispatch = alreadyDispatched ? null : { action: 'dry-run', before, toolResult };
       } catch (error) {
         if (error.code === bridge.conflictCode) {
           dispatch = {
@@ -999,7 +1106,7 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
       dispatch,
     };
   }
-  if (samePlan && (!dispatchable || alreadyDispatched)) {
+  if (samePlan && !dispatchable) {
     return {
       action: 'unchanged',
       applied: true,
@@ -1009,6 +1116,36 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
       plan: current.summary,
       record: recordSummary(existing),
     };
+  }
+  if (alreadyDispatched) {
+    try {
+      bridge.importer(join(root, call.contractFile), { root, apply: false });
+    } catch (error) {
+      if (error.code !== bridge.conflictCode) {
+        throw runtimeError(`Contract tool dry-run failed: ${error.message}`, 'skill-dispatch-failed', {
+          toolKey: call.toolKey,
+          toolErrorCode: error.code ?? 'io-error',
+        });
+      }
+      if (!replace) {
+        throw runtimeError(
+          `The declared ${call.toolKey} targets differ from the approved contract; add --replace after user confirmation.`,
+          'skill-target-conflict',
+          { toolKey: call.toolKey, toolErrorCode: error.code },
+        );
+      }
+    }
+    if (!replace) {
+      return {
+        action: 'unchanged',
+        applied: true,
+        changed: false,
+        recordPath: target,
+        backupPath: null,
+        plan: current.summary,
+        record: recordSummary(existing),
+      };
+    }
   }
   if (existing && !replace) {
     throw runtimeError('A different plan already uses this runId; add --replace after user confirmation.', 'skill-run-conflict');
@@ -1265,7 +1402,7 @@ function main() {
         `目标对象：${result.summary.targetObjects.join(', ')}`,
         `计划哈希：${result.summary.contentHash}`,
         result.summary.dispatchable
-          ? 'v2 dispatch 计划已绑定契约文件字节哈希；当前仅 resume-materials.import 与 job-analysis.import 可显式执行。'
+          ? 'v2 dispatch 计划已绑定契约文件字节哈希；全部 8 个注册契约工具均可显式执行。'
           : 'v1 计划只登记审批，不调用模型、不执行契约工具、不写目标对象。',
       ].join('\n'));
       return;

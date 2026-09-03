@@ -26,7 +26,7 @@
 ### 当前本地闭环边界
 
 - `gy --status` 只读报告能力证据、简历素材、定稿、渲染、简历版本库、简历事实链、岗位分析、防骗核查、公司机会、面试准备、面试复盘和能力反哺的就绪状态。
-- 已落地链路：能力证据导入 -> 简历素材 / 定稿 / 渲染 / 工作台版本库 -> 简历事实链只读审计 -> 岗位分析 / 防骗核查 -> 公司机会 / 投递清单 / 节点 mutation -> 面试准备 / 复盘 -> 本地能力反哺台账；每个写入合同都要求 dry-run、`--apply` 和覆盖时 `--replace`。本地 Skill Runtime v0.2 已提供封闭注册表、计划校验、dry-run、审批记录、替换保护和两条契约 dispatcher：v2 的 `experience-structuring -> resume-materials.import` 可显式写入素材与故事库，`jd-analysis -> job-analysis.import` 可显式写入岗位分析 JSON 与报告；其他 skill 仍只登记审批，不执行目标工具。
+- 已落地链路：能力证据导入 -> 简历素材 / 定稿 / 渲染 / 工作台版本库 -> 简历事实链只读审计 -> 岗位分析 / 防骗核查 -> 公司机会 / 投递清单 / 节点 mutation -> 面试准备 / 复盘 -> 本地能力反哺台账；每个写入合同都要求 dry-run、`--apply` 和覆盖时 `--replace`。本地 Skill Runtime v0.2 已提供封闭注册表、计划校验、dry-run、审批记录、替换保护和 8 条契约 dispatcher：素材、JD 分析、防骗核查、定稿、渲染、面试准备、面试复盘与能力反哺都能通过对应已注册工具显式写入声明目标。
 - offer-toolkit 已吸收为本地契约、系统模板和方法文档，不创建 offer-toolkit 的第二套外部运行时，不输出到外部目录。
 - 面试复盘候选、岗位分析结论和 JD 线索都不会自动写入当前能力证据包、投递进度表、简历素材或云端。
 - 能力反哺只落本地台账；公司机会产物挂载、网页同步和页面内 skill 执行仍是后续工作。
@@ -64,7 +64,7 @@
 - 执行：`node skill-runtime.mjs run <plan.json>` 默认 dry-run；执行必须 `--apply`；同 `runId` 不同计划或目标素材 / 故事库已变化时必须 `--apply --replace`。
 - 产物：`data/skill-runs/{runId}.json` 与 `data/skill-run-backups/{runId}/*`。
 - v1 只登记用户确认后的计划、输入指纹、工具白名单、目标对象、不变对象和恢复方式；不调用 LLM，不执行 shell，不调用契约工具，不写目标文件。
-- v2 必须额外绑定契约文件的 `/` 分隔相对路径和精确字节 SHA-256；check / dry-run / apply 都会重新验哈希，审批后变更契约文件必须拒绝。当前可执行桥是 `experience-structuring -> resume-materials.import` 与 `jd-analysis -> job-analysis.import`；前者目标只能是 `data/resume-materials.json` 与 `interview-prep/story-bank.md`，后者两个目标必须由同一个安全 `analysisId` 派生为 `data/job-analysis/{analysisId}.json` 与 `reports/job-analysis/{analysisId}.md`，且与契约内 `analysisId` 一致。
+- v2 必须额外绑定契约文件的 `/` 分隔相对路径和精确字节 SHA-256；check / dry-run / apply 都会重新验哈希，审批后变更契约文件必须拒绝。当前 8 条可执行桥覆盖全部注册工具：素材与定稿使用固定目标对；JD 分析、防骗核查、渲染、面试准备、复盘与能力反哺的动态目标必须由契约内同一个安全身份字段派生，并与计划目标完全一致。
 - v2 执行记录必须包含目标 `before/after` 指纹和 `prepared / dispatched / failed` 状态。工具成功但最终记录写失败时保留 `prepared` 记录并报 `skill-run-record-write-failed`，不得伪造成功。
 - 不从用户输入、JD、网页内容、会话记录或导入包注册新 skill；未注册能力只能输出只读建议。
 - 计划与记录不得保存完整简历全文、JD 原文、HR 消息原文、密钥或终端日志。

@@ -25,7 +25,45 @@ jd-analysis
   -> reports/job-analysis/{analysisId}.md
 ```
 
-All other registry skills and tools remain discoverable and plannable but are not executable by the Runtime dispatcher. They must continue through their own contract CLI commands until a bridge is explicitly implemented, tested, and documented.
+```text
+scam-check
+  -> scam-check.import
+  -> data/scam-check/{checkId}.json
+  -> reports/scam-check/{checkId}.md
+```
+
+```text
+resume-generation
+  -> resume-final.import
+  -> data/resume-final-plan.json
+  -> cv.md
+
+resume-generation
+  -> resume-render.import
+  -> data/resume-render/{renderId}.json
+  -> output/resume/{renderId}.html
+```
+
+```text
+interview-preparation
+  -> interview-prep.import
+  -> data/interview-prep/{prepId}.json
+  -> interview-prep/{prepId}.md
+```
+
+```text
+interview-review
+  -> interview-review.import
+  -> data/interview-review/{reviewId}.json
+  -> interview-prep/sessions/{reviewId}.md
+
+interview-review
+  -> capability-feedback.import
+  -> data/capability-feedback/{feedbackId}.json
+  -> reports/capability-feedback/{feedbackId}.md
+```
+
+Every tool in the closed registry is dispatchable in v2. No unregistered skill or tool becomes executable through this expansion.
 
 ## Commands
 
@@ -37,7 +75,7 @@ node skill-runtime.mjs run <plan.json> --apply [--json]
 node skill-runtime.mjs run <plan.json> --apply --replace [--json]
 ```
 
-`list` is read-only and exposes only the repository registry; its `dispatchable` flag identifies the two implemented bridges. `check` is read-only. `run` defaults to dry-run and creates no run record or target object.
+`list` is read-only and exposes only the repository registry; its `dispatchable` flag identifies the eight implemented bridges. `check` is read-only. `run` defaults to dry-run and creates no run record or target object.
 
 ## Registry Rules
 
@@ -77,7 +115,9 @@ Required fields:
 
 Validation rejects unknown fields, unregistered skills, unconfirmed plans, unsupported input kinds, undeclared tools, paths outside the shared skill/tool whitelist, duplicate target writes, and target paths containing traversal or absolute-path syntax. Every tool-call target must be allowed by both the selected skill and that exact tool. A v2 dispatch plan must contain exactly one call, and its target list must exactly match the selected bridge's declared target set. A v1 plan cannot carry v2 dispatch fields.
 
-For `job-analysis.import`, both target paths must use the same safe `analysisId`. Before check, dry-run, and apply, Runtime parses the hash-bound contract, reads its `analysisId`, and compares the contract-derived target paths with the plan-declared paths. A mismatch fails with `dispatch-target-contract-mismatch` before a run record or target object is written.
+For every dynamically named bridge, both target paths must use the same safe contract identity. Before check, dry-run, and apply, Runtime parses the hash-bound contract, reads its identity field (`analysisId`, `checkId`, `renderId`, `prepId`, `reviewId`, or `feedbackId`), and compares the contract-derived target paths with the plan-declared paths. A mismatch fails with `dispatch-target-contract-mismatch` before a run record or target object is written.
+
+`resume-final.import` uses the fixed target pair `data/resume-final-plan.json` and `cv.md`; its contract must supply a safe `planId`, and the run result reports that identity.
 
 The plan content hash covers the complete canonical plan, including `generatedAt`. Reusing a `runId` for a different plan is a conflict and requires explicit `--replace`.
 
@@ -137,7 +177,7 @@ Repeated `run --apply` with the same already-dispatched v2 plan is idempotent. A
 
 Different current bridge targets also require explicit `--replace`. Without it, apply fails with `skill-target-conflict` before writing the run record. With explicit replacement, the underlying importer creates its own target-specific backups and the run record stores their relative paths.
 
-Tool-result records remain bridge-specific. The resume-materials result stores `packageId` plus `materials` / `storyBank` backup paths. The job-analysis result stores `objectId` (the `analysisId`) plus `package` / `markdown` backup paths. Both include the tool key, action, and incoming contract content hash.
+Tool-result records remain bridge-specific. The resume-materials result stores `packageId` plus `materials` / `storyBank` backup paths. Resume final stores `planId` plus `plan` / `cv`; render stores `renderId` plus `package` / `html`; every paired JSON/document bridge stores `objectId` (the contract identity) plus `package` / `markdown` (or `html` for render). All include the tool key, action, and incoming contract content hash.
 
 Invalid target shape, such as a directory where a target file must be, fails with `invalid-target-state` before approval or target execution.
 
