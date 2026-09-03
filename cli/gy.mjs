@@ -16,6 +16,7 @@ import { inspectInterviewPrep } from './interview-prep.mjs';
 import { inspectInterviewReview } from './interview-review.mjs';
 import { inspectCapabilityFeedback } from './capability-feedback.mjs';
 import { inspectSkillRuntime } from './skill-runtime.mjs';
+import { auditResumeFactChain } from './resume-fact-chain.mjs';
 import { connectDevice, disconnectDevice, inspectDeviceBinding } from './device-binding.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { formatRoute, routeIntent } from './lib/intent-router.mjs';
@@ -38,6 +39,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     resumeFinal: inspectResumeFinal(root),
     resumeRender: inspectResumeRender(root),
     resumeLibrary: inspectResumeLibrary(root),
+    resumeFactChain: auditResumeFactChain(root),
     jobAnalysis: inspectJobAnalysis(root),
     scamCheck: inspectScamChecks(root),
     companyOpportunities: inspectCompanyOpportunities(root),
@@ -125,6 +127,7 @@ function printStatus({ json = false, root } = {}) {
   } else {
     console.log('简历版本库：未导入');
   }
+  console.log(`简历事实链：${payload.resumeFactChain.state}（${payload.resumeFactChain.drifts.length} 项提示）`);
   const interviewPrep = payload.interviewPrep;
   const jobAnalysis = payload.jobAnalysis;
   if (jobAnalysis.state === 'ready') {

@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-Updated: 2026-09-03 11:03
+Updated: 2026-09-03 11:30
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、简历版本库显式文件桥、学生端工具台 UI 基座、页面内 skill 显式确认流、本地 Skill Runtime v0.1 审批账本、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥与本地能力反哺台账已实现；Skill Runtime 契约 dispatcher 和目标文件执行桥尚未完成，简历事实链审计尚未开始；前端 Demo、`gy`、证据包、设备绑定、Stage 4、Stage 5 本地桥接与 Runtime v0.1 仍待用户统一验收，平台自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、简历版本库显式文件桥、简历事实链只读审计、学生端工具台 UI 基座、页面内 skill 显式确认流、本地 Skill Runtime v0.1 审批账本、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥与本地能力反哺台账已实现；Skill Runtime 契约 dispatcher、目标文件执行桥与事实链身份字段升级尚未完成；前端 Demo、`gy`、证据包、设备绑定、Stage 4、Stage 5 本地桥接、事实链审计与 Runtime v0.1 仍待用户统一验收，平台自动同步尚未开始。
 
 ## 已接受事实
 
@@ -129,6 +129,9 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - Agent skill 确认流验证 — 2026-09-02 `frontend/` 下 `npm run build` 通过；浏览器实测“生成简历”确认后简历线新增 / 复用唯一草稿且当前投递版、定稿和导出版未被覆盖，“复盘反哺”取消后目标能力资产状态保持不变；执行卡状态可在待确认、已执行、已取消间正确流转，确认与取消均记录 Trace；390px 下页面与执行卡无横向溢出，测试后浏览器视口已恢复默认。
 - 本地 Skill Runtime v0.1 审批账本 — `cli/skill-runtime.mjs`、`cli/templates/skill-runtime.example.json`、`docs/SKILL_RUNTIME_CONTRACT.md`、`cli/tests/skill-runtime.test.mjs`、`cli/gy.mjs`、`cli/AGENTS.md`、`cli/README.md` 与 `cli/DATA_CONTRACT.md`；提供 6 个封闭 skill、只读发现、严格计划校验、skill/tool 双重目标白名单、默认 dry-run、显式 `--apply` 审批记录、幂等导入、同 `runId` 冲突保护、替换备份与 `gy --status` 只读状态；记录显式标记 `approval-ledger` 且工具调用数、目标写入数为 0。
 - Skill Runtime v0.1 验证 — 2026-09-03 `node --check skill-runtime.mjs`、`node --check gy.mjs`、`node --check tests/skill-runtime.test.mjs`、`node --test tests/skill-runtime.test.mjs`（3 pass / 0 fail）与 `cli/` 下 `npm test`（77 pass / 0 fail）通过；示例计划 `check` 通过，dry-run 不创建数据目录，apply 只写 `data/skill-runs/{runId}.json`，重复 apply 幂等，同 runId 不同计划拒绝，显式 replace 生成备份，目标对象不被写入。
+- 简历事实链只读审计 — `cli/resume-fact-chain.mjs`、`cli/tests/resume-fact-chain.test.mjs`、`docs/RESUME_FACT_CHAIN_CONTRACT.md` 与 `cli/gy.mjs`；汇总素材、STAR 故事库、定稿计划、`cv.md`、渲染包、简历版本库与当前投递版的对象状态、内容哈希、链路、漂移、候选、限制和只读执行声明；支持空链路 `blocked`、内容漂移 `drifted`、多候选 `ambiguous` 与契约缺口 `binding-gap`，`gy --status` 只读展示摘要。
+- 简历事实链边界 — 审计不调用 LLM、不执行 shell、不联网、不写用户层、不生成备份、不自动选择候选、不自动修复漂移；外部导入版本不反写 `cv.md`、素材或定稿。当前渲染包缺少定稿计划 ID / `cv.md` 指纹，版本库缺少定稿或导入指纹，因此内容一致时不能声称 `ready`，只能诚实输出 `binding-gap`。
+- 简历事实链验证 — 2026-09-03 `node --check resume-fact-chain.mjs`、`node --check gy.mjs`、`node --check tests/resume-fact-chain.test.mjs`、`node --test tests/resume-fact-chain.test.mjs`（5 pass / 0 fail）与 `cli/` 下 `npm test`（82 pass / 0 fail）通过；测试覆盖空工作台无写入、可观察链路与绑定缺口、STAR / `cv.md` / HTML / 当前投递版漂移、多渲染包候选不自动选择、下游对象缺失输出 `blocked`，并验证两次审计结果确定一致。
 
 ## 已验收
 
@@ -136,15 +139,15 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 
 ## 未决问题
 
-- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定、Stage 4 素材/定稿/准备/版本库链路、Stage 5 公司机会/tracker/节点 mutation 本地桥接与 Skill Runtime v0.1 审批账本是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑、简历/面试契约工具、公司机会导入、节点 mutation 与 `skill-runtime.mjs`。
+- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定、Stage 4 素材/定稿/准备/版本库/事实链审计链路、Stage 5 公司机会/tracker/节点 mutation 本地桥接与 Skill Runtime v0.1 审批账本是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑、简历/面试契约工具、公司机会导入、节点 mutation、`resume-fact-chain.mjs` 与 `skill-runtime.mjs`。
 - P1 — “能力资产”最终命名 — 用户 — 不阻塞实现 — 继续使用暂名。
 - P1 — 产品与技术评审未完成 — 项目组 — 不阻塞 Stage 1 入口实现 — 修订 PRD 后提交评审。
 
 ## 下一步
 
-1. 用户统一验收前端 Demo（重点检查 Agent skill 确认流、公司机会横向流程轨、节点抽屉、节点 mutation、真实产物挂载与简历版本管理）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿/面试准备、Stage 4c 复盘、结构化渲染、岗位分析、防骗核查、公司机会/tracker/节点 mutation/产物挂载桥接、能力反哺台账与 Skill Runtime v0.1 审批账本。
-2. 继续推进 Skill Runtime 契约 dispatcher / 目标文件执行桥，并打通简历版本库与素材、定稿、渲染包之间的显式事实链；在任何显式同步契约落地前，不做自动上传或自动导入。
-3. 按优先级先落地简历事实链状态审计：汇总素材、STAR、定稿计划、`cv.md`、渲染包、简历版本库和当前投递版的身份、内容哈希、绑定关系、漂移差异与建议修复动作；不自动修复、不后台同步。
+1. 用户统一验收前端 Demo（重点检查 Agent skill 确认流、公司机会横向流程轨、节点抽屉、节点 mutation、真实产物挂载与简历版本管理）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿/面试准备、Stage 4c 复盘、结构化渲染、简历事实链只读审计、岗位分析、防骗核查、公司机会/tracker/节点 mutation/产物挂载桥接、能力反哺台账与 Skill Runtime v0.1 审批账本。
+2. 继续推进 Skill Runtime 契约 dispatcher / 目标文件执行桥；在任何显式同步契约落地前，不做自动上传或自动导入。
+3. 升级渲染包与简历版本库的身份绑定字段，让事实链能显式证明定稿来源；旧文件升级必须由用户确认，审计器不得自动补写。
 
 ## 恢复上下文
 
@@ -154,6 +157,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 简历素材入口：`cli/resume-materials.mjs`（`check` / `import` / `--apply` / `--replace`）。
 - 简历定稿入口：`cli/resume-final.mjs`（`check` / `apply` / `--apply` / `--replace`）。
 - 简历版本库入口：`cli/resume-library.mjs`（`check` / `import` / `--apply` / `--replace`）。
+- 简历事实链入口：`cli/resume-fact-chain.mjs`（`audit` / `audit --json`，只读）。
 - 面试准备入口：`cli/interview-prep.mjs`（`check` / `import` / `--apply` / `--replace`）。
 - 公司机会入口：`cli/company-opportunity.mjs`（`check` / `import` / `--apply` / `--replace`；节点维护使用 `check-nodes` / `mutate-nodes` / `mutate-nodes --apply`）。
 - 防骗核查入口：`cli/scam-check.mjs`（`check` / `import` / `--apply` / `--replace`）。
@@ -192,3 +196,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-03 — PRD 完成实现进度再校准 — 修正简历版本库“仍为前端会话状态”的过期结论，补充稳定身份契约与验收边界；整体目标与阶段状态不变。
 - 2026-09-03 — PRD 细化执行合同 — 新增本地 Skill Runtime 生命周期、封闭 skill 集、简历事实链、三类冷启动、面试状态转换表、JD 输入分层、AI 调用边界与 Stage 6 同步单元规则 — 影响后续 CLI 实现顺序与验收口径。
 - 2026-09-03 — 实现本地 Skill Runtime v0.1 审批账本 — 新增 6 个封闭 skill、计划校验、目标双重白名单、dry-run、幂等审批记录与替换备份，并接入 `gy --status` 与 PRD / 数据契约；不调用模型、不执行契约工具、不写目标对象，dispatcher 留待下一步。
+- 2026-09-03 — 实现简历事实链只读审计 — 新增素材 / STAR / 定稿 / `cv.md` / 渲染包 / 版本库 / 当前投递版的身份与漂移审计，并接入 `gy --status`；内容一致时诚实输出 `binding-gap`，不自动绑定、不修复、不同步，仍待用户验收。

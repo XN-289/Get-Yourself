@@ -32,6 +32,7 @@ node resume-materials.mjs check ../path/to/resume-materials.json
 node resume-final.mjs check ../path/to/resume-final-plan.json
 node resume-render.mjs list
 node resume-render.mjs check ../path/to/resume-render.json
+node resume-fact-chain.mjs audit
 node job-analysis.mjs check ../path/to/job-analysis.json
 node scam-check.mjs check ../path/to/scam-check.json
 node interview-prep.mjs check ../path/to/interview-prep.json
@@ -44,7 +45,7 @@ node skill-runtime.mjs run ../path/to/skill-run-plan.json
 node skill-runtime.mjs run ../path/to/skill-run-plan.json --apply
 ```
 
-当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。`gy` 本身不假装调用 LLM，也不直接写简历、tracker 或个人材料；素材导入、简历定稿与渲染、岗位分析、防骗核查、面试准备、面试复盘和能力反哺台账由用户确认后调用对应契约工具完成，实际任务由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。`skill-runtime.mjs` v0.1 是封闭注册表、计划校验和审批记录账本：它不调用模型、不执行契约工具、不写目标对象；目标写入仍走各契约工具自己的 dry-run / apply / replace。
+当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。`gy` 本身不假装调用 LLM，也不直接写简历、tracker 或个人材料；素材导入、简历定稿与渲染、简历事实链审计、岗位分析、防骗核查、面试准备、面试复盘和能力反哺台账由用户确认或显式调用对应契约工具完成，实际任务由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。`skill-runtime.mjs` v0.1 是封闭注册表、计划校验和审批记录账本：它不调用模型、不执行契约工具、不写目标对象；目标写入仍走各契约工具自己的 dry-run / apply / replace。
 
 ## 它解决什么问题
 
@@ -121,6 +122,7 @@ get-yourself-cli/
 ├── resume-materials.mjs   # 简历素材包与 STAR 故事库
 ├── resume-final.mjs       # cv.md 定稿审批
 ├── resume-render.mjs      # 11 套结构化简历 HTML 模板渲染
+├── resume-fact-chain.mjs  # 简历事实链只读审计
 ├── job-analysis.mjs       # JD 拆解、证据匹配与本地报告
 ├── scam-check.mjs         # 校招防骗核查与风险报告
 ├── interview-prep.mjs     # 面试准备包与清单
