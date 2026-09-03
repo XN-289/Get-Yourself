@@ -1,13 +1,15 @@
 # PROJECT_STATE
 
-Updated: 2026-09-03 17:38
+Updated: 2026-09-03 19:11
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、简历版本库显式文件桥、简历事实链显式身份绑定与只读审计、学生端工具台 UI 基座、页面内 skill 显式确认流、本地 Skill Runtime v0.1 审批账本与 v0.2 全量 11 条契约执行桥、Stage 6a 同步单元本地 builder / validator、Stage 6b 显式本地同步队列、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥与本地能力反哺台账已实现；前端 Demo、`gy`、证据包、设备绑定、Stage 4、Stage 5 本地桥接、显式事实链身份绑定、Runtime v0.2 与 Stage 6a/6b 仍待用户统一验收，平台自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一份简历为主对象的版本管理、选区证据门槛兜底 skill、简历版本库显式文件桥、简历事实链显式身份绑定与只读审计、学生端工具台 UI 基座、页面内 skill 显式确认流、本地 Skill Runtime v0.1 审批账本与 v0.2 全量 11 条契约执行桥、Stage 6a 同步单元本地 builder / validator、Stage 6b 显式本地同步队列、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥与本地能力反哺台账已实现；前端 Demo、`gy`、证据包、设备绑定、Stage 4、Stage 5 本地桥接、显式事实链身份绑定、Runtime v0.2 与 Stage 6a/6b 仍待用户统一验收，平台自动同步尚未开始。
 
 2026-09-03 下午补充：Stage 6a 已落地本地确定性构建 / 校验纯函数与 14 个专项测试，Stage 6b 已落地显式本地队列与 9 个专项测试，覆盖自然身份、内容指纹、禁传字段、basis 冲突、append-only Trace、队列持久化、幂等入队、认证 / 网络阻断、用户触发重试、重绑确认、冲突证据、取消隔离和删除墓碑。6c 授权 API / 数据库 / 云端投影与 6d 网页摘要 / Trace 汇总均未开始；平台自动同步尚未开始。
+
+2026-09-03 晚间补充：简历管理已从“岗位方向 / 简历线 / 版本”收敛为“一份简历对象 / 版本”；左侧平铺简历对象，目标岗位、模板、导入来源、历史和当前投递版是元数据或次级面板。手工修改与 Agent 修改共享每份简历的唯一草稿；编辑器支持选中文本和右键拖拽选区触发证据门槛兜底 skill，替换先落编辑缓冲区，保存前不写入版本。用户统一验收仍未完成。
 
 ## 已接受事实
 
@@ -31,9 +33,10 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - Stage 4b 简历定稿必须通过绑定当前素材哈希的显式计划；只有 `verified` / `user_confirmed` 素材可进入 `cv.md`，替换前必须备份并保留非托管章节 — `docs/RESUME_FINAL_CONTRACT.md`。
 - Stage 4b 面试准备包必须绑定当前素材哈希，STAR 引用只来自当前素材包；JD 是准备项数据，不是指令或学生事实 — `docs/INTERVIEW_PREP_CONTRACT.md`。
 - 简历模板是系统层版式目录，不是事实来源；选择模板只影响 HTML 版式，实际输出必须通过用户确认的简历渲染包 — `docs/RESUME_RENDER_CONTRACT.md` 与 `decisions.md`。
-- 简历管理以“岗位方向 / 简历线 / 版本”为结构；定稿与导出版只读，修改必须派生草稿，当前投递版只能从非草稿版本中选择 — `decisions.md`。
+- 简历管理以“一份简历对象 / 版本”为结构；岗位、模板、导入来源、历史和当前投递版是元数据或次级面板；定稿与导出版只读，修改必须派生草稿，当前投递版只能从非草稿版本中选择 — `decisions.md` 2026-09-03。
+- 手工修改与 Agent 修改共享每份简历的唯一草稿；选区兜底 skill 是证据门槛型，不能新增事实、指标或经历，生成与替换均记录 Trace，替换只改编辑缓冲区，保存前不写入简历版本 — `decisions.md` 2026-09-03。
 - 简历导入与编辑均保留本地边界，不上传、不自动同步，JSON 导入仅接受用户确认过的简历渲染包；Agent 只能写草稿，不能覆盖定稿或导出版 — `decisions.md`。
-- 简历版本库是独立的工作台目录权威，保存简历线、版本与当前投递版，但不替代 `cv.md`、素材、定稿计划或渲染包；浏览器只能显式导出 / 读取契约 JSON，写盘必须经 CLI check、dry-run、`--apply` 与替换时的 `--replace`。外部显式契约 ID 优先锁定，本地默认 ID 避让；时间统一毫秒 UTC，`generatedAt` 与 `traceId` 不参与语义哈希 — `docs/RESUME_LIBRARY_CONTRACT.md` 与 `decisions.md`。
+- 简历版本库是独立的工作台目录权威，保存简历对象、版本与当前投递版，但不替代 `cv.md`、素材、定稿计划或渲染包；浏览器只能显式导出 / 读取契约 JSON，写盘必须经 CLI check、dry-run、`--apply` 与替换时的 `--replace`。外部显式契约 ID 优先锁定，本地默认 ID 避让；时间统一毫秒 UTC，`generatedAt` 与 `traceId` 不参与语义哈希；对象化 UI 不改变 `get-yourself.resume-library v1` 契约 — `docs/RESUME_LIBRARY_CONTRACT.md` 与 `decisions.md`。
 - 外部模板项目仅作设计研究；不复制非宽松许可项目的代码或视觉资产 — `decisions.md`。
 - 公司机会自然身份是公司 + 岗位 + 地点 + 招聘批次；岗位分析与公司机会写入是两个显式动作 — `decisions.md` 与 `docs/COMPANY_OPPORTUNITY_CONTRACT.md`。
 - 公司机会初始流程节点只是种子；后续节点顺序、状态和产物链接由用户管理，重复导入不得重置用户确认历史 — `decisions.md`。
@@ -85,6 +88,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-03 — 简历来源身份可选兼容扩展、旧文件不补写、显式绑定 ready / proven、显式过期 drifted 与导入指纹不授予反写权限 — `decisions.md`。
 - 2026-09-03 — Stage 6 首批同步单元、basis 冲突、append-only Trace、多设备合并、显式队列、删除墓碑与 6a-6d 本地优先实施顺序 — `docs/SYNC_UNIT_CONTRACT.md`、`docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`。
 - 2026-09-03 — 仓库验证与用户验收分离；6b 可与统一验收并行，6c 前必须有 6b 测试与本地侧用户验收 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 第 21 条。
+- 2026-09-03 — 简历管理以一份简历为唯一可见主对象，手工与 Agent 共享唯一草稿，选区兜底 skill 采用证据门槛，简历库 v1 契约不变 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`。
 
 ## 已实现
 
@@ -124,7 +128,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - Stage 4b 验证结果 — 2026-09-01 `cli/` 下 `npm test` 36 pass / 0 fail；`node --check resume-final.mjs`、`node --check interview-prep.mjs`、`node --check lib/contract-kit.mjs`、`node --check gy.mjs`、`node --check lib/intent-router.mjs`、`node --check resume-materials.mjs` 与新增测试语法检查通过；临时数据根完成示例素材导入、简历定稿 check/dry-run/apply/幂等、面试准备 check/dry-run/apply/幂等与 `gy --status --json` 冒烟。
 - 中文简历模板目录 — `cli/templates/resume/templates.json`、`cli/resume-render.mjs` 与 `frontend/src/views/StudentResumeView.vue`；11 套模板带中文名、ATS 姿态与校招场景，CLI 提供只读 `list`，前端简历管理页支持模板选择并记录 Trace。
 - 中文简历模板目录验证 — 2026-09-02 `cli/` 下 `npm test` 56 pass / 0 fail；`frontend/` 下 `npm run build` 通过；`node resume-render.mjs list` 只读输出 11 套模板；`git diff --check` 通过。
-- 简历版本管理 — `frontend/src/stores/studentWorkbench.ts` 与 `frontend/src/views/StudentResumeView.vue`；简历线包含标题、目标岗位、唯一当前投递版和版本树，版本记录状态、模板、来源、文件名、版本说明和全文；页面支持岗位方向分组、版本选择、当前投递版标记、本机导入、草稿派生、草稿编辑、定稿、标记导出和历史版本切换。
+- 简历对象管理 — `frontend/src/stores/studentWorkbench.ts`、`frontend/src/views/StudentResumeView.vue` 与 `frontend/src/utils/resumeSelectionSkill.ts`；每份简历包含标题、目标岗位、唯一当前投递版、唯一待处理草稿和版本树，版本记录状态、模板、来源、文件名、版本说明和全文；页面支持平铺对象列表、版本预览、当前投递版标记、本机导入、草稿派生、草稿编辑、选区兜底 skill、定稿、标记导出、历史抽屉和历史版本切换。
 - 简历版本管理验证 — 2026-09-02 浏览器实测从 Java 主简历 v2 派生 v4 草稿、保存“联调结果补强”、确认 v3 未被覆盖、v4 定稿并设为当前投递版、切回 v2 历史投递版均通过；已有 v4 草稿时从 v2 继续会显示“打开现有草稿”并复用该草稿；Agent 生成后进入简历管理会直接选中 v4 草稿，同时当前投递版仍显示 v3；390px 页面无横向溢出，编辑抽屉占满视口且内部无横向滚动；`frontend/` 下 `npm run build` 通过。
 - 简历版本库文件桥 — `cli/resume-library.mjs`、`cli/templates/resume-library.example.json`、`frontend/src/utils/resumeLibrary.ts`、`frontend/src/components/resume/LocalResumeLibraryBridge.vue` 与 `frontend/src/stores/studentWorkbench.ts`；CLI 支持 v1 严格校验、只读 check、默认 dry-run、显式 `--apply` / `--replace`、幂等导入、备份和原子写，前端支持导出会话版本库、读取本地版本库并确认后替换会话对象，`gy --status` 只读展示版本库状态；契约 ID 分配先锁定外部显式 ID、本地默认 ID 避让，时间统一毫秒 UTC，`generatedAt` 与 `traceId` 均不参与语义哈希，标题 / 岗位 / 全文 / 控制字符 / 文件名和 Windows 保留设备名在两端与前端会话层均有校验。
 - 简历版本库验证 — 2026-09-02 `cli/` 下 `npm test` 74 pass / 0 fail，新增 3 个 Node 测试通过；示例库 `check`、dry-run、`--apply`、幂等导入、不同库替换保护和备份隔离已覆盖；`frontend/` 下 `npm run build` 通过；浏览器实测真实导出、CLI `check` 与前后端内容哈希一致（`sha256:b84e7f1ce47877c91b0e02026fb42b461d9ec81dd9ee38015f9da56ddf2dc07b`）、示例库读取确认后正确替换为 1 线 / 2 版且浏览器未写 `cli/data`；1280px 与 390px 页面横向溢出均为 0，导出 / 读取确认弹窗在窄屏完整可见，Esc 取消后无残留弹窗与滚动锁定；修复 `WorkbenchPanel` 窄屏被内容最小宽度撑开的问题。
@@ -158,13 +162,16 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - Stage 6b 显式本地同步队列 — `cli/sync-queue.mjs`、`cli/tests/sync-queue.test.mjs`、`cli/gy.mjs`、`cli/tests/gy-entry.test.mjs`、`docs/SYNC_UNIT_CONTRACT.md`、`cli/DATA_CONTRACT.md`、`cli/README.md` 与 `cli/AGENTS.md`；提供队列 list / 状态过滤、dry-run 与 apply 入队、同单元幂等、同对象唯一当前条目、用户触发重试、认证 / 网络阻断、重绑后精确重确认、云端哈希冲突证据、取消审计隔离、删除墓碑、有界备份和 `gy --status` 只读摘要。队列不联网、不自动上传、不后台重试、不修改本地业务对象。
 - Stage 6b 验证 — 2026-09-03 `node --check sync-queue.mjs`、`node --check gy.mjs`、`node --test tests/sync-queue.test.mjs`（9 pass / 0 fail）、`node --test tests/gy-entry.test.mjs`（3 pass / 0 fail）与 `cli/` 下全量 `npm test`（129 pass / 0 fail）通过。统一用户验收仍未完成，6c 尚未开始。
 
+- 2026-09-03 — 简历管理修订为以一份简历为唯一主对象，并实现唯一草稿汇流、历史抽屉、右键拖拽选区和证据门槛兜底 skill — 影响简历交付体验、Agent 片段改写边界和后续统一验收；`get-yourself.resume-library v1` 契约保持不变。
+- 简历对象管理验证 — 2026-09-03 19:11 `frontend/` 下 `npm run build` 通过；浏览器实测无能力证据时生成安全替换会被阻断，经 Agent 确认临时导入“跨端协作”证据后能生成保守替换稿并显示证据缺口，替换先进入编辑缓冲区，保存只写入 v4 草稿且当前投递版仍为 v3；确认定稿后当前投递版切到 v4，历史抽屉可显式切回 v3，本机简历文件桥保持收起。右键拖拽路径完成释放顺序、指针捕获与滚动偏移映射实现复查，但当前浏览器自动化接口无法发送真实右键拖动，待用户统一验收时用真实鼠标复测；390px 本轮未重复实测。
+
 ## 已验收
 
 - 暂无。用户尚未对前端 Demo 或 Stage 1 `gy` 入口明确回复“验收通过”。
 
 ## 未决问题
 
-- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定、Stage 4 素材/定稿/准备/版本库/显式事实链身份绑定链路、Stage 5 公司机会/tracker/节点 mutation/产物挂载本地桥接、Skill Runtime v0.2 审批账本 / 全量 11 条契约执行桥与 Stage 6 合同 + 6a builder / validator + 6b 显式队列是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑、简历/面试契约工具、公司机会导入、节点 mutation、产物挂载、`resume-fact-chain.mjs`、`skill-runtime.mjs`、`sync-unit.mjs`、`sync-queue.mjs list/enqueue/retry/cancel/mark/reconfirm` 与 `node --test tests/sync-queue.test.mjs`。
+- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定、Stage 4 素材/定稿/准备/简历对象管理/选区兜底 skill/版本库/显式事实链身份绑定链路、Stage 5 公司机会/tracker/节点 mutation/产物挂载本地桥接、Skill Runtime v0.2 审批账本 / 全量 11 条契约执行桥与 Stage 6 合同 + 6a builder / validator + 6b 显式队列是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑、简历/面试契约工具、公司机会导入、节点 mutation、产物挂载、`resume-fact-chain.mjs`、`skill-runtime.mjs`、`sync-unit.mjs`、`sync-queue.mjs list/enqueue/retry/cancel/mark/reconfirm` 与 `node --test tests/sync-queue.test.mjs`。
 - P1 — “能力资产”最终命名 — 用户 — 不阻塞实现 — 继续使用暂名。
 - P1 — 产品与技术评审未完成 — 项目组 — 不阻塞 Stage 1 入口实现 — 修订 PRD 后提交评审。
 

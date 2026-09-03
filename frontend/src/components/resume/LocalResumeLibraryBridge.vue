@@ -60,7 +60,7 @@ async function downloadLibrary() {
     store.addTrace(
       "简历版本库导出",
       result.library.libraryId,
-      `导出 ${result.documentCount} 条简历线 / ${result.versionCount} 个版本；写盘仍需 CLI --apply`
+      `导出 ${result.documentCount} 份简历 / ${result.versionCount} 个版本；写盘仍需 CLI --apply`
     );
   } catch (error) {
     bridgeError.value = error instanceof Error ? error.message : "简历版本库导出失败";
@@ -129,15 +129,15 @@ function applyImport() {
     <dl class="library-summary">
       <div>
         <dt>当前会话</dt>
-        <dd>{{ resumeDocuments.length }} 线 / {{ currentVersionCount }} 版</dd>
+        <dd>{{ resumeDocuments.length }} 份 / {{ currentVersionCount }} 版</dd>
       </div>
       <div>
         <dt>已导出</dt>
-        <dd>{{ exported ? `${exported.documentCount} 线 / ${exported.versionCount} 版` : "未导出" }}</dd>
+        <dd>{{ exported ? `${exported.documentCount} 份 / ${exported.versionCount} 版` : "未导出" }}</dd>
       </div>
       <div>
         <dt>已读取</dt>
-        <dd>{{ imported ? `${imported.documentCount} 线 / ${imported.versionCount} 版` : "未读取" }}</dd>
+        <dd>{{ imported ? `${imported.documentCount} 份 / ${imported.versionCount} 版` : "未读取" }}</dd>
       </div>
       <div>
         <dt>契约</dt>
@@ -158,7 +158,7 @@ function applyImport() {
     <WorkbenchDialog
       v-model:open="exportOpen"
       title="确认导出简历版本库"
-      :description="`${resumeDocuments.length} 条简历线 / ${currentVersionCount} 个版本`"
+      :description="`${resumeDocuments.length} 份简历 / ${currentVersionCount} 个版本`"
     >
       <p>
         导出的 JSON 包含简历全文，仅保存到本机下载目录。它不修改 cv.md、素材包、定稿计划或渲染 HTML；安装到本地数据根仍需 CLI dry-run 和显式 --apply。
@@ -179,7 +179,7 @@ function applyImport() {
     >
       <dl v-if="imported" class="confirm-grid">
         <div>
-          <dt>简历线</dt>
+          <dt>简历对象</dt>
           <dd>{{ imported.documentCount }}</dd>
         </div>
         <div>
@@ -195,7 +195,7 @@ function applyImport() {
           <dd :title="imported.contentHash">{{ imported.contentHash.slice(0, 18) }}…</dd>
         </div>
       </dl>
-      <p>确认后替换当前会话的简历线与版本树；本地文件、cv.md 和渲染产物不会被修改。</p>
+      <p>确认后替换当前会话的简历对象与版本树；本地文件、cv.md 和渲染产物不会被修改。</p>
       <template #footer>
         <WorkbenchButton size="sm" @click="importOpen = false">取消</WorkbenchButton>
         <WorkbenchButton size="sm" variant="primary" @click="applyImport">
