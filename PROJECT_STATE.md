@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-03 13:58
+Updated: 2026-09-03 14:16
 Current phase: implementation
 
 ## 一句话现状
@@ -140,6 +140,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 简历事实链显式身份绑定 — `cli/resume-final.mjs`、`cli/resume-render.mjs`、`cli/resume-library.mjs`、`cli/resume-fact-chain.mjs`、`frontend/src/stores/studentWorkbench.ts`、`frontend/src/utils/resumeLibrary.ts` 与 `frontend/src/views/StudentResumeView.vue`；渲染包可选绑定当前定稿计划 ID / 计划哈希 / `cv.md` 原文哈希，版本库可选记录成组定稿、导入渲染与导入文件指纹；CLI 对过期渲染绑定拒绝，前端保留真实来源指纹且不伪造 `renderContentHash`。
 - 简历事实链边界 — 审计不调用 LLM、不执行 shell、不联网、不写用户层、不生成备份、不自动选择候选、不自动修复漂移；外部导入版本不反写 `cv.md`、素材或定稿。旧渲染包 / 旧版本缺少显式身份字段时输出 `binding-gap`；唯一渲染包与唯一当前投递版显式匹配当前定稿时可输出 `ready` / `proven`；显式身份过期输出 `drifted`，不因内容相同而静默修复。
 - 简历事实链验证 — 2026-09-03 `node --check resume-fact-chain.mjs`、`node --check gy.mjs`、`node --check tests/resume-fact-chain.test.mjs`、`node --check resume-final.mjs`、`node --check resume-render.mjs`、`node --check resume-library.mjs`、`cli/` 下全量 `npm test`（102 pass / 0 fail）与 `frontend/` 下 `npm run build` 通过；测试覆盖旧文件零改写下的 `binding-gap`、完整成组绑定到达 `ready`、显式 stale 定稿 / 渲染绑定在对象与链路层输出 `drifted`、来源字段成组 / 生命周期限制、来源字段参与语义哈希，以及导入文件哈希只作为来源证明。
+- PRD v0.1 状态校准 — `docs/PRODUCT_DESIGN_V0.1.md`；当前实现快照、9.5.1 简历事实链、Stage 4 当前实现边界与 14.0 验收边界补充来源指纹语义哈希、当前投递版对象状态、集合汇总不降级漂移子对象、过期渲染来源绑定与 102 项 CLI 测试证据；本轮为文档校准，不改变产品目标、阶段状态或用户验收结论。
 
 ## 已验收
 
@@ -207,3 +208,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-03 — 实现本地 Skill Runtime v0.2 契约 dispatcher — v2 计划绑定契约文件精确字节哈希，开放全部 8 个注册契约工具执行桥，并记录目标前后指纹与 prepared / dispatched / failed 状态；未注册工具仍不可执行，仍待用户验收。
 - 2026-09-03 — 完成简历事实链显式身份绑定升级 — 渲染包与版本库支持成组可选来源指纹，事实链可证明当前定稿 `ready` / `proven` 并识别显式过期 `drifted`；旧文件保持 `binding-gap` 且零补写，仍待用户验收。
 - 2026-09-03 — 完成显式身份绑定的对抗性复检 — 当前投递版对象状态与定稿 / 渲染绑定和 `cv.md` 全文比较保持一致，集合层不再把过期子对象聚合为 `ready`；来源指纹参与语义哈希有显式断言，仍待用户统一验收。
+- 2026-09-03 — PRD v0.1 完成事实链实现状态校准 — 补充当前投递版对象 / 集合状态一致性、来源指纹语义哈希敏感性与过期渲染绑定验收点；整体目标与阶段状态不变，仍待用户统一验收。
