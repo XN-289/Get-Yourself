@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-03 16:56
+Updated: 2026-09-03 17:02
 Current phase: implementation
 
 ## 一句话现状
@@ -55,6 +55,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 同步队列只保存用户确认过的摘要；重试复用同一幂等键，重绑设备后旧队列默认阻断并需重新确认；删除网页摘要只隐藏投影并保留幂等墓碑，不删除本机会、tracker、报告或产物 — `docs/SYNC_UNIT_CONTRACT.md` 与 `decisions.md` 2026-09-03 第 19 条。
 - Stage 6 按 6a 本地确定性构建 / 校验、6b 显式本地队列、6c 授权 API 与云端投影、6d 网页摘要与 Trace 汇总顺序推进，前置门槛未通过不得进入后续实现 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 2026-09-03 第 20 条。
 - Stage 6a 的队列动作、认证失败、重绑、取消与删除墓碑目前只是确定性纯函数规则；不得因此声称 6b 队列持久化、用户可见队列、API 或自动上传已实现 — `cli/sync-unit.mjs` 与 `cli/tests/sync-unit.test.mjs`。
+- 仓库验证与用户验收是两个门槛：6a 测试通过允许并行推进 6b 实现与用户统一验收，但不能记录为用户验收；进入 6c 授权 API / 云端投影前，6b 必须通过仓库测试并获得用户对本地侧边界的验收 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 2026-09-03 第 21 条。
 
 ## 决策索引
 
@@ -83,6 +84,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-03 — Skill Runtime v0.2 契约 dispatcher 先开放简历素材与 JD 分析两个导入桥，后续扩展为当前全部 11 个注册工具，并要求契约哈希、契约身份绑定目标、目标指纹与显式替换 — `decisions.md`。
 - 2026-09-03 — 简历来源身份可选兼容扩展、旧文件不补写、显式绑定 ready / proven、显式过期 drifted 与导入指纹不授予反写权限 — `decisions.md`。
 - 2026-09-03 — Stage 6 首批同步单元、basis 冲突、append-only Trace、多设备合并、显式队列、删除墓碑与 6a-6d 本地优先实施顺序 — `docs/SYNC_UNIT_CONTRACT.md`、`docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`。
+- 2026-09-03 — 仓库验证与用户验收分离；6b 可与统一验收并行，6c 前必须有 6b 测试与本地侧用户验收 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 第 21 条。
 
 ## 已实现
 
@@ -167,8 +169,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 ## 下一步
 
 1. 实现 Stage 6b 显式本地队列：复用 `cli/sync-unit.mjs` 的单元校验、幂等键、冲突、认证阻断、重绑、取消和墓碑规则，只保存用户确认后的摘要，不做后台自动重试或自动上传。
-2. 用户统一验收前端 Demo（重点检查 Agent skill 确认流、公司机会横向流程轨、节点抽屉、节点 mutation、真实产物挂载与简历版本管理）、`gy` Stage 1、Stage 2a 本地导入、Stage 2b 网页导出、Stage 3 设备绑定、Stage 4a 素材包/故事库、Stage 4b 简历定稿/面试准备、Stage 4c 复盘、结构化渲染、显式事实链身份绑定与只读审计、岗位分析、防骗核查、公司机会/tracker/节点 mutation/产物挂载桥接、能力反哺台账、Skill Runtime v0.2 全量 11 条契约执行桥、同步单元合同与 Stage 6a builder / validator 测试。
-3. 在显式同步接口与队列落地前，不做自动上传或自动导入。
+2. 与 6b 并行准备用户统一验收：按 PRD 14.5 顺序检查 Agent、能力资产、简历管理、面试管理、本地 Runtime 与 Stage 6a；逐项记录通过 / 需修改 / 阻断。
+3. 6b 完成仓库测试并获得用户本地侧验收前，不启动 6c 授权 API、数据库或云端投影；在显式同步接口与队列落地前，不做自动上传或自动导入。
 
 ## 恢复上下文
 
@@ -227,3 +229,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-03 — 定义 Stage 6 同步单元合同 v0.1 — 收窄首批同步对象为公司机会进度摘要与 Trace 决策摘要，确定自然身份、basis 冲突、append-only Trace、多设备合并、显式队列、重绑阻断、删除墓碑与隐私红线；下一步才实现本地构建器与校验器。
 - 2026-09-03 — PRD 补充 Stage 6 实施顺序 — 固定本地确定性构建 / 校验、显式本地队列、授权 API 与云端投影、网页摘要与 Trace 汇总的推进顺序，并把每一步的不可越界项写入当前验收边界；不改变产品目标，也不代表同步实现开始。
 - 2026-09-03 — 实现 Stage 6a 本地同步单元 builder / validator 并校准 PRD — 覆盖 canonical 哈希、自然身份、内容指纹、禁传字段、basis 冲突、Trace append-only、队列动作纯规则、删除墓碑与确认哈希校验；`cli/` 全量 120 项测试通过，下一步进入 6b 显式本地队列，仍待用户统一验收。
+- 2026-09-03 — PRD 修订至 v0.1 r4 — 明确 6b 显式本地队列的产品交付、仓库验证与用户验收分离、6c 前置门槛和统一验收顺序；不改变产品目标，也不代表新增实现或用户验收。
