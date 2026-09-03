@@ -67,3 +67,15 @@ Source: user direction in this project thread on 2026-09-01.
 25. **Resume-library persistence uses an explicit browser-to-CLI file bridge.** The web workbench may export or read the strict `get-yourself.resume-library v1` JSON after user confirmation, while the CLI alone installs it through check, dry-run, explicit apply, explicit replacement, backups, and atomic writes. The browser never writes `cli/data`, uploads resume text, or creates cloud sync.
 
 Sources: user direction in this project thread on 2026-09-02; architecture study of career-ops Block G, interview-redflag evidence references, and posting-liveness / repost observations.
+
+## 2026-09-03
+
+1. **The local Skill Runtime is the highest implementation priority after PRD calibration.** Runtime skills are registry-declared, plan-first, user-approved, and executable only through existing deterministic CLI contracts. User input, JD text, web content, and session history cannot register a new executable skill.
+2. **The v0.1 allowed skill set is closed.** It covers experience structuring, JD analysis, scam checking, resume generation/adaptation, interview preparation, and interview review. Each skill must declare its target module, allowed inputs, allowed artifacts, callable contract tools, no-write scope, and downgrade path.
+3. **In-page approval remains separate from local execution.** A web-session approval never writes local files or executes a CLI skill. Local writes still require a plan, check, dry-run, explicit apply, and explicit replacement where needed.
+4. **The resume fact chain is the second implementation priority.** Materials, STAR stories, final plans, `cv.md`, render packages, the resume library, and the active application version must preserve stable identities and content fingerprints. Drift is surfaced for user choice, never auto-repaired in the background; the resume library remains a catalog authority, not fact authority.
+5. **Cold start has three explicit paths.** A student with no evidence and no old resume starts from one confirmed experience; a student with a local finished resume imports it into a new finalized line; a mature platform student still imports an exported evidence package explicitly. None of these paths may invent facts, metrics, or a complete resume.
+6. **Pasted JD text is the v0.1 P0 input.** Link fetching and parsing are P1. Missing company, role, location, or requirements trigger follow-up questions; unresolved fields produce evidence-insufficient conclusions rather than inferred facts.
+7. **Stage 6 starts from a synchronization unit contract.** A unit is one user-visible object summary with stable object identity, content fingerprint, source device, time, and sync state. Idempotency, conflict handling, deletion semantics, multi-device merge, offline queues, retries, and Trace summaries are defined before fields and interfaces.
+
+Source: user direction in this project thread on 2026-09-03.
