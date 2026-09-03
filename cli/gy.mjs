@@ -17,6 +17,7 @@ import { inspectInterviewReview } from './interview-review.mjs';
 import { inspectCapabilityFeedback } from './capability-feedback.mjs';
 import { inspectSkillRuntime } from './skill-runtime.mjs';
 import { auditResumeFactChain } from './resume-fact-chain.mjs';
+import { inspectSyncQueue } from './sync-queue.mjs';
 import { connectDevice, disconnectDevice, inspectDeviceBinding } from './device-binding.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { formatRoute, routeIntent } from './lib/intent-router.mjs';
@@ -47,6 +48,7 @@ export function buildStatusPayload(root = getCareerOpsRoot()) {
     interviewReview: inspectInterviewReview(root),
     capabilityFeedback: inspectCapabilityFeedback(root),
     skillRuntime: inspectSkillRuntime(root),
+    syncQueue: inspectSyncQueue(root),
     deviceBinding: inspectDeviceBinding(root),
     suggestions: [
       '整理经历 / 更新简历',
@@ -200,6 +202,14 @@ function printStatus({ json = false, root } = {}) {
     console.log(`Skill Runtime：本地审批记录无效（${skillRuntime.error}）`);
   } else {
     console.log(`Skill Runtime：${skillRuntime.registeredSkillCount} 个注册 skill / 0 条审批记录`);
+  }
+  const syncQueue = payload.syncQueue;
+  if (syncQueue.state === 'ready') {
+    console.log(`同步队列：${syncQueue.counts.entries} 条待发摘要 / ${syncQueue.counts.tombstones} 条删除墓碑（本地显式队列，不自动上传）`);
+  } else if (syncQueue.state === 'invalid') {
+    console.log(`同步队列：本地文件无效（${syncQueue.error}）`);
+  } else {
+    console.log('同步队列：未创建（当前不联网、不自动上传）');
   }
   if (binding.state === 'ready') {
     console.log(`本地工位：已绑定 ${binding.device.deviceName}（#${binding.device.deviceId}）`);

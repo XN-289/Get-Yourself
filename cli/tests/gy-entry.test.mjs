@@ -30,6 +30,8 @@ test('status inspection is read-only', () => {
     assert.equal(payload.interviewReview.state, 'blocked');
     assert.equal(payload.capabilityFeedback.state, 'blocked');
     assert.equal(payload.scamCheck.state, 'missing');
+    assert.equal(payload.syncQueue.state, 'missing');
+    assert.deepEqual(payload.syncQueue.counts, { entries: 0, tombstones: 0, audit: 0 });
     assert.ok(payload.missing.includes('cv.md'));
     assert.deepEqual(readdirSync(root), []);
   } finally {

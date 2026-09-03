@@ -1,13 +1,13 @@
 # PROJECT_STATE
 
-Updated: 2026-09-03 17:02
+Updated: 2026-09-03 17:38
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、简历版本库显式文件桥、简历事实链显式身份绑定与只读审计、学生端工具台 UI 基座、页面内 skill 显式确认流、本地 Skill Runtime v0.1 审批账本与 v0.2 全量 11 条契约执行桥、Stage 6a 同步单元本地 builder / validator、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥与本地能力反哺台账已实现；前端 Demo、`gy`、证据包、设备绑定、Stage 4、Stage 5 本地桥接、显式事实链身份绑定、Runtime v0.2 与 Stage 6a 仍待用户统一验收，平台自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历线/版本树/当前投递版管理、简历版本库显式文件桥、简历事实链显式身份绑定与只读审计、学生端工具台 UI 基座、页面内 skill 显式确认流、本地 Skill Runtime v0.1 审批账本与 v0.2 全量 11 条契约执行桥、Stage 6a 同步单元本地 builder / validator、Stage 6b 显式本地同步队列、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥与本地能力反哺台账已实现；前端 Demo、`gy`、证据包、设备绑定、Stage 4、Stage 5 本地桥接、显式事实链身份绑定、Runtime v0.2 与 Stage 6a/6b 仍待用户统一验收，平台自动同步尚未开始。
 
-2026-09-03 下午补充：Stage 6a 已落地本地确定性构建 / 校验纯函数与 14 个专项测试，覆盖自然身份、内容指纹、禁传字段、basis 冲突、append-only Trace、队列动作纯规则和删除墓碑。6b 显式本地队列、6c 授权 API / 数据库 / 云端投影与 6d 网页摘要 / Trace 汇总均未开始；平台自动同步尚未开始。
+2026-09-03 下午补充：Stage 6a 已落地本地确定性构建 / 校验纯函数与 14 个专项测试，Stage 6b 已落地显式本地队列与 9 个专项测试，覆盖自然身份、内容指纹、禁传字段、basis 冲突、append-only Trace、队列持久化、幂等入队、认证 / 网络阻断、用户触发重试、重绑确认、冲突证据、取消隔离和删除墓碑。6c 授权 API / 数据库 / 云端投影与 6d 网页摘要 / Trace 汇总均未开始；平台自动同步尚未开始。
 
 ## 已接受事实
 
@@ -54,7 +54,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - Stage 6 首批同步单元只有公司机会进度摘要与 Trace 决策摘要；前者是自然身份 + basis 内容指纹的可变更快照，后者是设备 + Trace ID 的 append-only 记录，多设备冲突必须由用户选择 — `docs/SYNC_UNIT_CONTRACT.md` 与 `decisions.md` 2026-09-03 第 17-18 条。
 - 同步队列只保存用户确认过的摘要；重试复用同一幂等键，重绑设备后旧队列默认阻断并需重新确认；删除网页摘要只隐藏投影并保留幂等墓碑，不删除本机会、tracker、报告或产物 — `docs/SYNC_UNIT_CONTRACT.md` 与 `decisions.md` 2026-09-03 第 19 条。
 - Stage 6 按 6a 本地确定性构建 / 校验、6b 显式本地队列、6c 授权 API 与云端投影、6d 网页摘要与 Trace 汇总顺序推进，前置门槛未通过不得进入后续实现 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 2026-09-03 第 20 条。
-- Stage 6a 的队列动作、认证失败、重绑、取消与删除墓碑目前只是确定性纯函数规则；不得因此声称 6b 队列持久化、用户可见队列、API 或自动上传已实现 — `cli/sync-unit.mjs` 与 `cli/tests/sync-unit.test.mjs`。
+- Stage 6b 队列只写 `data/sync-queue.json` 与 `data/sync-queue-backups/*`，不联网、不上传、不后台重试、不修改业务对象；`pending` 只表示本地待发 — `cli/sync-queue.mjs`、`cli/tests/sync-queue.test.mjs` 与 `cli/DATA_CONTRACT.md`。
 - 仓库验证与用户验收是两个门槛：6a 测试通过允许并行推进 6b 实现与用户统一验收，但不能记录为用户验收；进入 6c 授权 API / 云端投影前，6b 必须通过仓库测试并获得用户对本地侧边界的验收 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 2026-09-03 第 21 条。
 
 ## 决策索引
@@ -155,6 +155,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - Stage 6 PRD 实施顺序校准 — `docs/PRODUCT_DESIGN_V0.1.md`；明确 6a 本地确定性构建 / 校验、6b 显式本地队列、6c 授权 API 与云端投影、6d 网页摘要与 Trace 汇总的先后边界，并补充 6a / 6b 的实现门槛验收点。此轮为文档校准，不代表同步实现开始。
 - Stage 6a 本地同步单元 builder / validator — `cli/sync-unit.mjs` 与 `cli/tests/sync-unit.test.mjs`；提供 canonical JSON / SHA-256、公司机会自然身份、两类摘要构建、完整 envelope 严格校验、幂等键重算、first / idempotent / accepted / conflict 分类、Trace append-only 冲突、认证失败、重绑、取消、冲突重试限制与删除墓碑防护。用户可见文本保留原文，自然身份才做规范化；builder 会校验用户确认内容哈希，防止伪造确认。
 - Stage 6a 验证 — 2026-09-03 `node --check sync-unit.mjs`、`node --check tests/sync-unit.test.mjs`、`node --test tests/sync-unit.test.mjs`（14 pass / 0 fail）与 `cli/` 下全量 `npm test`（120 pass / 0 fail）通过。专项测试覆盖合同门槛八类规则；6b/6c/6d 未开始，统一用户验收仍未完成。
+- Stage 6b 显式本地同步队列 — `cli/sync-queue.mjs`、`cli/tests/sync-queue.test.mjs`、`cli/gy.mjs`、`cli/tests/gy-entry.test.mjs`、`docs/SYNC_UNIT_CONTRACT.md`、`cli/DATA_CONTRACT.md`、`cli/README.md` 与 `cli/AGENTS.md`；提供队列 list / 状态过滤、dry-run 与 apply 入队、同单元幂等、同对象唯一当前条目、用户触发重试、认证 / 网络阻断、重绑后精确重确认、云端哈希冲突证据、取消审计隔离、删除墓碑、有界备份和 `gy --status` 只读摘要。队列不联网、不自动上传、不后台重试、不修改本地业务对象。
+- Stage 6b 验证 — 2026-09-03 `node --check sync-queue.mjs`、`node --check gy.mjs`、`node --test tests/sync-queue.test.mjs`（9 pass / 0 fail）、`node --test tests/gy-entry.test.mjs`（3 pass / 0 fail）与 `cli/` 下全量 `npm test`（129 pass / 0 fail）通过。统一用户验收仍未完成，6c 尚未开始。
 
 ## 已验收
 
@@ -162,15 +164,15 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 
 ## 未决问题
 
-- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定、Stage 4 素材/定稿/准备/版本库/显式事实链身份绑定链路、Stage 5 公司机会/tracker/节点 mutation/产物挂载本地桥接、Skill Runtime v0.2 审批账本 / 全量 11 条契约执行桥与 Stage 6 合同 + 6a builder / validator 是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑、简历/面试契约工具、公司机会导入、节点 mutation、产物挂载、`resume-fact-chain.mjs`、`skill-runtime.mjs`、`docs/SYNC_UNIT_CONTRACT.md` 与 `node --test tests/sync-unit.test.mjs`。
+- P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定、Stage 4 素材/定稿/准备/版本库/显式事实链身份绑定链路、Stage 5 公司机会/tracker/节点 mutation/产物挂载本地桥接、Skill Runtime v0.2 审批账本 / 全量 11 条契约执行桥与 Stage 6 合同 + 6a builder / validator + 6b 显式队列是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑、简历/面试契约工具、公司机会导入、节点 mutation、产物挂载、`resume-fact-chain.mjs`、`skill-runtime.mjs`、`sync-unit.mjs`、`sync-queue.mjs list/enqueue/retry/cancel/mark/reconfirm` 与 `node --test tests/sync-queue.test.mjs`。
 - P1 — “能力资产”最终命名 — 用户 — 不阻塞实现 — 继续使用暂名。
 - P1 — 产品与技术评审未完成 — 项目组 — 不阻塞 Stage 1 入口实现 — 修订 PRD 后提交评审。
 
 ## 下一步
 
-1. 实现 Stage 6b 显式本地队列：复用 `cli/sync-unit.mjs` 的单元校验、幂等键、冲突、认证阻断、重绑、取消和墓碑规则，只保存用户确认后的摘要，不做后台自动重试或自动上传。
-2. 与 6b 并行准备用户统一验收：按 PRD 14.5 顺序检查 Agent、能力资产、简历管理、面试管理、本地 Runtime 与 Stage 6a；逐项记录通过 / 需修改 / 阻断。
-3. 6b 完成仓库测试并获得用户本地侧验收前，不启动 6c 授权 API、数据库或云端投影；在显式同步接口与队列落地前，不做自动上传或自动导入。
+1. 准备用户统一验收包：按 PRD 14.5 顺序检查 Agent、能力资产、简历管理、面试管理、本地 Runtime、Stage 6a 与 Stage 6b；逐项记录通过 / 需修改 / 阻断。
+2. 修复统一验收中的体验阻断；修复优先级高于继续扩展云端能力。
+3. 6b 获得用户本地侧验收前，不启动 6c 授权 API、数据库或云端投影；不做自动上传、自动重试或自动导入。
 
 ## 恢复上下文
 
@@ -185,7 +187,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 公司机会入口：`cli/company-opportunity.mjs`（`check` / `import` / `--apply` / `--replace`；节点维护使用 `check-nodes` / `mutate-nodes` / `mutate-nodes --apply`）。
 - 防骗核查入口：`cli/scam-check.mjs`（`check` / `import` / `--apply` / `--replace`）。
 - Skill Runtime 入口：`cli/skill-runtime.mjs`（`list` / `check` / `run` / `run --apply` / `run --apply --replace`；v1 只写审批记录，v2 当前执行全部 11 条注册契约桥）。
-- 同步单元合同：`docs/SYNC_UNIT_CONTRACT.md`；Stage 6a 实现在 `cli/sync-unit.mjs`，专项测试为 `cli/tests/sync-unit.test.mjs`。当前无用户可见队列命令、API 或前端同步入口。
+- 同步单元合同：`docs/SYNC_UNIT_CONTRACT.md`；Stage 6a 实现在 `cli/sync-unit.mjs`，Stage 6b 队列入口为 `cli/sync-queue.mjs`（`list` / `enqueue` / `retry` / `cancel` / `mark` / `reconfirm`，写入必须 `--apply`）。当前无上传 API 或前端同步入口。
 - 验证命令：文档为内容复查；前端为 `npm run build`；CLI 为 `npm test`。
 - 已知坑：仓库根当前缺用户层 `cv.md`、`modes/_profile.md`、`portals.yml` 属于正常 onboarding 状态；`gy --status` 只报告，不自动创建。证据包 v1 没有签名，离线文件来源信任由用户选择文件承担。
 - 已知坑：当前 H2 演示能力数据种在 `demo_student`（用户名 `demo_student` / 密码 `demo123456`）；浏览器若仍登录临时账号 `123`，能力证据包导出会按预期提示“当前账号还没有可导出的能力证据”。
@@ -230,3 +232,4 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、简历
 - 2026-09-03 — PRD 补充 Stage 6 实施顺序 — 固定本地确定性构建 / 校验、显式本地队列、授权 API 与云端投影、网页摘要与 Trace 汇总的推进顺序，并把每一步的不可越界项写入当前验收边界；不改变产品目标，也不代表同步实现开始。
 - 2026-09-03 — 实现 Stage 6a 本地同步单元 builder / validator 并校准 PRD — 覆盖 canonical 哈希、自然身份、内容指纹、禁传字段、basis 冲突、Trace append-only、队列动作纯规则、删除墓碑与确认哈希校验；`cli/` 全量 120 项测试通过，下一步进入 6b 显式本地队列，仍待用户统一验收。
 - 2026-09-03 — PRD 修订至 v0.1 r4 — 明确 6b 显式本地队列的产品交付、仓库验证与用户验收分离、6c 前置门槛和统一验收顺序；不改变产品目标，也不代表新增实现或用户验收。
+- 2026-09-03 — 实现 Stage 6b 显式本地同步队列并修订 PRD 至 v0.1 r5 — 支持本地待发摘要、幂等入队、状态过滤、用户触发重试、认证 / 重绑阻断、冲突证据、取消审计、删除墓碑、有界备份和 `gy --status` 摘要；`cli/` 全量 129 项测试通过，仍不联网、不上传、不后台重试，待用户统一验收。

@@ -2,7 +2,7 @@
 
 ## Status
 
-This is the Stage 6 contract baseline. The local deterministic builder and validator are implemented in `cli/sync-unit.mjs` and covered by `cli/tests/sync-unit.test.mjs`; queue-action and tombstone rules are exercised as pure state functions only. The repository has not implemented cloud synchronization, a persistent queue, a user-facing CLI queue command, API, database, or frontend projection.
+This is the Stage 6 contract baseline. Stage 6a is implemented by `cli/sync-unit.mjs` and covered by `cli/tests/sync-unit.test.mjs`. Stage 6b is implemented by `cli/sync-queue.mjs` and covered by `cli/tests/sync-queue.test.mjs`: it persists an explicit local queue, exposes queue commands, and protects retry, rebind, conflict, cancel, and deletion boundaries. The repository has not implemented cloud synchronization, authorized upload API, database projection, or frontend synchronization UI.
 
 ## Purpose
 
@@ -138,6 +138,33 @@ For `trace.decision.v1`:
 
 v0.1 retries are user-triggered. Background retry of already confirmed units can be considered only after the explicit path proves safe.
 
+### Local Queue Contract
+
+The Stage 6b queue is installed at `data/sync-queue.json`; every mutation replaces the file atomically after writing a bounded backup under `data/sync-queue-backups/`. Both paths are user-layer data and must remain outside git.
+
+Commands:
+
+```text
+node sync-queue.mjs list [--status <status>] [--json]
+node sync-queue.mjs enqueue <unit.json> [--apply] [--json]
+node sync-queue.mjs retry <idempotency-key> [--apply] [--json]
+node sync-queue.mjs cancel <idempotency-key> [--apply] [--json]
+node sync-queue.mjs mark <idempotency-key> <event> [--cloud-content-hash <hash>] [--active-device <id>] [--apply] [--json]
+node sync-queue.mjs reconfirm <idempotency-key> <unit.json> --active-device <id> [--apply] [--json]
+```
+
+Entry states are exactly `pending`, `auth-blocked`, `rebind-blocked`, `network-failed`, `conflicted`, and `tombstoned`. Mark events are exactly `auth-failed`, `device-rebound`, `network-failed`, `server-conflict`, and `web-deleted`.
+
+- `enqueue` defaults to dry-run; `--apply` is required to write the queue. Repeating the exact unit is idempotent. One object identity can have only one current entry.
+- `retry` is user-triggered and is allowed only from `auth-blocked` or `network-failed`; it reuses the same unit and idempotency key.
+- `cancel` removes the entry but keeps the audit event. It does not modify any local business object.
+- `server-conflict` requires cloud evidence through `--cloud-content-hash`; a hash that classifies as idempotent or accepted is rejected. Conflicted units cannot be retried unchanged.
+- `device-rebound` requires the new active device ID. A blocked unit returns to pending only through exact-unit `reconfirm` with that new device.
+- `web-deleted` requires a cloud hash matching the queued unit. It creates a tombstone and blocks the same content from re-entering the queue.
+- `gy --status` reports the queue only as a local count and state. It never interprets pending as uploaded.
+
+The queue remains offline: it has no network call, automatic upload, background retry, or business-object write. Its audit records only the event, action, idempotency key, cloud evidence hash when relevant, and UTC time.
+
 ## Deletion
 
 - Deleting or disconnecting a web opportunity summary hides the cloud projection and records a tombstone.
@@ -167,5 +194,7 @@ Before any endpoint or persistence work, implement a local deterministic builder
 6. Append-only Trace deduplication and identity collision.
 7. Queue retry without duplicate enqueue, blocked-after-rebind, and cancel behavior.
 8. Deletion tombstones that prevent resurrection without deleting local objects.
+
+Stage 6b additionally requires persistent-queue tests for dry-run versus apply, duplicate enqueue, one current entry per object identity, auth/network retry, exact-unit rebind confirmation, cloud-hash conflict evidence, cancel isolation, tombstone resurrection blocking, and user-visible list/status behavior.
 
 No implementation may describe itself as automatic sync. Stage 6 remains explicit, user-confirmed, and auditable until all tests above pass.

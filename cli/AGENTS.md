@@ -25,7 +25,7 @@
 
 ### 当前本地闭环边界
 
-- `gy --status` 只读报告能力证据、简历素材、定稿、渲染、简历版本库、简历事实链、岗位分析、防骗核查、公司机会、面试准备、面试复盘和能力反哺的就绪状态。
+- `gy --status` 只读报告能力证据、简历素材、定稿、渲染、简历版本库、简历事实链、岗位分析、防骗核查、公司机会、面试准备、面试复盘、能力反哺和本地同步队列的就绪状态。
 - 已落地链路：能力证据导入 -> 简历素材 / 定稿 / 渲染 / 工作台版本库 -> 简历事实链只读审计 -> 岗位分析 / 防骗核查 -> 公司机会 / 投递清单 / 节点 mutation / 产物挂载 -> 面试准备 / 复盘 -> 本地能力反哺台账；每个写入合同都要求 dry-run、`--apply` 和覆盖时 `--replace`。本地 Skill Runtime v0.2 已提供封闭注册表、计划校验、dry-run、审批记录、替换保护和 11 条契约 dispatcher：素材、JD 分析、防骗核查、定稿、渲染、面试准备、面试复盘、能力反哺、公司机会导入、节点 mutation 与产物挂载都能通过对应已注册工具显式写入声明目标。
 - offer-toolkit 已吸收为本地契约、系统模板和方法文档，不创建 offer-toolkit 的第二套外部运行时，不输出到外部目录。
 - 面试复盘候选、岗位分析结论和 JD 线索都不会自动写入当前能力证据包、投递进度表、简历素材或云端。
@@ -40,6 +40,17 @@
 - 本地凭证：`data/device-installation.json` 与 `data/device-binding.json` 属于用户层，必须保持 gitignored，不得写入仓库、日志或 Trace。
 - 绑定只建立设备授权，不自动导入能力证据包，不自动上传简历、报告、STAR 故事、扫描材料或求职进度。
 - 网页端解绑不删除本地任何文件；CLI 断开只删除本地设备凭证，不删除证据包或其他用户产物。
+
+### 同步队列（CRITICAL）
+
+- 契约：仓库根 `docs/SYNC_UNIT_CONTRACT.md`。
+- 查看：`node sync-queue.mjs list [--status <status>] [--json]`，只读。
+- 入队：`node sync-queue.mjs enqueue <unit.json>` 默认 dry-run；写入必须 `--apply`。重复完全相同单元幂等；同一对象身份只允许一个当前条目。
+- 状态：只有 `pending`、`auth-blocked`、`rebind-blocked`、`network-failed`、`conflicted`、`tombstoned`。`pending` 只表示本地待发，绝不表示已上传或已同步。
+- 重试：`retry <idempotency-key>` 只允许用户显式触发，且仅从认证 / 网络失败状态回到 pending；复用同一幂等键和单元。
+- 重绑：`mark <key> device-rebound --active-device <device-id>` 先阻断旧设备单元；只有用完全相同单元执行 `reconfirm` 才能回到 pending。
+- 冲突与删除：`server-conflict` / `web-deleted` 必须携带云端内容哈希证据；删除只落本地 tombstone，不删除本机会、tracker、报告或产物。
+- 写入边界：队列只写 `data/sync-queue.json` 与 `data/sync-queue-backups/*`，不联网、不自动上传、不后台重试、不修改业务对象，不保存简历全文、JD 原文、报告全文、STAR 原稿、私人备注、联系人、凭证或密钥。
 
 **规则：** 用户要求定制事实或目标（目标岗位、叙事、红线、城市偏好、薪资期望）→ 写 `modes/_profile.md` 或 `config/profile.yml`。用户要求流程规则、自定义工作流 → 写 `modes/_custom.md`。**永远不编辑 `modes/_shared.md` 存用户内容。**
 
@@ -322,6 +333,8 @@ node gy.mjs --status --json
 | `data/interview-review/*.json` | 用户确认后的面试复盘溯源包 |
 | `data/capability-feedback/*.json` | 用户确认后的能力反哺本地台账 |
 | `reports/capability-feedback/*.md` | 能力反哺本地报告 |
+| `data/sync-queue.json` | 用户确认后的本地同步摘要待发队列 |
+| `data/sync-queue-backups/*` | 队列显式替换前的有界备份 |
 | `portals.yml` | 校招信息源配置 |
 | `reports/` | 评估报告 `{###}-{公司}-{日期}.md` |
 | `templates/cv-template.html` | 简历 HTML 模板（中文 A4 一页） |
