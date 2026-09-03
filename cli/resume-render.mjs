@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { loadInstalledResumeMaterials } from './resume-materials.mjs';
+import { loadInstalledResumeFinal } from './resume-final.mjs';
 import {
   backupFile,
   ContractToolError,
@@ -51,6 +52,7 @@ const TEMPLATE_MARKER = '<!--GY:RESUME_CONTENT-->';
 const TEMPLATE_DIRECTORY = join(dirname(fileURLToPath(import.meta.url)), 'templates/resume');
 const TEMPLATE_CATALOG_PATH = join(TEMPLATE_DIRECTORY, 'templates.json');
 const ATS_POSTURES = new Set(['friendly', 'acceptable', 'limited']);
+const CONTENT_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 
 const USAGE = `Usage:
   node resume-render.mjs list [--json]
@@ -119,6 +121,55 @@ function validateMaterialsBinding(input, materials) {
     materialsPackageId: input.materialsPackageId,
     materialsContentHash: input.materialsContentHash,
   };
+}
+
+function requireContentHash(value, path) {
+  const text = requireString(value, path, { min: 71, max: 71 }, ContractToolError, 'invalid-render');
+  if (!CONTENT_HASH_PATTERN.test(text)) {
+    throw renderError(`${path} must use sha256:<64 lowercase hex>`, 'invalid-render', { path });
+  }
+  return text;
+}
+
+function validateFinalBinding(input, finalProvenance, validateCurrent = true) {
+  const fieldNames = ['finalPlanId', 'finalPlanContentHash', 'finalDocumentContentHash'];
+  const present = fieldNames.filter(field => input[field] !== undefined);
+  if (present.length === 0) return null;
+  if (present.length !== fieldNames.length) {
+    throw renderError(
+      'finalPlanId, finalPlanContentHash, and finalDocumentContentHash must be provided together',
+      'invalid-render',
+      { path: `$.${present[0]}` },
+    );
+  }
+  const binding = {
+    finalPlanId: requireSafeId(input.finalPlanId, '$.finalPlanId', ContractToolError, 'invalid-render'),
+    finalPlanContentHash: requireContentHash(input.finalPlanContentHash, '$.finalPlanContentHash'),
+    finalDocumentContentHash: requireContentHash(input.finalDocumentContentHash, '$.finalDocumentContentHash'),
+  };
+  if (!finalProvenance && validateCurrent) {
+    throw renderError('A final-bound render requires an installed resume final plan', 'final-missing');
+  }
+  if (validateCurrent && (
+    binding.finalPlanId !== finalProvenance.plan.plan.planId
+    || binding.finalPlanContentHash !== finalProvenance.plan.contentHash
+  )) {
+    throw renderError(
+      'finalPlanId / finalPlanContentHash do not match the installed final plan; regenerate the render after confirming the current final plan.',
+      'final-mismatch',
+    );
+  }
+  if (validateCurrent && finalProvenance.finalDocument === null) {
+    throw renderError('A final-bound render requires the installed cv.md document', 'final-document-missing');
+  }
+  if (validateCurrent
+    && binding.finalDocumentContentHash !== finalProvenance.finalDocumentContentHash) {
+    throw renderError(
+      'finalDocumentContentHash does not match the installed cv.md; regenerate the render after confirming the current final document.',
+      'final-mismatch',
+    );
+  }
+  return binding;
 }
 
 function canonicalizeHeader(input) {
@@ -295,12 +346,23 @@ function canonicalizeSimpleLists(resume) {
   return { certifications, awards, languages, publications, volunteer };
 }
 
-export function canonicalizeResumeRender(input, materials = null) {
+export function canonicalizeResumeRender(
+  input,
+  materials = null,
+  finalProvenance = null,
+  validateFinalCurrentBinding = true,
+) {
   requireObjectWithOptional(
     input,
     '$',
     ['schema', 'schemaVersion', 'renderId', 'generatedAt', 'traceId', 'templateId', 'confirmation', 'resume'],
-    ['materialsPackageId', 'materialsContentHash'],
+    [
+      'materialsPackageId',
+      'materialsContentHash',
+      'finalPlanId',
+      'finalPlanContentHash',
+      'finalDocumentContentHash',
+    ],
     ContractToolError,
     'invalid-render',
   );
@@ -318,6 +380,7 @@ export function canonicalizeResumeRender(input, materials = null) {
     });
   }
   const materialsBinding = validateMaterialsBinding(input, materials);
+  const finalBinding = validateFinalBinding(input, finalProvenance, validateFinalCurrentBinding);
 
   requireObjectWithOptional(
     input.resume,
@@ -380,6 +443,7 @@ export function canonicalizeResumeRender(input, materials = null) {
     generatedAt: requireTimestamp(input.generatedAt, '$.generatedAt', ContractToolError, 'invalid-render'),
     traceId: requireSafeId(input.traceId, '$.traceId', ContractToolError, 'invalid-render'),
     ...(materialsBinding === null ? {} : materialsBinding),
+    ...(finalBinding === null ? {} : finalBinding),
     templateId,
     confirmation: input.confirmation,
     resume,
@@ -396,6 +460,9 @@ export function canonicalizeResumeRender(input, materials = null) {
       templateId,
       materialsPackageId: canonicalRender.materialsPackageId ?? null,
       materialsContentHash: canonicalRender.materialsContentHash ?? null,
+      finalPlanId: canonicalRender.finalPlanId ?? null,
+      finalPlanContentHash: canonicalRender.finalPlanContentHash ?? null,
+      finalDocumentContentHash: canonicalRender.finalDocumentContentHash ?? null,
       experienceCount: resume.experience.length,
       projectCount: resume.projects.length,
       educationCount: resume.education.length,
@@ -577,16 +644,16 @@ function htmlPathFor(root, renderId) {
   return join(root, RESUME_RENDER_HTML_DIR, `${renderId}.html`);
 }
 
-function readRenderFile(filePath, materials) {
+function readRenderFile(filePath, materials, finalProvenance = null) {
   const parsed = readJsonContract(filePath, {
     maxBytes: MAX_PACKAGE_BYTES,
     ErrorClass: ContractToolError,
     errorCode: 'invalid-render',
   });
-  return canonicalizeResumeRender(parsed, materials);
+  return canonicalizeResumeRender(parsed, materials, finalProvenance);
 }
 
-function readInstalledRender(root, materials, renderId) {
+function readInstalledRender(root, materials, renderId, finalProvenance = null) {
   const target = packagePathFor(root, renderId);
   let info;
   try {
@@ -597,7 +664,7 @@ function readInstalledRender(root, materials, renderId) {
   }
   if (!info.isFile()) throw renderError('Installed render path is not a regular file', 'invalid-render', { path: target });
   if (info.size > MAX_PACKAGE_BYTES) throw renderError('Installed render exceeds size limit', 'invalid-render', { path: target });
-  const installed = readRenderFile(target, materials);
+  const installed = readRenderFile(target, materials, finalProvenance);
   if (installed.render.renderId !== renderId) {
     throw renderError('Installed render filename does not match renderId', 'invalid-render', {
       path: target,
@@ -645,6 +712,7 @@ function backupHtmlFile(source, backupDir, contentHash) {
 export function inspectResumeRender(root = getCareerOpsRoot()) {
   try {
     const materials = loadInstalledResumeMaterials(root);
+    const finalProvenance = loadInstalledResumeFinal(root, materials);
     let entries;
     try {
       entries = readdirSync(packageDirFor(root), { withFileTypes: true });
@@ -660,7 +728,7 @@ export function inspectResumeRender(root = getCareerOpsRoot()) {
       throw renderError(`Too many resume render packages (max ${MAX_RENDERS})`, 'invalid-render');
     }
     const renders = files.map(name => {
-      const installed = readInstalledRender(root, materials, name.replace(/\.json$/, ''));
+      const installed = readInstalledRender(root, materials, name.replace(/\.json$/, ''), finalProvenance);
       const htmlPath = htmlPathFor(root, installed.render.renderId);
       const html = readOptionalHtml(htmlPath);
       const desired = renderResumeHtml(installed.render);
@@ -688,10 +756,11 @@ export function importResumeRender(filePath, options = {}) {
   if (replace && !apply) throw renderError('--replace requires --apply', 'usage');
 
   const materials = loadInstalledResumeMaterials(root);
-  const incoming = readRenderFile(filePath, materials);
+  const finalProvenance = loadInstalledResumeFinal(root, materials);
+  const incoming = readRenderFile(filePath, materials, finalProvenance);
   const packageTarget = packagePathFor(root, incoming.render.renderId);
   const htmlTarget = htmlPathFor(root, incoming.render.renderId);
-  const existing = readInstalledRender(root, materials, incoming.render.renderId);
+  const existing = readInstalledRender(root, materials, incoming.render.renderId, finalProvenance);
   const existingHtml = readOptionalHtml(htmlTarget);
   const desiredHtml = renderResumeHtml(incoming.render);
   const packageChange = !existing || existing.contentHash !== incoming.contentHash;
@@ -802,8 +871,9 @@ function main() {
     }
 
     const materials = loadInstalledResumeMaterials(root);
+    const finalProvenance = loadInstalledResumeFinal(root, materials);
     if (args.command === 'check') {
-      const result = readRenderFile(args.renderFile, materials);
+      const result = readRenderFile(args.renderFile, materials, finalProvenance);
       const payload = { ok: true, action: 'checked', ...result.summary };
       console.log(args.json ? JSON.stringify(payload, null, 2) : [
         '简历渲染包校验通过。',
@@ -811,6 +881,9 @@ function main() {
         `模板：${result.summary.templateId}`,
         `经历：${result.summary.experienceCount} / 项目：${result.summary.projectCount} / 教育：${result.summary.educationCount}`,
         result.summary.materialsPackageId ? `素材包：${result.summary.materialsPackageId}（${result.summary.materialsContentHash}）` : '素材溯源：未绑定',
+        result.summary.finalPlanId
+          ? `定稿计划：${result.summary.finalPlanId}（${result.summary.finalPlanContentHash} / ${result.summary.finalDocumentContentHash}）`
+          : '定稿溯源：未绑定',
         `内容哈希：${result.summary.contentHash}`,
       ].join('\n'));
       return;

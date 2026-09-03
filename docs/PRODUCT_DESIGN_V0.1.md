@@ -32,7 +32,7 @@
 | Stage 1 | 已实现，待用户统一验收 | 前端四模块路由与 `gy` 确定性对话入口已落地 |
 | Stage 2 | 已实现，待用户统一验收 | 网页显式导出与本地显式导入已形成文件闭环 |
 | Stage 3 | 已实现，待用户统一验收 | 10 分钟一次性绑定码、设备管理与解绑已落地 |
-| Stage 4 | 已实现，待用户统一验收 | 简历素材包、简历定稿审批、面试准备清单、面试复盘、结构化简历渲染、简历版本库文件桥、简历事实链只读审计和本地能力反哺台账已落地；平台同步不属于本阶段 |
+| Stage 4 | 已实现，待用户统一验收 | 简历素材包、简历定稿审批、面试准备清单、面试复盘、结构化简历渲染、简历版本库文件桥、显式事实链身份绑定与只读审计、本地能力反哺台账已落地；平台同步不属于本阶段 |
 | Stage 5 | 进行中 | 公司机会流程轨、本地 JD 分析合同 / 报告、公司机会对象、tracker 持久化、节点 mutation 合同、真实产物挂载、防骗核查契约、前端显式文件桥、页面内 skill 确认流、Skill Runtime v0.1 审批账本与 v0.2 全量 8 条契约执行桥已落地；云端同步未完成 |
 | Stage 6 | 未开始 | 求职摘要同步、网页进度摘要与 Trace 汇总尚未实现 |
 
@@ -42,11 +42,11 @@
 
 | 进度分类 | 当前范围 | 关键边界 |
 |---|---|---|
-| 已实现，待用户统一验收 | Agent-first 前端 Demo、四个独立模块、`gy` 本地入口、能力证据包显式导出 / 导入、设备绑定、简历素材与定稿、简历版本库文件桥、简历事实链只读审计、面试准备与复盘、结构化简历渲染、本地能力反哺台账 | Stage 1 到 Stage 4 的仓库实现已完成，但用户尚未明确验收 |
+| 已实现，待用户统一验收 | Agent-first 前端 Demo、四个独立模块、`gy` 本地入口、能力证据包显式导出 / 导入、设备绑定、简历素材与定稿、简历版本库文件桥、显式事实链身份绑定与只读审计、面试准备与复盘、结构化简历渲染、本地能力反哺台账 | Stage 1 到 Stage 4 的仓库实现已完成，但用户尚未明确验收 |
 | 进行中 | 公司机会横向流程轨、节点抽屉、人工节点管理、本地 JD 分析 / 防骗核查 / 公司机会 / tracker / 节点 mutation / 产物挂载合同，导入机会 JSON 与导出节点计划的显式文件桥，页面内 skill 确认流，以及本地 Skill Runtime v0.2 封闭注册表 / 计划校验 / dry-run / 审批记录 / 全量 8 条契约执行桥 | 页面内确认流只写前端会话对象；Runtime v0.2 对全部注册契约工具执行目标文件写入并记录前后指纹。云端同步未开始。此边界不否定已完成的简历版本库与面试管理显式文件桥 |
 | 未开始 | 求职摘要同步、网页进度摘要、Trace 汇总与同步重试闭环 | Stage 6 尚无实现，不能描述为自动同步已开始 |
 
-简历管理当前已形成“岗位方向 / 简历线 / 版本”的前端 Demo，并支持当前投递版、草稿派生、定稿、导出标记、历史投递版切换和本机成品导入。简历线与版本目录可通过 `get-yourself.resume-library v1` 显式导出，经 CLI 校验、dry-run 与 `--apply` 安装到本地；该版本库不替代 `cv.md` 定稿权威，也不自动生成渲染 HTML 或同步云端。对抗检验后，契约身份规则为外部显式 ID 优先锁定、本地默认 ID 避让，时间统一为毫秒精度 UTC，`generatedAt` 与 `traceId` 不参与语义哈希，因此仅时间或 Trace 变化的重导出应保持幂等。
+简历管理当前已形成“岗位方向 / 简历线 / 版本”的前端 Demo，并支持当前投递版、草稿派生、定稿、导出标记、历史投递版切换和本机成品导入。简历线与版本目录可通过 `get-yourself.resume-library v1` 显式导出，经 CLI 校验、dry-run 与 `--apply` 安装到本地；该版本库不替代 `cv.md` 定稿权威，也不自动生成渲染 HTML 或同步云端。对抗检验后，契约身份规则为外部显式 ID 优先锁定、本地默认 ID 避让，时间统一为毫秒精度 UTC，`generatedAt` 与 `traceId` 不参与语义哈希，因此仅时间或 Trace 变化的重导出应保持幂等。渲染包与版本库支持成组的可选定稿 / 渲染 / 导入来源指纹：旧文件继续输出 `binding-gap`，显式匹配当前定稿可被事实链证明，显式过期绑定输出漂移；前端导入保留真实来源指纹但不伪造渲染哈希。
 
 Get Yourself 本地工作台不是一个独立的求职工具，也不是把网页功能复制到终端里。它是把两个已有产品改造成一个连续系统：
 
@@ -993,7 +993,7 @@ draft（草稿，可编辑）
 
 v0.1 不通过后台自动同步修复漂移，也不把简历版本库升级为事实权威。所有修复都是用户可见的显式动作，并记录 Trace。
 
-当前实现边界：`cli/resume-fact-chain.mjs` 已提供只读审计命令 `audit`，并接入 `gy --status`。它可以汇总素材、STAR 故事库、定稿计划、`cv.md`、渲染包、简历版本库与当前投递版的对象状态、内容哈希、可证明链路、漂移、候选和执行边界；空链路输出 `blocked`，内容漂移输出 `drifted`，多个候选输出 `ambiguous`。现有渲染包契约未保存定稿计划 ID 与 `cv.md` 指纹，版本库契约也未保存定稿或导入指纹；因此内容一致时最高诚实结论是 `binding-gap`，不能输出 `ready`。审计不调用 LLM、不执行 shell、不联网、不写用户层、不生成备份、不自动选择候选或修复文件。
+当前实现边界：`cli/resume-fact-chain.mjs` 已提供只读审计命令 `audit`，并接入 `gy --status`。它可以汇总素材、STAR 故事库、定稿计划、`cv.md`、渲染包、简历版本库与当前投递版的对象状态、内容哈希、可证明链路、漂移、候选和执行边界；空链路输出 `blocked`，内容漂移或显式身份过期输出 `drifted`，多个候选输出 `ambiguous`，旧 v1 文件缺少身份字段输出 `binding-gap`，唯一渲染包与唯一当前投递版均显式匹配当前定稿时可输出 `ready`。旧渲染包和旧版本库不会被自动升级、补写或按内容相等推断身份；审计不调用 LLM、不执行 shell、不联网、不写用户层、不生成备份、不自动选择候选或修复文件。
 
 ### 9.6 面试管理
 
@@ -1324,9 +1324,9 @@ Agent 可以向模块发起结构化写入，但模块本身保持独立路由�
 
 - 每条进入简历的内容都有来源，未确认推断不会进入定稿。
 
-当前实现边界：Stage 4a 已落地本地简历素材包契约与导入器。Agent 可以生成结构化候选草稿，用户确认后通过 `resume-materials.mjs` 写入 `data/resume-materials.json`，并派生 `interview-prep/story-bank.md`；导入器不修改 `cv.md`、不上传网页、不执行 LLM 抽取。Stage 4b 已落地简历定稿审批与面试准备清单：`resume-final.mjs` 只允许当前素材哈希匹配的 `verified` / `user_confirmed` 条目进入 `cv.md`，并保留用户手工维护的非托管章节；`interview-prep.mjs` 生成绑定当前素材的清单与 STAR 复盘，JD 全程只作为数据。Stage 4c 已落地面试复盘合同：`interview-review.mjs` 写入本地复盘 JSON 与会话 Markdown，差距和故事候选不直接修改任何下游事实源。结构化简历渲染也已通过 `resume-render.mjs` 落地，提供 11 套本地 HTML 模板、中文校招场景目录和确定性输出。Stage 4d 已落地本地能力反哺台账：`capability-feedback.mjs` 将复盘差距映射为本地跟进任务、将 STAR 候选映射为 `user_confirmed` 本地证据候选，不修改当前能力证据包、分数、素材、故事库、简历或平台数据。简历事实链只读审计已通过 `resume-fact-chain.mjs` 落地，用于识别内容漂移、候选歧义与当前契约绑定缺口。契约细节见 `docs/RESUME_MATERIALS_CONTRACT.md`、`docs/RESUME_FINAL_CONTRACT.md`、`docs/INTERVIEW_PREP_CONTRACT.md`、`docs/INTERVIEW_REVIEW_CONTRACT.md`、`docs/RESUME_RENDER_CONTRACT.md`、`docs/RESUME_LIBRARY_CONTRACT.md`、`docs/RESUME_FACT_CHAIN_CONTRACT.md` 与 `docs/CAPABILITY_FEEDBACK_CONTRACT.md`。
+当前实现边界：Stage 4a 已落地本地简历素材包契约与导入器。Agent 可以生成结构化候选草稿，用户确认后通过 `resume-materials.mjs` 写入 `data/resume-materials.json`，并派生 `interview-prep/story-bank.md`；导入器不修改 `cv.md`、不上传网页、不执行 LLM 抽取。Stage 4b 已落地简历定稿审批与面试准备清单：`resume-final.mjs` 只允许当前素材哈希匹配的 `verified` / `user_confirmed` 条目进入 `cv.md`，并保留用户手工维护的非托管章节；`interview-prep.mjs` 生成绑定当前素材的清单与 STAR 复盘，JD 全程只作为数据。Stage 4c 已落地面试复盘合同：`interview-review.mjs` 写入本地复盘 JSON 与会话 Markdown，差距和故事候选不直接修改任何下游事实源。结构化简历渲染也已通过 `resume-render.mjs` 落地，提供 11 套本地 HTML 模板、中文校招场景目录和确定性输出。Stage 4d 已落地本地能力反哺台账：`capability-feedback.mjs` 将复盘差距映射为本地跟进任务、将 STAR 候选映射为 `user_confirmed` 本地证据候选，不修改当前能力证据包、分数、素材、故事库、简历或平台数据。简历事实链只读审计已通过 `resume-fact-chain.mjs` 落地：渲染包与版本库支持显式身份绑定，旧文件保持 `binding-gap`，完整成组绑定可证明 `ready`，显式过期绑定输出 `drifted`。契约细节见 `docs/RESUME_MATERIALS_CONTRACT.md`、`docs/RESUME_FINAL_CONTRACT.md`、`docs/INTERVIEW_PREP_CONTRACT.md`、`docs/INTERVIEW_REVIEW_CONTRACT.md`、`docs/RESUME_RENDER_CONTRACT.md`、`docs/RESUME_LIBRARY_CONTRACT.md`、`docs/RESUME_FACT_CHAIN_CONTRACT.md` 与 `docs/CAPABILITY_FEEDBACK_CONTRACT.md`。
 
-前端简历管理已按“岗位方向 / 简历线 / 版本”改造：页面提供版本树、当前投递版标记、版本详情、本地导入、草稿派生、草稿保存、定稿、导出标记和历史投递版切换；Agent 生成只写入当前简历线的草稿。简历线与版本目录已通过 `get-yourself.resume-library v1` 显式文件桥持久化：浏览器只导出或读取契约 JSON，写入本地必须经 CLI check、dry-run、`--apply` 与替换时的 `--replace`。该版本库只是工作台目录权威，尚不替代、也不自动打通 `cv.md`、简历素材、定稿计划与渲染包之间的事实链。
+前端简历管理已按“岗位方向 / 简历线 / 版本”改造：页面提供版本树、当前投递版标记、版本详情、本地导入、草稿派生、草稿保存、定稿、导出标记和历史投递版切换；Agent 生成只写入当前简历线的草稿。简历线与版本目录已通过 `get-yourself.resume-library v1` 显式文件桥持久化：浏览器只导出或读取契约 JSON，写入本地必须经 CLI check、dry-run、`--apply` 与替换时的 `--replace`。该版本库只是工作台目录权威，不替代 `cv.md`、素材或定稿计划；显式来源指纹只用于事实链审计，导入版本没有反写权限。
 
 ### Stage 5：岗位评估与 tracker 闭环
 
@@ -1380,7 +1380,7 @@ Stage 6 开工前必须先定义同步单元。一个同步单元不是“整份
 
 ### 14.0 当前验收边界
 
-以下清单是用户验收标准，不因仓库实现完成而自动勾选。当前可开始统一验收 Stage 1 到 Stage 4，其中简历版本库可验收显式导出 / 导入、幂等安装、身份稳定与替换保护；简历事实链可验收只读状态汇总、漂移识别、候选列出与无写入边界，但不能由此验收自动绑定、自动修复或 `ready` 完整链路。Stage 5 可开始验收公司机会流程轨 Demo、本地 JD 分析报告、防骗核查报告、公司机会到投递清单的本地写入、节点 mutation 合同、真实产物挂载、前端显式文件桥、页面内 skill 确认流交互，以及 Skill Runtime v0.2 的注册表、计划校验、v1 审批记录和全部 8 条契约执行桥。页面内确认流只代表前端会话对象审批；Runtime v0.2 不能扩大到未注册工具，也不能因此验收云端同步；Stage 6 相关条目仍未开始实现。
+以下清单是用户验收标准，不因仓库实现完成而自动勾选。当前可开始统一验收 Stage 1 到 Stage 4，其中简历版本库可验收显式导出 / 导入、幂等安装、身份稳定与替换保护；简历事实链可验收只读状态汇总、旧文件 `binding-gap`、显式绑定 `ready`、显式过期 `drifted`、候选列出与无写入边界，但不能由此验收自动绑定或自动修复。Stage 5 可开始验收公司机会流程轨 Demo、本地 JD 分析报告、防骗核查报告、公司机会到投递清单的本地写入、节点 mutation 合同、真实产物挂载、前端显式文件桥、页面内 skill 确认流交互，以及 Skill Runtime v0.2 的注册表、计划校验、v1 审批记录和全部 8 条契约执行桥。页面内确认流只代表前端会话对象审批；Runtime v0.2 不能扩大到未注册工具，也不能因此验收云端同步；Stage 6 相关条目仍未开始实现。
 
 ### 14.1 核心路径
 

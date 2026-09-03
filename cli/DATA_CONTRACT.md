@@ -88,6 +88,14 @@
 
 `gy.mjs --status` 只读取用户层做就绪检查，不创建、不复制、不修改任何文件。能力证据包导入由 `evidence-package.mjs` 独立执行：`check` 只读，`import` 默认 dry-run，写入和替换分别需要 `--apply` 与 `--replace`。Skill Runtime 由 `skill-runtime.mjs` 独立执行，`list` / `check` 只读，`run` 默认 dry-run；v1 `--apply` 只写审批记录，v2 对全部 8 个注册契约工具显式执行：素材、定稿使用固定目标对，JD 分析、防骗核查、渲染、面试准备、复盘与能力反哺按契约内安全身份字段派生目标，执行记录包含目标前后指纹，覆盖目标或替换记录必须 `--replace`。简历素材导入由 `resume-materials.mjs` 独立执行，边界相同；它只写 `data/resume-materials.json` 与派生的 `interview-prep/story-bank.md`，永不修改 `cv.md`。简历定稿由 `resume-final.mjs` 独立执行，必须在用户确认计划后写入 `data/resume-final-plan.json` 与 `cv.md`。简历渲染由 `resume-render.mjs` 独立执行，只写渲染 JSON、本地 HTML 和备份，不上传、不自动打开浏览器、不修改定稿。简历版本库由 `resume-library.mjs` 独立执行，只写工作台简历线 / 版本目录 JSON 和备份；它不修改 `cv.md`、素材、定稿、渲染包或 HTML，浏览器也不直接写本地数据。简历事实链由 `resume-fact-chain.mjs` 只读审计，只向 stdout 输出对象状态、链路、漂移、候选和限制；`writeCount` 固定为 0，不创建备份，不自动选择或修复任何对象。岗位分析由 `job-analysis.mjs` 独立执行，只写岗位分析 JSON、派生 Markdown 和备份；JD 与公司内容是数据，不写投递进度表、简历素材或能力资产。防骗核查由 `scam-check.mjs` 独立执行，只写防骗核查 JSON、派生 Markdown 和备份；证据与信号内容是数据，不修改公司机会、投递清单、岗位分析或云端数据。公司机会由 `company-opportunity.mjs` 独立执行，只写机会 JSON、投递清单关联行和备份；它绑定已安装岗位分析，同步用户后续 tracker 状态到本地对象，但不修改节点顺序、不执行 skill、不上传、不投递。公司机会节点 mutation 也由 `company-opportunity.mjs` 独立执行，只写更新后的机会 JSON、mutation 记录和备份；不改投递清单状态、不挂产物、不执行 skill。公司机会产物挂载同样由 `company-opportunity.mjs` 独立执行，必须绑定真实文件字节哈希、当前机会哈希和兼容节点，只写机会 JSON、挂载记录和备份；不改节点状态、不改投递清单、不移动原始文件、不执行 skill。面试准备由 `interview-prep.mjs` 独立执行，只写准备 JSON 与派生 Markdown。面试复盘由 `interview-review.mjs` 独立执行，只写复盘 JSON、复盘 Markdown 和备份；其差距与故事候选不进入任何下游事实源。能力反哺由 `capability-feedback.mjs` 独立执行，只写能力反哺 JSON、派生 Markdown 和备份；差距只成为本地跟进任务，STAR 故事只成为本地证据候选，不修改当前能力证据包、能力分数、素材、故事库、简历、进度表或平台数据。意图路由不持久化用户原句；后续写入必须由宿主 AI 在用户确认后按对应模式的规范执行。
 
+### 简历来源身份扩展
+
+渲染包 v1 的 `finalPlanId` / `finalPlanContentHash` / `finalDocumentContentHash` 是可选成组兼容扩展。提供时必须匹配当前安装定稿计划与当前 `cv.md` 原文 UTF-8 SHA-256；过期绑定在 CLI check / import 中拒绝。旧渲染包不带字段仍有效，事实链输出 `binding-gap`，导入器不自动升级或补写。
+
+简历版本库 v1 的可选来源指纹同样保持旧文件兼容：定稿身份三字段必须成组且禁止草稿；渲染身份二字段必须成组且只允许导入版本；`sourceFileContentHash` 只证明导入过该文件，必须伴随 `fileName`，不授予反写 `cv.md`、素材、定稿或渲染包的权限。字段参与版本库语义哈希，修改来源身份必须走显式替换。
+
+事实链审计只读判定上述身份：旧文件输出 `binding-gap`；显式匹配输出 `ready` / `proven`；显式过期输出 `drifted`。内容相等本身不构成身份绑定，审计不为任何对象生成备份或修复文件。
+
 ## 自定义数据目录
 
 默认用户层文件在仓库根。可用以下方式指定外部目录：

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { getCareerOpsRoot } from './path-resolver.mjs';
@@ -238,6 +239,10 @@ function cvPathFor(root) {
   return join(root, CV_PATH);
 }
 
+function textContentHash(text) {
+  return `sha256:${createHash('sha256').update(text, 'utf8').digest('hex')}`;
+}
+
 function readPlanFile(filePath, materials) {
   const parsed = readJsonContract(filePath, {
     maxBytes: MAX_PLAN_BYTES,
@@ -259,6 +264,18 @@ function readInstalledPlan(root, materials) {
   if (!info.isFile()) throw planError('Installed plan path is not a regular file', 'invalid-plan', { path: target });
   if (info.size > MAX_PLAN_BYTES) throw planError('Installed plan exceeds size limit', 'invalid-plan', { path: target });
   return readPlanFile(target, materials);
+}
+
+export function loadInstalledResumeFinal(root = getCareerOpsRoot(), materials = loadInstalledResumeMaterials(root)) {
+  if (!materials) return null;
+  const installed = readInstalledPlan(root, materials);
+  if (!installed) return null;
+  const finalDocument = readOptionalTextFile(cvPathFor(root), MAX_CV_BYTES, 'invalid-cv');
+  return {
+    plan: installed,
+    finalDocument,
+    finalDocumentContentHash: finalDocument === null ? null : textContentHash(finalDocument),
+  };
 }
 
 function sectionState(currentResume, materials, plan) {

@@ -37,6 +37,7 @@
 - `documents` 最多 100 条；每条简历线最多 100 个版本。
 - 版本全文为 1 到 131072 个字符，不允许无法安全进入 JSON / HTML 工作流的基础控制字符。
 - `fileName` 是可选文件名，不能包含路径分隔符，也不能使用 Windows 保留设备名。
+- 版本来源指纹是 v1 可选兼容扩展；旧版本库没有这些字段仍有效，导入器不会自动补写。
 
 ```json
 {
@@ -94,8 +95,22 @@
 | `versions[].changeNote` | 是 | 2 到 500 字符 |
 | `versions[].content` | 是 | 成品简历全文 |
 | `versions[].fileName` | 否 | 本地文件名，不允许路径 |
+| `versions[].finalPlanId` | 否 | 定稿计划 ID；必须与两个定稿指纹成组提供 |
+| `versions[].finalPlanContentHash` | 否 | 定稿计划语义内容哈希 |
+| `versions[].finalDocumentContentHash` | 否 | 当前定稿 `cv.md` 的原文 UTF-8 SHA-256 |
+| `versions[].renderId` | 否 | 来源渲染包 ID；必须与 `renderContentHash` 成组提供，且仅允许导入版本 |
+| `versions[].renderContentHash` | 否 | 来源渲染包语义内容哈希 |
+| `versions[].sourceFileContentHash` | 否 | 导入源文件原文 UTF-8 SHA-256；仅允许导入版本，且必须同时记录 `fileName` |
 
 一条简历线最多一个 `draft`。当前投递版只能是 `final` 或 `exported`。
+
+来源指纹规则：
+
+1. `finalPlanId`、`finalPlanContentHash`、`finalDocumentContentHash` 必须完整成组提供，且 `draft` 版本禁止绑定不可变定稿来源。
+2. `renderId` 与 `renderContentHash` 必须成组提供，只能出现在 `source: "import"` 的版本上。
+3. `sourceFileContentHash` 只能出现在导入版本上，并且必须同时有 `fileName`；它证明用户导入过这个文件内容，不授予反写 `cv.md`、素材、定稿或渲染包的权限。
+4. 所有哈希必须使用 `sha256:<64 lowercase hex>`。
+5. 字段参与版本库语义哈希，因此补写或修改任何来源指纹都会形成新的语义内容，替换本地库时必须显式 `--replace`。
 
 语义哈希计算整个规范化版本库，但排除顶层 `generatedAt` 与 `traceId`。因此只重新导出时间或 Trace 指针不同、内容相同的版本库是幂等导入。
 
@@ -130,7 +145,7 @@ node resume-library.mjs import ../path/to/resume-library.json --apply --replace
 - **导出版本库**：用户确认后，把当前会话中的简历线与版本生成为 v1 契约 JSON，保存到本机下载目录。导出动作记录 Trace，但不写 `cli/data`。
 - **读取版本库**：用户选择本地 JSON 后，前端先按同一套规则严格校验，再显示简历线数、版本数、当前会话规模和内容哈希；用户确认后只替换当前前端会话对象，不修改任何本地文件。
 
-前端保留已导入契约对象的 `documentId` 与 `versionId`，以便下一次导出时维持稳定身份。前端显示时间转换为 Asia/Shanghai；契约内时间保持 UTC ISO。
+前端保留已导入契约对象的 `documentId`、`versionId` 与版本来源指纹，以便下一次导出时维持稳定身份、不伪造溯源。导入本机成品文件时，前端会记录文件名和原始文件内容的 UTF-8 SHA-256；导入渲染包 JSON 时只保留包内成组的定稿来源字段，不自行计算或伪造 `renderContentHash`。前端显示时间转换为 Asia/Shanghai；契约内时间保持 UTC ISO。
 
 ## 状态与消费
 
@@ -141,3 +156,4 @@ Agent 或后续本地 skill 消费版本库时必须遵守：
 3. 写入或替换本地版本库必须显式 `--apply` / `--replace`。
 4. 不能把版本库中的简历全文写成素材事实、能力证据或定稿。
 5. 生成下一版必须遵守既有简历线规则：Agent 只能写唯一草稿，不能覆盖定稿或导出版。
+6. 没有显式定稿来源的旧版本保持 `binding-gap`；有显式但过期来源的版本保持历史身份并报告漂移，不能被自动修复或重新标记为当前链路。

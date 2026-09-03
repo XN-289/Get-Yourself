@@ -25,6 +25,18 @@ function writeLibrary(root, name, library) {
   return path;
 }
 
+function activeVersion(library) {
+  return library.documents[0].versions.find(version => {
+    return version.versionId === library.documents[0].activeVersionId;
+  });
+}
+
+function buildLibraryWithActiveVersion(overrides) {
+  const library = buildLibrary();
+  Object.assign(activeVersion(library), overrides);
+  return library;
+}
+
 test('canonicalizes the resume library and ignores generated time in its hash', () => {
   const library = buildLibrary();
   const result = canonicalizeResumeLibrary(library);
@@ -109,6 +121,70 @@ test('routes resume library persistence to its contract tool', () => {
   assert.equal(route.modeFile, 'resume-library.mjs');
   assert.ok(route.suggestedAction.includes('dry-run'));
   assert.ok(route.securityNotes.some(note => note.includes('不修改 cv.md')));
+});
+
+test('version provenance fields are grouped and restricted to valid lifecycles', () => {
+  const library = buildLibrary();
+  const baseHash = canonicalizeResumeLibrary(library).contentHash;
+  const version = activeVersion(library);
+  const provenance = {
+    finalPlanId: 'resume-final-demo',
+    finalPlanContentHash: `sha256:${'1'.repeat(64)}`,
+    finalDocumentContentHash: `sha256:${'2'.repeat(64)}`,
+    renderId: 'demo-java-backend-render',
+    renderContentHash: `sha256:${'3'.repeat(64)}`,
+    sourceFileContentHash: `sha256:${'4'.repeat(64)}`,
+  };
+  Object.assign(version, provenance, {
+    source: 'import',
+    fileName: 'resume.json',
+  });
+
+  const canonical = canonicalizeResumeLibrary(library);
+  assert.equal(canonical.library.documents[0].versions[1].finalPlanId, provenance.finalPlanId);
+  assert.equal(canonical.library.documents[0].versions[1].renderContentHash, provenance.renderContentHash);
+  assert.equal(canonical.library.documents[0].versions[1].sourceFileContentHash, provenance.sourceFileContentHash);
+  assert.notEqual(canonical.contentHash, baseHash);
+
+  assert.throws(
+    () => canonicalizeResumeLibrary(buildLibraryWithActiveVersion({ finalPlanId: provenance.finalPlanId })),
+    /must be provided together/,
+  );
+  assert.throws(
+    () => canonicalizeResumeLibrary(buildLibraryWithActiveVersion({
+      ...provenance,
+      finalDocumentContentHash: `sha256:${'A'.repeat(64)}`,
+    })),
+    /sha256/,
+  );
+  assert.throws(
+    () => {
+      const draft = buildLibrary();
+      const first = draft.documents[0].versions[0];
+      first.status = 'draft';
+      Object.assign(first, {
+        finalPlanId: provenance.finalPlanId,
+        finalPlanContentHash: provenance.finalPlanContentHash,
+        finalDocumentContentHash: provenance.finalDocumentContentHash,
+      });
+      canonicalizeResumeLibrary(draft);
+    },
+    /draft versions cannot bind/,
+  );
+  assert.throws(
+    () => canonicalizeResumeLibrary(buildLibraryWithActiveVersion({
+      renderId: provenance.renderId,
+      renderContentHash: provenance.renderContentHash,
+    })),
+    /source "import"/,
+  );
+  assert.throws(
+    () => canonicalizeResumeLibrary(buildLibraryWithActiveVersion({
+      source: 'import',
+      sourceFileContentHash: provenance.sourceFileContentHash,
+    })),
+    /requires fileName/,
+  );
 });
 
 test('resume library import is explicit, idempotent, and isolated', () => {

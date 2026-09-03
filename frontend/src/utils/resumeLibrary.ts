@@ -2,6 +2,7 @@ import type {
   ResumeDocument,
   ResumeDocumentSource,
   ResumeTemplate,
+  ResumeVersionProvenance,
   ResumeVersion,
   ResumeVersionStatus
 } from "@/stores/studentWorkbench";
@@ -18,6 +19,12 @@ export interface ResumeLibraryVersion {
   changeNote: string;
   content: string;
   fileName?: string;
+  finalPlanId?: string;
+  finalPlanContentHash?: string;
+  finalDocumentContentHash?: string;
+  renderId?: string;
+  renderContentHash?: string;
+  sourceFileContentHash?: string;
 }
 
 export interface ResumeLibraryDocument {
@@ -57,6 +64,7 @@ const DISPLAY_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/;
 const UNSAFE_CONTENT_CONTROL_PATTERN = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const FILE_NAME_PATTERN = /^[^\\/:*?"<>|\r\n]{1,110}\.[A-Za-z0-9]{1,12}$/;
 const WINDOWS_RESERVED_FILE_NAME_PATTERN = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i;
+const CONTENT_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 
 const VERSION_STATUSES = new Set<ResumeVersionStatus>(["draft", "final", "exported"]);
 const VERSION_SOURCES = new Set<ResumeDocumentSource>(["agent", "import", "manual"]);
@@ -79,7 +87,13 @@ const VERSION_FIELDS = [
   "source",
   "changeNote",
   "content",
-  "fileName"
+  "fileName",
+  "finalPlanId",
+  "finalPlanContentHash",
+  "finalDocumentContentHash",
+  "renderId",
+  "renderContentHash",
+  "sourceFileContentHash"
 ];
 
 function asRecord(value: unknown): UnknownRecord {
@@ -144,6 +158,14 @@ function requireFileName(value: unknown, path: string) {
   return text;
 }
 
+function requireContentHash(value: unknown, path: string) {
+  const text = requireString(value, path, { min: 71, max: 71 });
+  if (!CONTENT_HASH_PATTERN.test(text)) {
+    throw new Error(`${path} 必须使用 sha256:<64 位小写十六进制>`);
+  }
+  return text;
+}
+
 function requireArray(value: unknown, path: string, min: number, max: number) {
   if (!Array.isArray(value) || value.length < min || value.length > max) {
     throw new Error(`${path} 数量必须在 ${min} 到 ${max} 之间`);
@@ -152,7 +174,11 @@ function requireArray(value: unknown, path: string, min: number, max: number) {
 }
 
 async function sha256Json(value: unknown) {
-  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  return sha256Text(JSON.stringify(value));
+}
+
+export async function sha256Text(value: string) {
+  const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return `sha256:${[...new Uint8Array(digest)]
     .map(byte => byte.toString(16).padStart(2, "0"))
@@ -180,6 +206,36 @@ function canonicalizeVersion(value: unknown, path: string, templateIds: Set<stri
   };
   if (record.fileName !== undefined) {
     canonical.fileName = requireFileName(record.fileName, `${path}.fileName`);
+  }
+  const finalFields = ["finalPlanId", "finalPlanContentHash", "finalDocumentContentHash"] as const;
+  const finalPresent = finalFields.filter(field => record[field] !== undefined);
+  if (finalPresent.length > 0 && finalPresent.length !== finalFields.length) {
+    throw new Error(`${path}.finalPlanId、finalPlanContentHash 与 finalDocumentContentHash 必须成组提供`);
+  }
+  if (finalPresent.length === finalFields.length) {
+    if (canonical.status === "draft") throw new Error(`${path}.草稿不能绑定不可变定稿指纹`);
+    canonical.finalPlanId = requireSafeId(record.finalPlanId, `${path}.finalPlanId`);
+    canonical.finalPlanContentHash = requireContentHash(record.finalPlanContentHash, `${path}.finalPlanContentHash`);
+    canonical.finalDocumentContentHash = requireContentHash(
+      record.finalDocumentContentHash,
+      `${path}.finalDocumentContentHash`
+    );
+  }
+  if (record.renderId !== undefined || record.renderContentHash !== undefined) {
+    if (record.renderId === undefined || record.renderContentHash === undefined) {
+      throw new Error(`${path}.renderId 与 renderContentHash 必须成组提供`);
+    }
+    if (canonical.source !== "import") throw new Error(`${path}.渲染包指纹只能用于导入版本`);
+    canonical.renderId = requireSafeId(record.renderId, `${path}.renderId`);
+    canonical.renderContentHash = requireContentHash(record.renderContentHash, `${path}.renderContentHash`);
+  }
+  if (record.sourceFileContentHash !== undefined) {
+    if (canonical.source !== "import") throw new Error(`${path}.导入文件指纹只能用于导入版本`);
+    if (canonical.fileName === undefined) throw new Error(`${path}.导入文件指纹必须同时记录 fileName`);
+    canonical.sourceFileContentHash = requireContentHash(
+      record.sourceFileContentHash,
+      `${path}.sourceFileContentHash`
+    );
   }
   return canonical;
 }
@@ -362,7 +418,8 @@ export async function buildResumeLibrary(input: {
         source: version.source,
         changeNote: version.changeNote,
         content: version.content,
-        ...(version.fileName ? { fileName: version.fileName } : {})
+        ...(version.fileName ? { fileName: version.fileName } : {}),
+        ...(version.provenance ? versionProvenanceToContract(version.provenance) : {})
       }));
     const activeVersion = document.versions.find(version => version.id === document.activeVersionId)
       ?? document.versions[0];
@@ -387,6 +444,23 @@ export async function buildResumeLibrary(input: {
     },
     input.allowedTemplates
   );
+}
+
+function versionProvenanceToContract(provenance: ResumeVersionProvenance) {
+  return {
+    ...(provenance.finalPlanId ? {
+      finalPlanId: provenance.finalPlanId,
+      finalPlanContentHash: provenance.finalPlanContentHash,
+      finalDocumentContentHash: provenance.finalDocumentContentHash
+    } : {}),
+    ...(provenance.renderId ? {
+      renderId: provenance.renderId,
+      renderContentHash: provenance.renderContentHash
+    } : {}),
+    ...(provenance.sourceFileContentHash ? {
+      sourceFileContentHash: provenance.sourceFileContentHash
+    } : {})
+  };
 }
 
 export async function importResumeLibraryFile(

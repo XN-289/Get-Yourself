@@ -25,8 +25,18 @@ Optional provenance:
 
 - `materialsPackageId`
 - `materialsContentHash`
+- `finalPlanId`
+- `finalPlanContentHash`
+- `finalDocumentContentHash`
 
-The two provenance fields must appear together. When present, they must match the installed resume materials package.
+The fields form two optional compatibility groups:
+
+- `materialsPackageId` and `materialsContentHash` must appear together and match the installed resume materials package.
+- `finalPlanId`, `finalPlanContentHash`, and `finalDocumentContentHash` must appear together. When present, `check`, `import`, and installed-render inspection require the first two fields to match the installed final plan and the third field to match the raw UTF-8 SHA-256 of the current `cv.md`.
+
+A render package without final provenance remains a valid legacy v1 package. It can still bind materials and render deterministic HTML, but the fact-chain audit reports it as a `binding-gap` instead of claiming that it targets the current final resume. The importer never adds, upgrades, or backfills these fields automatically; producing them requires a newly user-confirmed render package.
+
+All content hashes use `sha256:<64 lowercase hex>`. Optional provenance fields participate in the package semantic hash.
 
 `confirmation` must be `user_confirmed`. Unknown fields are rejected at every object level.
 
@@ -99,5 +109,6 @@ node resume-render.mjs import <render.json> [--apply] [--replace] [--json]
 - Contact details remain plain, selectable text.
 - Output is self-contained local HTML with no script or external stylesheet.
 - The importer never opens a browser or uploads output.
-- The importer does not modify `cv.md`, resume materials, story bank, tracker, capability assets, or platform data.
+- The importer does not modify `cv.md`, the final plan, resume materials, story bank, tracker, capability assets, or platform data.
+- A final-bound render that points to a missing, different, or stale final plan / `cv.md` is rejected on CLI check and import; it is not repaired or accepted as current.
 - Resume text is sensitive local data and must not be sent to external services for rendering.

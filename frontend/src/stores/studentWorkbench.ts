@@ -21,6 +21,7 @@ const MAX_RESUME_VERSION_CONTENT = 128 * 1024;
 const UNSAFE_RESUME_CONTENT_CONTROL_PATTERN = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const RESUME_FILE_NAME_PATTERN = /^[^\\/:*?"<>|\r\n]{1,110}\.[A-Za-z0-9]{1,12}$/;
 const WINDOWS_RESERVED_FILE_NAME_PATTERN = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i;
+const CONTENT_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 
 export interface ChatMessage {
   id: number;
@@ -47,6 +48,74 @@ export interface SkillExecutionPlan {
   status: SkillExecutionPlanStatus;
 }
 
+function normalizeResumeVersionProvenance(
+  value: ResumeDocumentInput["provenance"],
+  source: ResumeDocumentSource,
+  fileName?: string,
+  status: ResumeVersionStatus = "final"
+): ResumeVersionProvenance | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("简历来源指纹必须是对象");
+  }
+  const allowed = [
+    "finalPlanId",
+    "finalPlanContentHash",
+    "finalDocumentContentHash",
+    "renderId",
+    "renderContentHash",
+    "sourceFileContentHash"
+  ];
+  const unknown = Object.keys(value).filter(key => !allowed.includes(key));
+  if (unknown.length > 0) throw new Error(`简历来源指纹包含未知字段：${unknown.join(", ")}`);
+
+  const requireHash = (key: keyof ResumeVersionProvenance) => {
+    const hash = value[key];
+    if (typeof hash !== "string" || !CONTENT_HASH_PATTERN.test(hash)) {
+      throw new Error(`${key} 必须使用 sha256:<64 位小写十六进制>`);
+    }
+    return hash;
+  };
+  const result: ResumeVersionProvenance = {};
+  const finalFields: (keyof ResumeVersionProvenance)[] = [
+    "finalPlanId",
+    "finalPlanContentHash",
+    "finalDocumentContentHash"
+  ];
+  const finalPresent = finalFields.filter(key => value[key] !== undefined);
+  if (finalPresent.length > 0 && finalPresent.length !== finalFields.length) {
+    throw new Error("定稿计划 ID、计划哈希与 cv.md 哈希必须成组提供");
+  }
+  if (finalPresent.length === finalFields.length) {
+    if (status === "draft") throw new Error("草稿不能绑定不可变定稿指纹");
+    const planId = value.finalPlanId;
+    if (typeof planId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(planId)) {
+      throw new Error("finalPlanId 包含不支持的字符");
+    }
+    result.finalPlanId = planId;
+    result.finalPlanContentHash = requireHash("finalPlanContentHash");
+    result.finalDocumentContentHash = requireHash("finalDocumentContentHash");
+  }
+
+  if (value.renderId !== undefined || value.renderContentHash !== undefined) {
+    if (value.renderId === undefined || value.renderContentHash === undefined) {
+      throw new Error("renderId 与 renderContentHash 必须成组提供");
+    }
+    if (source !== "import") throw new Error("渲染包指纹只能用于导入版本");
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(value.renderId)) {
+      throw new Error("renderId 包含不支持的字符");
+    }
+    result.renderId = value.renderId;
+    result.renderContentHash = requireHash("renderContentHash");
+  }
+  if (value.sourceFileContentHash !== undefined) {
+    if (source !== "import") throw new Error("导入文件指纹只能用于导入版本");
+    if (!fileName) throw new Error("导入文件指纹必须同时记录文件名");
+    result.sourceFileContentHash = requireHash("sourceFileContentHash");
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 export interface EvidenceAbility {
   id: number;
   name: string;
@@ -58,6 +127,15 @@ export interface EvidenceAbility {
 export type ResumeVersionStatus = "draft" | "final" | "exported";
 export type ResumeDocumentSource = "agent" | "import" | "manual";
 
+export interface ResumeVersionProvenance {
+  finalPlanId?: string;
+  finalPlanContentHash?: string;
+  finalDocumentContentHash?: string;
+  renderId?: string;
+  renderContentHash?: string;
+  sourceFileContentHash?: string;
+}
+
 export interface ResumeVersion {
   id: number;
   libraryVersionId?: string;
@@ -67,6 +145,7 @@ export interface ResumeVersion {
   updatedAt: string;
   source: ResumeDocumentSource;
   fileName?: string;
+  provenance?: ResumeVersionProvenance;
   changeNote: string;
   content: string;
 }
@@ -87,6 +166,7 @@ export interface ResumeDocumentInput {
   content: string;
   source?: ResumeDocumentSource;
   fileName?: string;
+  provenance?: ResumeVersionProvenance;
   changeNote?: string;
 }
 
@@ -1186,7 +1266,10 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     }
   }
 
-  function normalizeResumeDocument(input: ResumeDocumentInput) {
+  function normalizeResumeDocument(
+    input: ResumeDocumentInput,
+    status: ResumeVersionStatus = "final"
+  ) {
     const title = input.title.trim() || "未命名简历";
     const targetRole = input.targetRole.trim() || "未标注岗位";
     const template =
@@ -1202,6 +1285,12 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
     const fileName = input.fileName?.trim();
     if (fileName && !RESUME_FILE_NAME_PATTERN.test(fileName)) throw new Error("简历文件名不能包含路径分隔符");
     if (fileName && WINDOWS_RESERVED_FILE_NAME_PATTERN.test(fileName)) throw new Error("简历文件名不能使用 Windows 保留设备名");
+    const provenance = normalizeResumeVersionProvenance(
+      input.provenance,
+      input.source ?? "manual",
+      fileName || undefined,
+      status
+    );
     return {
       title,
       targetRole,
@@ -1209,12 +1298,13 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       content,
       source: input.source ?? "manual",
       fileName: fileName || undefined,
+      provenance,
       changeNote
     };
   }
 
   function importResumeDocument(input: ResumeDocumentInput) {
-    const document = normalizeResumeDocument(input);
+    const document = normalizeResumeDocument(input, "final");
     const { title, targetRole, ...versionFields } = document;
     const version: ResumeVersion = {
       id: resumeVersionId++,
@@ -1260,7 +1350,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       source: input.source ?? "manual",
       fileName: input.fileName ?? base.fileName,
       changeNote: input.changeNote ?? `从 v${base.version} 派生`
-    });
+    }, "draft");
     const { title, targetRole, ...versionFields } = document;
     const draft: ResumeVersion = {
       id: resumeVersionId++,
@@ -1294,7 +1384,7 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
       ...patch,
       source: patch.source ?? version.source,
       fileName: patch.fileName ?? version.fileName
-    });
+    }, "draft");
     const { title, targetRole, ...versionFields } = document;
     Object.assign(version, versionFields, {
       updatedAt: "刚刚"
@@ -1365,6 +1455,20 @@ export const useStudentWorkbenchStore = defineStore("student-workbench", () => {
         updatedAt: formatResumeLibraryTimestamp(version.updatedAt),
         source: version.source,
         ...(version.fileName ? { fileName: version.fileName } : {}),
+        ...(version.finalPlanId || version.renderId || version.sourceFileContentHash ? {
+          provenance: {
+            ...(version.finalPlanId ? {
+              finalPlanId: version.finalPlanId,
+              finalPlanContentHash: version.finalPlanContentHash,
+              finalDocumentContentHash: version.finalDocumentContentHash
+            } : {}),
+            ...(version.renderId ? {
+              renderId: version.renderId,
+              renderContentHash: version.renderContentHash
+            } : {}),
+            ...(version.sourceFileContentHash ? { sourceFileContentHash: version.sourceFileContentHash } : {})
+          }
+        } : {}),
         changeNote: version.changeNote,
         content: version.content
       }));

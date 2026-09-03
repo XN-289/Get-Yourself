@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { importResumeMaterials, loadInstalledResumeMaterials } from '../resume-materials.mjs';
+import { applyResumeFinalPlan, loadInstalledResumeFinal } from '../resume-final.mjs';
 import {
   canonicalizeResumeRender,
   importResumeRender,
@@ -18,6 +19,7 @@ import { routeIntent } from '../lib/intent-router.mjs';
 
 const cliRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const materialsExamplePath = join(cliRoot, 'templates/resume-materials.example.json');
+const finalExamplePath = join(cliRoot, 'templates/resume-final.example.json');
 const TEMPLATE_IDS = [
   'classic-ats',
   'ledger',
@@ -35,6 +37,11 @@ const TEMPLATE_IDS = [
 function installMaterials(root) {
   importResumeMaterials(materialsExamplePath, { root, apply: true });
   return loadInstalledResumeMaterials(root);
+}
+
+function installFinal(root, materials) {
+  applyResumeFinalPlan(finalExamplePath, { root, apply: true });
+  return loadInstalledResumeFinal(root, materials);
 }
 
 function buildRender(materials, overrides = {}) {
@@ -245,6 +252,60 @@ test('renders all eleven templates safely and deterministically', () => {
     assert.throws(
       () => canonicalizeResumeRender(buildRender(materials, { templateId: 'unknown-template' }), materials),
       /templateId/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('optional final provenance is explicit, complete, and current', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-resume-render-final-binding-'));
+  try {
+    const materials = installMaterials(root);
+    const final = installFinal(root, materials);
+    const binding = {
+      finalPlanId: final.plan.plan.planId,
+      finalPlanContentHash: final.plan.contentHash,
+      finalDocumentContentHash: final.finalDocumentContentHash,
+    };
+    const render = buildRender(materials, binding);
+    const result = canonicalizeResumeRender(render, materials, final);
+    assert.equal(result.summary.finalPlanId, binding.finalPlanId);
+    assert.equal(result.summary.finalPlanContentHash, binding.finalPlanContentHash);
+    assert.equal(result.summary.finalDocumentContentHash, binding.finalDocumentContentHash);
+
+    const unbound = canonicalizeResumeRender(buildRender(materials), materials, final);
+    assert.equal(unbound.summary.finalPlanId, null);
+    assert.notEqual(unbound.contentHash, result.contentHash);
+    assert.throws(
+      () => canonicalizeResumeRender(buildRender(materials, {
+        finalPlanId: binding.finalPlanId,
+      }), materials, final),
+      /must be provided together/,
+    );
+    assert.throws(
+      () => canonicalizeResumeRender(buildRender(materials, {
+        ...binding,
+        finalDocumentContentHash: `sha256:${'A'.repeat(64)}`,
+      }), materials, final),
+      /sha256/,
+    );
+    assert.throws(
+      () => canonicalizeResumeRender(buildRender(materials, binding), materials, null),
+      /installed resume final plan/,
+    );
+
+    const source = writeRender(root, 'render.json', render);
+    importResumeRender(source, { root, apply: true });
+    assert.equal(inspectResumeRender(root).state, 'ready');
+
+    const stale = buildRender(materials, {
+      ...binding,
+      finalDocumentContentHash: `sha256:${'0'.repeat(64)}`,
+    });
+    assert.throws(
+      () => importResumeRender(writeRender(root, 'stale.json', stale), { root, apply: true }),
+      error => error.code === 'final-mismatch',
     );
   } finally {
     rmSync(root, { recursive: true, force: true });

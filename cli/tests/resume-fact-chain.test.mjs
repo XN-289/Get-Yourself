@@ -5,7 +5,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { importResumeMaterials, loadInstalledResumeMaterials } from '../resume-materials.mjs';
-import { applyResumeFinalPlan } from '../resume-final.mjs';
+import { applyResumeFinalPlan, loadInstalledResumeFinal } from '../resume-final.mjs';
 import { importResumeRender } from '../resume-render.mjs';
 import { importResumeLibrary } from '../resume-library.mjs';
 import { auditResumeFactChain } from '../resume-fact-chain.mjs';
@@ -50,18 +50,32 @@ function setupFactChain(root, options = {}) {
   importResumeMaterials(materialsExamplePath, { root, apply: true });
   const materials = loadInstalledResumeMaterials(root);
   applyResumeFinalPlan(finalExamplePath, { root, apply: true });
+  const final = loadInstalledResumeFinal(root, materials);
+  let firstRender = null;
 
-  importResumeRender(
-    writeJson(root, 'render.json', buildRenderSource(materials)),
+  const renderSource = buildRenderSource(materials);
+  if (options.boundRender) {
+    renderSource.finalPlanId = final.plan.plan.planId;
+    renderSource.finalPlanContentHash = final.plan.contentHash;
+    renderSource.finalDocumentContentHash = final.finalDocumentContentHash;
+  }
+  firstRender = importResumeRender(
+    writeJson(root, 'render.json', renderSource),
     { root, apply: true },
   );
   if (options.secondRender) {
+    const secondSource = buildRenderSource(
+      materials,
+      'demo-java-backend-modern',
+      'modern-sidebar',
+    );
+    if (options.boundRender) {
+      secondSource.finalPlanId = final.plan.plan.planId;
+      secondSource.finalPlanContentHash = final.plan.contentHash;
+      secondSource.finalDocumentContentHash = final.finalDocumentContentHash;
+    }
     importResumeRender(
-      writeJson(root, 'render-second.json', buildRenderSource(
-        materials,
-        'demo-java-backend-modern',
-        'modern-sidebar',
-      )),
+      writeJson(root, 'render-second.json', secondSource),
       { root, apply: true },
     );
   }
@@ -72,6 +86,15 @@ function setupFactChain(root, options = {}) {
     return version.versionId === library.documents[0].activeVersionId;
   });
   active.content = cv;
+  if (options.boundLibrary) {
+    active.source = 'import';
+    active.fileName = 'render.json';
+    active.finalPlanId = final.plan.plan.planId;
+    active.finalPlanContentHash = final.plan.contentHash;
+    active.finalDocumentContentHash = final.finalDocumentContentHash;
+    active.renderId = firstRender.incoming.renderId;
+    active.renderContentHash = firstRender.incoming.contentHash;
+  }
   importResumeLibrary(writeJson(root, 'library.json', library), { root, apply: true });
   return { materials, cv, library };
 }
@@ -137,6 +160,87 @@ test('fact chain proves observable links and honestly reports contract binding g
   }
 });
 
+test('fully bound fact chain reaches ready without rewriting legacy files', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-fact-chain-bound-'));
+  try {
+    setupFactChain(root, { boundRender: true, boundLibrary: true });
+    const before = snapshot(root);
+    const audit = auditResumeFactChain(root);
+    assert.deepEqual(snapshot(root), before);
+    assert.equal(audit.state, 'ready');
+    assert.equal(audit.objects.renderPackages[0].state, 'ready');
+    assert.equal(audit.objects.renderPackages[0].finalBinding, 'current');
+    assert.equal(audit.objects.currentApplicationVersions[0].state, 'ready');
+    assert.equal(audit.objects.currentApplicationVersions[0].finalBinding, 'current');
+    assert.equal(audit.objects.currentApplicationVersions[0].renderBinding, 'current');
+    assert.equal(audit.links.finalDocumentToRenderPackages[0].state, 'proven');
+    assert.equal(audit.links.finalDocumentToCurrentApplicationVersions[0].state, 'proven');
+    assert.equal(audit.drifts.length, 0);
+    assert.equal(audit.execution.writeCount, 0);
+    assert.equal(audit.execution.automaticRepair, false);
+    assert.equal(buildStatusPayload(root).resumeFactChain.state, 'ready');
+    assert.deepEqual(auditResumeFactChain(root), audit);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('stale explicit bindings become drift instead of silent repair candidates', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-fact-chain-stale-binding-'));
+  try {
+    setupFactChain(root, { boundRender: true, boundLibrary: true });
+    const cvPath = join(root, 'cv.md');
+    writeFileSync(cvPath, `${readFileSync(cvPath, 'utf8')}\n<!-- 用户手工补充 -->\n`, 'utf8');
+    const before = snapshot(root);
+    const audit = auditResumeFactChain(root);
+    assert.deepEqual(snapshot(root), before);
+    assert.equal(audit.state, 'drifted');
+    assert.equal(audit.objects.renderPackages[0].state, 'drifted');
+    assert.equal(audit.objects.renderPackages[0].finalBinding, 'stale');
+    assert.equal(audit.objects.currentApplicationVersions[0].state, 'drifted');
+    assert.equal(audit.objects.currentApplicationVersions[0].finalBinding, 'stale');
+    assert.equal(audit.links.finalDocumentToRenderPackages[0].state, 'drifted');
+    assert.equal(audit.links.finalDocumentToCurrentApplicationVersions[0].state, 'drifted');
+    for (const driftId of [
+      'render-final-binding-stale',
+      'library-final-binding-stale',
+    ]) {
+      const item = audit.drifts.find(candidate => candidate.driftId === driftId);
+      assert.ok(item, driftId);
+      assert.equal(item.automaticRepair, false);
+    }
+    assert.equal(audit.execution.writeCount, 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a stale library render binding drifts the version without rewriting the render package', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gy-fact-chain-render-binding-stale-'));
+  try {
+    setupFactChain(root, { boundRender: true, boundLibrary: true });
+    const libraryPath = join(root, 'data/resume-library.json');
+    const library = JSON.parse(readFileSync(libraryPath, 'utf8'));
+    const active = library.documents[0].versions.find(version => {
+      return version.versionId === library.documents[0].activeVersionId;
+    });
+    active.renderContentHash = `sha256:${'0'.repeat(64)}`;
+    writeFileSync(libraryPath, `${JSON.stringify(library, null, 2)}\n`, 'utf8');
+
+    const before = snapshot(root);
+    const audit = auditResumeFactChain(root);
+    assert.deepEqual(snapshot(root), before);
+    assert.equal(audit.state, 'drifted');
+    assert.equal(audit.objects.renderPackages[0].state, 'ready');
+    assert.equal(audit.objects.currentApplicationVersions[0].state, 'drifted');
+    assert.equal(audit.objects.currentApplicationVersions[0].renderBinding, 'stale');
+    assert.ok(audit.drifts.some(item => item.driftId === 'library-render-binding-stale'));
+    assert.equal(audit.execution.writeCount, 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('fact chain audit detects user edits without repairing them', () => {
   const root = mkdtempSync(join(tmpdir(), 'gy-fact-chain-drift-'));
   try {
@@ -166,6 +270,7 @@ test('fact chain audit detects user edits without repairing them', () => {
     assert.equal(audit.objects.storyBank.consistency, 'different');
     assert.equal(audit.objects.finalDocument.consistency, 'different');
     assert.equal(audit.objects.renderPackages[0].html.state, 'different');
+    assert.equal(audit.objects.currentApplicationVersions[0].state, 'drifted');
     assert.equal(audit.objects.currentApplicationVersions[0].finalDocumentContentState, 'different');
     for (const driftId of [
       'story-bank-different',

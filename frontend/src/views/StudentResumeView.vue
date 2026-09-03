@@ -16,6 +16,7 @@ import type {
   ResumeVersionStatus
 } from "@/stores/studentWorkbench";
 import { useStudentWorkbenchStore } from "@/stores/studentWorkbench";
+import { sha256Text } from "@/utils/resumeLibrary";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -130,7 +131,11 @@ function formatPeriod(start: unknown, end: unknown) {
   return joinParts([asString(start), asString(end)], " - ");
 }
 
-function renderPackageToInput(text: string, fileName: string): ResumeDocumentInput {
+function renderPackageToInput(
+  text: string,
+  fileName: string,
+  sourceFileContentHash: string
+): ResumeDocumentInput {
   const parsed: unknown = JSON.parse(text);
   const root = asRecord(parsed);
   if (!root || asString(root.schema) !== "get-yourself.resume-render" || root.schemaVersion !== 1) {
@@ -254,12 +259,23 @@ function renderPackageToInput(text: string, fileName: string): ResumeDocumentInp
     templateId: asString(root.templateId, "classic-ats"),
     content: lines.join("\n"),
     source: "import",
-    fileName
+    fileName,
+    provenance: {
+      ...(root.finalPlanId && root.finalPlanContentHash && root.finalDocumentContentHash ? {
+        finalPlanId: asString(root.finalPlanId),
+        finalPlanContentHash: asString(root.finalPlanContentHash),
+        finalDocumentContentHash: asString(root.finalDocumentContentHash)
+      } : {}),
+      sourceFileContentHash
+    }
   };
 }
 
-function documentInputFromText(text: string, fileName: string): ResumeDocumentInput {
-  if (fileName.toLowerCase().endsWith(".json")) return renderPackageToInput(text, fileName);
+async function documentInputFromText(text: string, fileName: string): Promise<ResumeDocumentInput> {
+  const sourceFileContentHash = await sha256Text(text);
+  if (fileName.toLowerCase().endsWith(".json")) {
+    return renderPackageToInput(text, fileName, sourceFileContentHash);
+  }
   return {
     title: fileName.replace(/\.[^.]+$/, "") || "导入简历",
     targetRole: "未标注岗位",
@@ -267,7 +283,8 @@ function documentInputFromText(text: string, fileName: string): ResumeDocumentIn
     content: text,
     source: "import",
     changeNote: "本机成品导入",
-    fileName
+    fileName,
+    provenance: { sourceFileContentHash }
   };
 }
 
@@ -283,7 +300,7 @@ async function handleImportChange(event: Event) {
   }
 
   try {
-    const imported = store.importResumeDocument(documentInputFromText(await file.text(), file.name));
+    const imported = store.importResumeDocument(await documentInputFromText(await file.text(), file.name));
     selectedDocumentId.value = imported.id;
     selectedVersionId.value = imported.activeVersionId;
   } catch (error) {

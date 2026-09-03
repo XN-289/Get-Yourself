@@ -36,6 +36,7 @@ const VERSION_SOURCES = new Set(['agent', 'import', 'manual']);
 const UNSAFE_CONTENT_CONTROL_PATTERN = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const FILE_NAME_PATTERN = /^[^\\/:*?"<>|\r\n]{1,110}\.[A-Za-z0-9]{1,12}$/;
 const WINDOWS_RESERVED_FILE_NAME_PATTERN = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i;
+const CONTENT_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 
 const USAGE = `Usage:
   node resume-library.mjs check <library.json> [--json]
@@ -70,6 +71,14 @@ function requireFileName(value, path) {
   }
   if (WINDOWS_RESERVED_FILE_NAME_PATTERN.test(text)) {
     throw libraryError(`${path} cannot use a reserved Windows device name`);
+  }
+  return text;
+}
+
+function requireContentHash(value, path) {
+  const text = requireString(value, path, { min: 71, max: 71 }, ContractToolError, 'invalid-library');
+  if (!CONTENT_HASH_PATTERN.test(text)) {
+    throw libraryError(`${path} must use sha256:<64 lowercase hex>`);
   }
   return text;
 }
@@ -158,7 +167,15 @@ export function canonicalizeResumeLibrary(input) {
           'changeNote',
           'content',
         ],
-        ['fileName'],
+        [
+          'fileName',
+          'finalPlanId',
+          'finalPlanContentHash',
+          'finalDocumentContentHash',
+          'renderId',
+          'renderContentHash',
+          'sourceFileContentHash',
+        ],
         ContractToolError,
         'invalid-library',
       );
@@ -200,6 +217,70 @@ export function canonicalizeResumeLibrary(input) {
       };
       if (rawVersion.fileName !== undefined) {
         version.fileName = requireFileName(rawVersion.fileName, `${versionPath}.fileName`);
+      }
+      const finalFields = [
+        ['finalPlanId', requireSafeId],
+        ['finalPlanContentHash', requireContentHash],
+        ['finalDocumentContentHash', requireContentHash],
+      ];
+      const finalPresent = finalFields.filter(([field]) => rawVersion[field] !== undefined);
+      if (finalPresent.length > 0 && finalPresent.length !== finalFields.length) {
+        throw libraryError(
+          `${versionPath}.finalPlanId, finalPlanContentHash, and finalDocumentContentHash must be provided together`,
+        );
+      }
+      if (finalPresent.length === finalFields.length) {
+        if (version.status === 'draft') {
+          throw libraryError(`${versionPath} draft versions cannot bind immutable final provenance`);
+        }
+        version.finalPlanId = requireSafeId(
+          rawVersion.finalPlanId,
+          `${versionPath}.finalPlanId`,
+          ContractToolError,
+          'invalid-library',
+        );
+        version.finalPlanContentHash = requireContentHash(
+          rawVersion.finalPlanContentHash,
+          `${versionPath}.finalPlanContentHash`,
+        );
+        version.finalDocumentContentHash = requireContentHash(
+          rawVersion.finalDocumentContentHash,
+          `${versionPath}.finalDocumentContentHash`,
+        );
+      }
+
+      const renderPresent = ['renderId', 'renderContentHash']
+        .filter(field => rawVersion[field] !== undefined);
+      if (renderPresent.length === 1) {
+        throw libraryError(`${versionPath}.renderId and renderContentHash must be provided together`);
+      }
+      if (renderPresent.length === 2) {
+        if (version.source !== 'import') {
+          throw libraryError(`${versionPath}.renderId / renderContentHash require source "import"`);
+        }
+        version.renderId = requireSafeId(
+          rawVersion.renderId,
+          `${versionPath}.renderId`,
+          ContractToolError,
+          'invalid-library',
+        );
+        version.renderContentHash = requireContentHash(
+          rawVersion.renderContentHash,
+          `${versionPath}.renderContentHash`,
+        );
+      }
+
+      if (rawVersion.sourceFileContentHash !== undefined) {
+        if (version.source !== 'import') {
+          throw libraryError(`${versionPath}.sourceFileContentHash requires source "import"`);
+        }
+        if (version.fileName === undefined) {
+          throw libraryError(`${versionPath}.sourceFileContentHash also requires fileName`);
+        }
+        version.sourceFileContentHash = requireContentHash(
+          rawVersion.sourceFileContentHash,
+          `${versionPath}.sourceFileContentHash`,
+        );
       }
       return version;
     });

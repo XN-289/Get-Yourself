@@ -285,7 +285,7 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
               contentHash: file.raw.materialsContentHash,
             }
             : null;
-          canonical = canonicalizeResumeRender(file.raw, rawMaterials);
+          canonical = canonicalizeResumeRender(file.raw, rawMaterials, null, false);
         } catch {
           packageInvalid = true;
         }
@@ -302,6 +302,15 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
               && canonical.render.materialsContentHash === installedMaterials.contentHash
               ? 'current'
               : 'stale')));
+      const finalBinding = canonical === null || canonical.render.finalPlanId === undefined
+        ? (canonical === null ? 'unknown' : 'unbound')
+        : (installedPlan === null || finalDocument.contentHash === null
+          ? 'blocked'
+          : (canonical.render.finalPlanId === installedPlan.plan.planId
+            && canonical.render.finalPlanContentHash === installedPlan.contentHash
+            && canonical.render.finalDocumentContentHash === finalDocument.contentHash
+            ? 'current'
+            : 'stale'));
       const htmlPath = `${RESUME_RENDER_HTML_DIR}/${renderId ?? fileName.replace(/\.json$/, '')}.html`;
       const htmlFile = readTextObject(root, htmlPath, MAX_RENDER_HTML_BYTES);
       const expectedHtml = canonical === null ? null : renderResumeHtml(canonical.render);
@@ -312,7 +321,9 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
           : (expectedHtml === null ? 'blocked' : (htmlFile.text === expectedHtml ? 'ready' : 'different')));
       const renderState = packageInvalid
         ? 'invalid'
-        : (materialsBinding === 'stale' || materialsBinding === 'blocked' ? 'blocked' : 'ready');
+        : (materialsBinding === 'stale' || materialsBinding === 'blocked' || finalBinding === 'blocked'
+          ? 'blocked'
+          : (finalBinding === 'stale' ? 'drifted' : 'ready'));
       renderPackages.push({
         state: renderState,
         identity: { renderId },
@@ -324,8 +335,15 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
           ?? (typeof file.raw?.materialsPackageId === 'string' ? file.raw.materialsPackageId : null),
         materialsContentHash: canonical?.render.materialsContentHash
           ?? (typeof file.raw?.materialsContentHash === 'string' ? file.raw.materialsContentHash : null),
-        finalPlanId: null,
-        finalContentHash: null,
+        finalBinding,
+        finalPlanId: canonical?.render.finalPlanId
+          ?? (typeof file.raw?.finalPlanId === 'string' ? file.raw.finalPlanId : null),
+        finalPlanContentHash: canonical?.render.finalPlanContentHash
+          ?? (typeof file.raw?.finalPlanContentHash === 'string' ? file.raw.finalPlanContentHash : null),
+        finalDocumentContentHash: canonical?.render.finalDocumentContentHash
+          ?? (typeof file.raw?.finalDocumentContentHash === 'string' ? file.raw.finalDocumentContentHash : null),
+        finalContentHash: canonical?.render.finalDocumentContentHash
+          ?? (typeof file.raw?.finalDocumentContentHash === 'string' ? file.raw.finalDocumentContentHash : null),
         html: {
           state: htmlState,
           path: htmlPath,
@@ -375,13 +393,21 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
           '由用户确认渲染包后重新生成本地 HTML。',
         ));
       }
-      if (current.state !== 'invalid') {
+      if (finalBinding === 'unbound') {
         renderDrifts.push(drift(
           'render-final-binding-missing',
           'binding-gap',
           `渲染包 ${renderId} 只记录素材溯源，没有记录定稿计划 ID 和 cv.md 内容指纹。`,
           [relativePath, FINAL_PLAN_PATH, CV_PATH],
           '升级渲染契约前不得声称该包对准当前定稿；用户只能把它当作候选渲染输出。',
+        ));
+      } else if (finalBinding === 'stale') {
+        renderDrifts.push(drift(
+          'render-final-binding-stale',
+          'warn',
+          `渲染包 ${renderId} 记录的定稿计划或 cv.md 指纹与当前文件不一致。`,
+          [relativePath, FINAL_PLAN_PATH, CV_PATH],
+          '把该渲染包标记为过期；用户重新确认当前定稿后再生成或导入新渲染包。',
         ));
       }
     }
@@ -392,12 +418,14 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
       ? 'missing'
       : (renderPackages.some(item => item.state === 'invalid')
         ? 'invalid'
-        : (renderPackages.some(item => item.state === 'blocked') ? 'blocked' : 'ready')),
+        : (renderPackages.some(item => item.state === 'blocked')
+          ? 'blocked'
+          : (renderPackages.some(item => item.state === 'drifted') ? 'drifted' : 'ready'))),
     count: renderPackages.length,
     objects: renderPackages,
     drifts: renderDrifts,
     ambiguous: renderPackages.filter(item => item.state === 'ready').length > 1,
-    bindingGap: renderPackages.some(item => item.state !== 'invalid'),
+    bindingGap: renderPackages.some(item => item.state !== 'invalid' && item.finalBinding === 'unbound'),
   };
 
   const libraryFile = readRawJsonObject(root, RESUME_LIBRARY_PATH, MAX_LIBRARY_BYTES);
@@ -412,6 +440,9 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
   }
   const currentApplicationVersions = [];
   const libraryDrifts = [];
+  const renderPackagesById = new Map(renderPackages
+    .filter(item => item.state !== 'invalid' && item.identity.renderId !== null)
+    .map(item => [item.identity.renderId, item]));
   if (installedLibrary !== null) {
     for (const document of installedLibrary.library.documents) {
       const version = document.versions.find(item => item.versionId === document.activeVersionId);
@@ -419,8 +450,28 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
       const matchState = finalDocument.contentHash === null
         ? 'unknown'
         : (textHash(version.content) === finalDocument.contentHash ? 'current' : 'different');
+      const finalBinding = version.finalPlanId === undefined
+        ? 'unbound'
+        : (installedPlan === null || finalDocument.contentHash === null
+          ? 'blocked'
+          : (version.finalPlanId === installedPlan.plan.planId
+            && version.finalPlanContentHash === installedPlan.contentHash
+            && version.finalDocumentContentHash === finalDocument.contentHash
+            ? 'current'
+            : 'stale'));
+      const boundRender = version.renderId === undefined ? null : renderPackagesById.get(version.renderId);
+      const renderBinding = version.renderId === undefined
+        ? 'unbound'
+        : (boundRender === undefined || boundRender.contentHash !== version.renderContentHash ? 'stale' : 'current');
+      const versionState = version.status === 'draft'
+        || finalBinding === 'blocked'
+        || renderBinding === 'blocked'
+        ? 'blocked'
+        : (finalBinding === 'stale' || renderBinding === 'stale' || matchState === 'different'
+          ? 'drifted'
+          : 'ready');
       currentApplicationVersions.push({
-        state: 'ready',
+        state: versionState,
         identity: {
           libraryId: installedLibrary.library.libraryId,
           documentId: document.documentId,
@@ -430,20 +481,46 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
         source: version.source,
         templateId: version.templateId,
         contentHash: textHash(version.content),
-        finalPlanId: null,
-        finalContentHash: null,
+        finalPlanId: version.finalPlanId ?? null,
+        finalPlanContentHash: version.finalPlanContentHash ?? null,
+        finalDocumentContentHash: version.finalDocumentContentHash ?? null,
+        finalContentHash: version.finalDocumentContentHash ?? null,
+        finalBinding,
+        renderId: version.renderId ?? null,
+        renderContentHash: version.renderContentHash ?? null,
+        renderBinding,
+        sourceFileContentHash: version.sourceFileContentHash ?? null,
         finalDocumentContentState: matchState,
         reverseWriteAllowed: false,
       });
-      libraryDrifts.push(drift(
-        'library-final-binding-missing',
-        'binding-gap',
-        `当前投递版 ${document.documentId}/${version.versionId} 没有记录定稿计划或导入文件指纹。`,
-        [RESUME_LIBRARY_PATH, FINAL_PLAN_PATH, CV_PATH],
-        version.source === 'import'
-          ? '把该版本视为外部导入候选；不得反写 cv.md、素材或定稿。若要复用，必须显式创建新草稿。'
-          : '补充版本来源指纹前，只能通过内容指纹做候选匹配；不得自动改写事实链。',
-      ));
+      if (finalBinding === 'unbound') {
+        libraryDrifts.push(drift(
+          'library-final-binding-missing',
+          'binding-gap',
+          `当前投递版 ${document.documentId}/${version.versionId} 没有记录定稿计划或导入文件指纹。`,
+          [RESUME_LIBRARY_PATH, FINAL_PLAN_PATH, CV_PATH],
+          version.source === 'import'
+            ? '把该版本视为外部导入候选；不得反写 cv.md、素材或定稿。若要复用，必须显式创建新草稿。'
+            : '补充版本来源指纹前，只能通过内容指纹做候选匹配；不得自动改写事实链。',
+        ));
+      } else if (finalBinding === 'stale') {
+        libraryDrifts.push(drift(
+          'library-final-binding-stale',
+          'warn',
+          `当前投递版 ${document.documentId}/${version.versionId} 记录的定稿指纹已过期。`,
+          [RESUME_LIBRARY_PATH, FINAL_PLAN_PATH, CV_PATH],
+          '保留该历史投递身份；用户确认当前定稿后重新生成或导入版本。',
+        ));
+      }
+      if (renderBinding === 'stale') {
+        libraryDrifts.push(drift(
+          'library-render-binding-stale',
+          'warn',
+          `当前投递版 ${document.documentId}/${version.versionId} 绑定的渲染包不存在或指纹不一致。`,
+          [RESUME_LIBRARY_PATH, RESUME_RENDER_PACKAGE_DIR],
+          '保留该版本为独立导入线；用户确认渲染包后重新导入或派生草稿。',
+        ));
+      }
       if (matchState === 'different') {
         libraryDrifts.push(drift(
           'library-current-version-different',
@@ -479,12 +556,14 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
   const currentVersionCollection = {
     state: currentApplicationVersions.length === 0
       ? (resumeLibrary.state === 'ready' ? 'blocked' : resumeLibrary.state)
-      : (currentApplicationVersions.some(item => item.status === 'draft') ? 'blocked' : 'ready'),
+      : (currentApplicationVersions.some(item => item.state === 'blocked')
+        ? 'blocked'
+        : (currentApplicationVersions.some(item => item.state === 'drifted') ? 'drifted' : 'ready')),
     count: currentApplicationVersions.length,
     objects: currentApplicationVersions,
     drifts: libraryDrifts,
     ambiguous: currentApplicationVersions.length > 1,
-    bindingGap: currentApplicationVersions.length > 0,
+    bindingGap: currentApplicationVersions.some(item => item.finalBinding === 'unbound'),
   };
   drifts.push(...libraryDrifts);
 
@@ -551,16 +630,28 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
       },
       finalDocumentToRenderPackages: renderPackages.map(item => ({
         renderId: item.identity.renderId,
-        state: item.finalPlanId === null ? 'unproven' : 'proven',
+        state: item.finalBinding === 'current'
+          ? 'proven'
+          : (item.finalBinding === 'stale' ? 'drifted' : (item.finalBinding === 'unbound' ? 'unproven' : 'blocked')),
         finalPlanId: item.finalPlanId,
         finalContentHash: item.finalContentHash,
+        finalPlanContentHash: item.finalPlanContentHash,
+        finalDocumentContentHash: item.finalDocumentContentHash,
         materialsBinding: item.materialsBinding,
         htmlState: item.html.state,
       })),
       finalDocumentToCurrentApplicationVersions: currentApplicationVersions.map(item => ({
         documentId: item.identity.documentId,
         versionId: item.identity.versionId,
-        state: item.finalContentHash === null ? 'unproven' : 'proven',
+        state: item.finalBinding === 'current'
+          ? 'proven'
+          : (item.finalBinding === 'stale' ? 'drifted' : (item.finalBinding === 'unbound' ? 'unproven' : 'blocked')),
+        finalPlanId: item.finalPlanId,
+        finalContentHash: item.finalContentHash,
+        finalPlanContentHash: item.finalPlanContentHash,
+        finalDocumentContentHash: item.finalDocumentContentHash,
+        renderId: item.renderId,
+        renderContentHash: item.renderContentHash,
         finalDocumentContentState: item.finalDocumentContentState,
         source: item.source,
       })),
@@ -573,8 +664,8 @@ export function auditResumeFactChain(root = getCareerOpsRoot()) {
       currentApplicationVersionIds: currentApplicationVersions.map(item => item.identity.versionId),
     },
     limitations: [
-      '当前渲染契约未保存定稿计划 ID 与 cv.md 内容指纹，审计只能证明素材绑定与 HTML 一致性。',
-      '当前版本库契约未保存定稿或导入指纹，审计只能列候选并比较全文哈希。',
+      '渲染包与简历版本库的定稿绑定字段是可选兼容字段；旧文件会继续报告 binding-gap，不会被自动升级。',
+      '版本库中的导入文件哈希只证明用户导入过该文件内容，不代表它可以反写 cv.md 或当前定稿。',
       `共发现 ${bindingGapCount} 个显式绑定缺口；这不是自动修复项，需要契约升级后由用户重新确认。`,
     ],
     execution: {
