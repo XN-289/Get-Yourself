@@ -46,7 +46,7 @@ node skill-runtime.mjs run ../path/to/skill-run-plan.json --apply
 node skill-runtime.mjs run ../path/to/skill-run-plan.json --apply --replace
 ```
 
-当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。`gy` 本身不假装调用 LLM，也不直接写简历、tracker 或个人材料；素材导入、简历定稿与渲染、简历事实链审计、岗位分析、防骗核查、面试准备、面试复盘和能力反哺台账由用户确认或显式调用对应契约工具完成，实际任务由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。事实链对旧文件输出 `binding-gap`，对显式匹配的当前定稿输出 `ready` / `proven`，对显式过期绑定输出 `drifted`，全程零写入。`skill-runtime.mjs` v0.2 是封闭注册表、计划校验和窄口径契约 dispatcher：v1 计划只登记审批；v2 计划能执行全部 8 个注册契约工具，并记录目标前后指纹。
+当前 `gy` 是确定性对话入口加最小设备绑定：识别意图、选择落点模块和后台模式、提示需要补充的信息与审批边界；`connect` / `disconnect` 只维护设备凭证，不自动导入证据或同步求职数据。`gy` 本身不假装调用 LLM，也不直接写简历、tracker 或个人材料；素材导入、简历定稿与渲染、简历事实链审计、岗位分析、防骗核查、公司机会管理、面试准备、面试复盘和能力反哺台账由用户确认或显式调用对应契约工具完成，实际任务由宿主 AI CLI 按 `AGENTS.md` 与对应 `modes/*.md` 继续。事实链对旧文件输出 `binding-gap`，对显式匹配的当前定稿输出 `ready` / `proven`，对显式过期绑定输出 `drifted`，全程零写入。`skill-runtime.mjs` v0.2 是封闭注册表、计划校验和窄口径契约 dispatcher：v1 计划只登记审批；v2 计划能执行全部 11 个注册契约工具，并记录目标前后指纹。
 
 ## 它解决什么问题
 

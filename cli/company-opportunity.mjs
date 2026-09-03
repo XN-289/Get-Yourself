@@ -1384,6 +1384,10 @@ export async function importCompanyOpportunity(filePath, options = {}) {
       rowAction = existingRow ? 'update' : 'add';
     }
 
+    if (packageChange && existing && !replace) {
+      throw opportunityError('A different company opportunity package already exists; add --replace to replace it.', 'different-opportunity');
+    }
+
     if (!apply) {
       return {
         action: existing
@@ -1403,10 +1407,6 @@ export async function importCompanyOpportunity(filePath, options = {}) {
         incoming: incoming.summary,
       };
     }
-    if (packageChange && existing && !replace) {
-      throw opportunityError('A different company opportunity package already exists; add --replace to replace it.', 'different-opportunity');
-    }
-
     const backupPaths = { package: null, tracker: null };
     const backupDir = join(root, COMPANY_OPPORTUNITY_BACKUP_DIR, incoming.opportunity.opportunityId);
     if ((packageChange || trackerStateChange) && existing) {

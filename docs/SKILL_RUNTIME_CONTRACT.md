@@ -61,6 +61,21 @@ interview-review
   -> capability-feedback.import
   -> data/capability-feedback/{feedbackId}.json
   -> reports/capability-feedback/{feedbackId}.md
+
+opportunity-management
+  -> company-opportunity.import
+  -> data/company-opportunities/{opportunityId}.json
+  -> data/applications.md
+
+opportunity-management
+  -> company-opportunity-node.mutate
+  -> data/company-opportunities/{opportunityId}.json
+  -> data/company-opportunity-mutations/{opportunityId}/{mutationId}.json
+
+opportunity-management
+  -> company-opportunity-artifact.mount
+  -> data/company-opportunities/{opportunityId}.json
+  -> data/company-opportunity-artifact-mounts/{opportunityId}/{mountId}.json
 ```
 
 Every tool in the closed registry is dispatchable in v2. No unregistered skill or tool becomes executable through this expansion.
@@ -75,13 +90,13 @@ node skill-runtime.mjs run <plan.json> --apply [--json]
 node skill-runtime.mjs run <plan.json> --apply --replace [--json]
 ```
 
-`list` is read-only and exposes only the repository registry; its `dispatchable` flag identifies the eight implemented bridges. `check` is read-only. `run` defaults to dry-run and creates no run record or target object.
+`list` is read-only and exposes only the repository registry; its `dispatchable` flag identifies the eleven implemented bridges. `check` is read-only. `run` defaults to dry-run and creates no run record or target object.
 
 ## Registry Rules
 
 Registry entries live only in `cli/skill-runtime.mjs`. User input, JD text, web content, session history, and imported packages cannot add or modify registry entries.
 
-The closed v0.1 skill set is:
+The closed skill set is:
 
 | Skill | Allowed tools |
 |---|---|
@@ -91,6 +106,7 @@ The closed v0.1 skill set is:
 | `resume-generation` | `resume-final.import`, `resume-render.import` |
 | `interview-preparation` | `interview-prep.import` |
 | `interview-review` | `interview-review.import`, `capability-feedback.import` |
+| `opportunity-management` | `company-opportunity.import`, `company-opportunity-node.mutate`, `company-opportunity-artifact.mount` |
 
 Every registry entry declares target modules, input kinds, allowed target paths, no-write targets, and a downgrade path. A plan cannot use a tool that its skill did not declare.
 
@@ -116,6 +132,14 @@ Required fields:
 Validation rejects unknown fields, unregistered skills, unconfirmed plans, unsupported input kinds, undeclared tools, paths outside the shared skill/tool whitelist, duplicate target writes, and target paths containing traversal or absolute-path syntax. Every tool-call target must be allowed by both the selected skill and that exact tool. A v2 dispatch plan must contain exactly one call, and its target list must exactly match the selected bridge's declared target set. A v1 plan cannot carry v2 dispatch fields.
 
 For every dynamically named bridge, both target paths must use the same safe contract identity. Before check, dry-run, and apply, Runtime parses the hash-bound contract, reads its identity field (`analysisId`, `checkId`, `renderId`, `prepId`, `reviewId`, or `feedbackId`), and compares the contract-derived target paths with the plan-declared paths. A mismatch fails with `dispatch-target-contract-mismatch` before a run record or target object is written.
+
+The opportunity-management bridges derive their second target from the first identity plus the action identity:
+
+- `company-opportunity.import` requires `data/company-opportunities/{opportunityId}.json` and `data/applications.md`.
+- `company-opportunity-node.mutate` requires the opportunity JSON and `data/company-opportunity-mutations/{opportunityId}/{mutationId}.json`.
+- `company-opportunity-artifact.mount` requires the opportunity JSON and `data/company-opportunity-artifact-mounts/{opportunityId}/{mountId}.json`.
+
+The record path must use the same safe `opportunityId` as the opportunity JSON. Runtime does not fingerprint the referenced artifact file as a dispatch target; the artifact-mount contract still verifies its exact byte hash before execution.
 
 `resume-final.import` uses the fixed target pair `data/resume-final-plan.json` and `cv.md`; its contract must supply a safe `planId`, and the run result reports that identity.
 
@@ -177,7 +201,7 @@ Repeated `run --apply` with the same already-dispatched v2 plan is idempotent. A
 
 Different current bridge targets also require explicit `--replace`. Without it, apply fails with `skill-target-conflict` before writing the run record. With explicit replacement, the underlying importer creates its own target-specific backups and the run record stores their relative paths.
 
-Tool-result records remain bridge-specific. The resume-materials result stores `packageId` plus `materials` / `storyBank` backup paths. Resume final stores `planId` plus `plan` / `cv`; render stores `renderId` plus `package` / `html`; every paired JSON/document bridge stores `objectId` (the contract identity) plus `package` / `markdown` (or `html` for render). All include the tool key, action, and incoming contract content hash.
+Tool-result records remain bridge-specific. The resume-materials result stores `packageId` plus `materials` / `storyBank` backup paths. Resume final stores `planId` plus `plan` / `cv`; render stores `renderId` plus `package` / `html`; every paired JSON/document bridge stores `objectId` (the contract identity) plus `package` / `markdown` (or `html` for render). Company-opportunity import stores `opportunityId` plus `package` / `tracker` backup paths. Node mutation and artifact mount store `mutationId` / `mountId` as `objectId`, the confirmed plan hash, and the `opportunity` backup path. All include the tool key and action.
 
 Invalid target shape, such as a directory where a target file must be, fails with `invalid-target-state` before approval or target execution.
 

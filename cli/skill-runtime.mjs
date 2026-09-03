@@ -14,6 +14,11 @@ import { importInterviewPrep } from './interview-prep.mjs';
 import { importInterviewReview } from './interview-review.mjs';
 import { importCapabilityFeedback } from './capability-feedback.mjs';
 import {
+  importCompanyOpportunity,
+  mountCompanyOpportunityArtifact,
+  mutateCompanyOpportunityNodes,
+} from './company-opportunity.mjs';
+import {
   backupFile,
   ContractToolError,
   readJsonContract,
@@ -52,7 +57,7 @@ const RESUME_FINAL_DISPATCH_TARGETS = [
 ];
 const SAFE_TARGET_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_CONTRACT_FILE_BYTES = 256 * 1024;
-const MAX_FINGERPRINT_FILE_BYTES = 1024 * 1024;
+const MAX_FINGERPRINT_FILE_BYTES = 3 * 1024 * 1024;
 
 const USAGE = `Usage:
   node skill-runtime.mjs list [--json]
@@ -141,6 +146,35 @@ const DISPATCH_BRIDGES = new Map([
       documentExtension: '.md',
     },
   }],
+  ['company-opportunity.import', {
+    skillKey: 'opportunity-management',
+    conflictCode: 'different-opportunity',
+    importer: importCompanyOpportunity,
+    backupKeys: ['package', 'tracker'],
+    resultIdField: 'opportunityId',
+    targetsForContract: contract => companyImportTargetsForContract(contract),
+    targetsForPlan: call => companyImportTargetsForPlan(call),
+  }],
+  ['company-opportunity-node.mutate', {
+    skillKey: 'opportunity-management',
+    importer: mutateCompanyOpportunityNodes,
+    targetsForContract: contract => companyNodeTargetsForContract(contract),
+    targetsForPlan: call => companyRecordTargetsForPlan(
+      call,
+      'data/company-opportunity-mutations',
+      'mutationId',
+    ),
+  }],
+  ['company-opportunity-artifact.mount', {
+    skillKey: 'opportunity-management',
+    importer: mountCompanyOpportunityArtifact,
+    targetsForContract: contract => companyArtifactTargetsForContract(contract),
+    targetsForPlan: call => companyRecordTargetsForPlan(
+      call,
+      'data/company-opportunity-artifact-mounts',
+      'mountId',
+    ),
+  }],
 ]);
 
 const TOOLS = new Map([
@@ -190,6 +224,36 @@ const TOOLS = new Map([
     command: 'node capability-feedback.mjs import <contract.json>',
     inputKinds: new Set(['interview_notes', 'interview_prep']),
     targets: ['data/capability-feedback/', 'reports/capability-feedback/', 'data/capability-feedback-backups/'],
+    dispatchable: true,
+  }],
+  ['company-opportunity.import', {
+    command: 'node company-opportunity.mjs import <contract.json>',
+    inputKinds: new Set(['job_analysis']),
+    targets: [
+      'data/company-opportunities/',
+      'data/applications.md',
+      'data/company-opportunities-backups/',
+    ],
+    dispatchable: true,
+  }],
+  ['company-opportunity-node.mutate', {
+    command: 'node company-opportunity.mjs mutate-nodes <contract.json>',
+    inputKinds: new Set(['process_nodes']),
+    targets: [
+      'data/company-opportunities/',
+      'data/company-opportunity-mutations/',
+      'data/company-opportunities-backups/',
+    ],
+    dispatchable: true,
+  }],
+  ['company-opportunity-artifact.mount', {
+    command: 'node company-opportunity.mjs mount-artifact <contract.json>',
+    inputKinds: new Set(['local_artifact']),
+    targets: [
+      'data/company-opportunities/',
+      'data/company-opportunity-artifact-mounts/',
+      'data/company-opportunities-backups/',
+    ],
     dispatchable: true,
   }],
 ]);
@@ -281,6 +345,28 @@ const SKILLS = new Map([
     noWriteTargets: ['data/evidence-package.json', 'data/resume-materials.json', 'interview-prep/story-bank.md', 'cv.md', 'data/company-opportunities/', 'data/applications.md'],
     downgrade: '复盘结论和 STAR 候选先停留在本地台账，不写回能力证据或素材包。',
   }],
+  ['opportunity-management', {
+    skillKey: 'opportunity-management',
+    name: '公司机会管理',
+    purpose: '显式导入公司机会，并维护用户确认的流程节点与真实产物挂载。',
+    targetModules: ['interview-management'],
+    writesLocal: true,
+    inputKinds: new Set(['job_analysis', 'process_nodes', 'local_artifact']),
+    tools: new Set([
+      'company-opportunity.import',
+      'company-opportunity-node.mutate',
+      'company-opportunity-artifact.mount',
+    ]),
+    targets: [
+      'data/company-opportunities/',
+      'data/applications.md',
+      'data/company-opportunity-mutations/',
+      'data/company-opportunity-artifact-mounts/',
+      'data/company-opportunities-backups/',
+    ],
+    noWriteTargets: ['data/job-analysis/', 'reports/job-analysis/', 'data/resume-materials.json', 'cv.md'],
+    downgrade: '先输出目标机会、完整节点列表或待挂载产物，用户确认后再生成对应导入 / mutation / mount 计划。',
+  }],
 ]);
 
 function runtimeError(message, code = 'invalid-skill-plan', details = {}) {
@@ -369,16 +455,109 @@ function pairedDispatchTargetsFromPlan(call, rule) {
   return pairedDispatchTargetsForId(rule, ids[0]);
 }
 
+function requireCompanyTargetId(value, path) {
+  const id = requireSafeId(value, path, ContractToolError, 'dispatch-target-contract-mismatch');
+  if (!SAFE_TARGET_ID_PATTERN.test(id)) {
+    throw runtimeError(`${path} cannot be used as a target identity`, 'dispatch-target-contract-mismatch', {
+      path,
+      value,
+    });
+  }
+  return id;
+}
+
+function companyTargets(opportunityId, secondaryTarget) {
+  return [
+    `data/company-opportunities/${opportunityId}.json`,
+    secondaryTarget,
+  ].sort();
+}
+
+function companyImportTargetsForContract(contract) {
+  const opportunityId = requireCompanyTargetId(contract?.opportunityId, '$.opportunityId');
+  return companyTargets(opportunityId, 'data/applications.md');
+}
+
+function companyNodeTargetsForContract(contract) {
+  const opportunityId = requireCompanyTargetId(contract?.opportunityId, '$.opportunityId');
+  const mutationId = requireCompanyTargetId(contract?.mutationId, '$.mutationId');
+  return companyTargets(
+    opportunityId,
+    `data/company-opportunity-mutations/${opportunityId}/${mutationId}.json`,
+  );
+}
+
+function companyArtifactTargetsForContract(contract) {
+  const opportunityId = requireCompanyTargetId(contract?.opportunityId, '$.opportunityId');
+  const mountId = requireCompanyTargetId(contract?.mountId, '$.mountId');
+  return companyTargets(
+    opportunityId,
+    `data/company-opportunity-artifact-mounts/${opportunityId}/${mountId}.json`,
+  );
+}
+
+function companyImportTargetsForPlan(call) {
+  const targets = [...call.targetObjects].sort();
+  const packagePattern = /^data\/company-opportunities\/([A-Za-z0-9][A-Za-z0-9._-]{0,63})\.json$/;
+  const packageMatch = targets.find(target => packagePattern.test(target));
+  if (
+    targets.length !== 2
+    || !targets.includes('data/applications.md')
+    || !packageMatch
+    || targets.filter(target => packagePattern.test(target)).length !== 1
+  ) {
+    throw runtimeError(
+      `${call.toolKey} targets are invalid; expected one opportunity JSON and data/applications.md using the same safe opportunityId`,
+      'invalid-dispatch-targets',
+      { toolKey: call.toolKey },
+    );
+  }
+  return companyTargets(packagePattern.exec(packageMatch)[1], 'data/applications.md');
+}
+
+function companyRecordTargetsForPlan(call, recordDirectory, recordIdField) {
+  const targets = [...call.targetObjects].sort();
+  const packagePattern = /^data\/company-opportunities\/([A-Za-z0-9][A-Za-z0-9._-]{0,63})\.json$/;
+  const recordPattern = new RegExp(`^${recordDirectory}/([A-Za-z0-9][A-Za-z0-9._-]{0,63})/([A-Za-z0-9][A-Za-z0-9._-]{0,63})\\.json$`);
+  const packageMatch = targets.find(target => packagePattern.test(target));
+  const recordMatch = targets.find(target => recordPattern.test(target));
+  if (
+    targets.length !== 2
+    || !packageMatch
+    || !recordMatch
+    || targets.filter(target => packagePattern.test(target)).length !== 1
+    || targets.filter(target => recordPattern.test(target)).length !== 1
+  ) {
+    throw runtimeError(
+      `${call.toolKey} targets are invalid; expected one opportunity JSON and one ${recordIdField} record using the same safe opportunityId`,
+      'invalid-dispatch-targets',
+      { toolKey: call.toolKey },
+    );
+  }
+  const opportunityId = packagePattern.exec(packageMatch)[1];
+  const [, recordOpportunityId, recordId] = recordPattern.exec(recordMatch);
+  if (opportunityId !== recordOpportunityId) {
+    throw runtimeError(`${call.toolKey} targets must use the same opportunityId`, 'invalid-dispatch-targets', {
+      toolKey: call.toolKey,
+      opportunityId,
+      recordOpportunityId,
+    });
+  }
+  return companyTargets(opportunityId, `${recordDirectory}/${opportunityId}/${recordId}.json`);
+}
+
+function expectedDispatchTargets(call, bridge) {
+  if (bridge.targetRule) return pairedDispatchTargetsFromPlan(call, bridge.targetRule).sort();
+  if (bridge.targetsForPlan) return bridge.targetsForPlan(call);
+  return bridge.targetsFor(call).sort();
+}
+
 function requireExactDispatchTargets(call) {
   const bridge = DISPATCH_BRIDGES.get(call.toolKey);
   if (!bridge) {
     throw runtimeError(`${call.toolKey} has no dispatcher in this runtime version`, 'unsupported-dispatch-tool');
   }
-  const expectedTargets = [
-    ...(bridge.targetRule
-      ? pairedDispatchTargetsFromPlan(call, bridge.targetRule)
-      : bridge.targetsFor(call)),
-  ].sort();
+  const expectedTargets = expectedDispatchTargets(call, bridge);
   const actualTargets = [...call.targetObjects].sort();
   if (JSON.stringify(actualTargets) !== JSON.stringify(expectedTargets)) {
     throw runtimeError(
@@ -571,7 +750,7 @@ function verifyDispatchContracts(current, root) {
         { contractFile: call.contractFile, expectedHash: call.contractFileHash, actualHash },
       );
     }
-    if (!bridge.targetRule) continue;
+    if (!bridge.targetRule && !bridge.targetsForContract) continue;
     let contract;
     try {
       contract = readJsonContract(path, {
@@ -584,12 +763,10 @@ function verifyDispatchContracts(current, root) {
         contractFile: call.contractFile,
       });
     }
-    const expectedTargets = [
-      ...pairedDispatchTargetsFromPlan(call, bridge.targetRule),
-    ].sort();
-    const contractTargets = [
-      ...pairedDispatchTargetsForId(bridge.targetRule, contract[bridge.targetRule.idField]),
-    ].sort();
+    const expectedTargets = expectedDispatchTargets(call, bridge);
+    const contractTargets = bridge.targetsForContract
+      ? bridge.targetsForContract(contract)
+      : pairedDispatchTargetsForId(bridge.targetRule, contract[bridge.targetRule.idField]);
     if (JSON.stringify(contractTargets) !== JSON.stringify(expectedTargets)) {
       throw runtimeError(
         `Dispatch targets do not match the approved ${call.toolKey} contract: ${call.contractFile}`,
@@ -668,10 +845,30 @@ function genericToolResult(call, result, root) {
   };
 }
 
+function companyRecordToolResult(call, result, root) {
+  const objectId = call.toolKey === 'company-opportunity-node.mutate'
+    ? result.plan.mutationId
+    : result.plan.mountId;
+  return {
+    toolKey: call.toolKey,
+    action: result.action,
+    objectId,
+    contentHash: result.plan.planContentHash,
+    backupPaths: {
+      opportunity: relativeBackupPath(root, result.backupPath),
+    },
+  };
+}
+
 function dispatchToolResult(call, result, root) {
-  return call.toolKey === 'resume-materials.import'
-    ? materialsToolResult(result, root)
-    : genericToolResult(call, result, root);
+  if (call.toolKey === 'resume-materials.import') return materialsToolResult(result, root);
+  if (bridgeUsesCompanyRecordResult(call.toolKey)) return companyRecordToolResult(call, result, root);
+  return genericToolResult(call, result, root);
+}
+
+function bridgeUsesCompanyRecordResult(toolKey) {
+  return toolKey === 'company-opportunity-node.mutate'
+    || toolKey === 'company-opportunity-artifact.mount';
 }
 
 function requireFingerprintSnapshot(value, path, allowNull, expectedTargets) {
@@ -750,6 +947,34 @@ function requireToolResult(value, path, call) {
       backupPaths: {
         materials: requireOptionalRelativePath(value.backupPaths.materials, `${path}.backupPaths.materials`),
         storyBank: requireOptionalRelativePath(value.backupPaths.storyBank, `${path}.backupPaths.storyBank`),
+      },
+    };
+  }
+
+  if (bridgeUsesCompanyRecordResult(call.toolKey)) {
+    requireObjectWithOptional(
+      value,
+      path,
+      ['toolKey', 'action', 'objectId', 'contentHash', 'backupPaths'],
+      [],
+      ContractToolError,
+      'invalid-run-record',
+    );
+    requireObjectWithOptional(
+      value.backupPaths,
+      `${path}.backupPaths`,
+      ['opportunity'],
+      [],
+      ContractToolError,
+      'invalid-run-record',
+    );
+    return {
+      toolKey: requireEnum(value.toolKey, `${path}.toolKey`, new Set([call.toolKey]), ContractToolError, 'invalid-run-record'),
+      action: requireString(value.action, `${path}.action`, { min: 1, max: 40 }, ContractToolError, 'invalid-run-record'),
+      objectId: requireSafeId(value.objectId, `${path}.objectId`, ContractToolError, 'invalid-run-record'),
+      contentHash: requireContentHash(value.contentHash, `${path}.contentHash`, 'invalid-run-record'),
+      backupPaths: {
+        opportunity: requireOptionalRelativePath(value.backupPaths.opportunity, `${path}.backupPaths.opportunity`),
       },
     };
   }
@@ -1051,7 +1276,7 @@ export function listSkillRegistry() {
   };
 }
 
-export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = false, replace = false } = {}) {
+export async function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = false, replace = false } = {}) {
   if (replace && !apply) throw runtimeError('--replace requires --apply', 'usage');
   const current = readPlanFile(filePath, root);
   const target = runRecordPathFor(root, current.plan.runId);
@@ -1068,18 +1293,14 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
   const alreadyDispatched = Boolean(samePlan && existing?.execution.status === 'dispatched');
   const call = dispatchable ? current.plan.toolCalls[0] : null;
   const bridge = call ? DISPATCH_BRIDGES.get(call.toolKey) : null;
-  const dispatchTargets = call ? [
-    ...(bridge.targetRule
-      ? pairedDispatchTargetsFromPlan(call, bridge.targetRule)
-      : bridge.targetsFor(call)),
-  ].sort() : [];
+  const dispatchTargets = call ? expectedDispatchTargets(call, bridge) : [];
 
   if (!apply) {
     let dispatch = null;
     if (dispatchable) {
       const before = fingerprintTargetObjects(root, dispatchTargets);
       try {
-        const toolResult = bridge.importer(join(root, call.contractFile), { root, apply: false });
+        const toolResult = await bridge.importer(join(root, call.contractFile), { root, apply: false });
         dispatch = alreadyDispatched ? null : { action: 'dry-run', before, toolResult };
       } catch (error) {
         if (error.code === bridge.conflictCode) {
@@ -1118,8 +1339,9 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
     };
   }
   if (alreadyDispatched) {
+    let toolResult = null;
     try {
-      bridge.importer(join(root, call.contractFile), { root, apply: false });
+      toolResult = await bridge.importer(join(root, call.contractFile), { root, apply: false });
     } catch (error) {
       if (error.code !== bridge.conflictCode) {
         throw runtimeError(`Contract tool dry-run failed: ${error.message}`, 'skill-dispatch-failed', {
@@ -1177,7 +1399,7 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
 
   const before = fingerprintTargetObjects(root, dispatchTargets);
   try {
-    bridge.importer(join(root, call.contractFile), { root, apply: false });
+    await bridge.importer(join(root, call.contractFile), { root, apply: false });
   } catch (error) {
     if (error.code !== bridge.conflictCode) {
       throw runtimeError(`Contract tool dry-run failed: ${error.message}`, 'skill-dispatch-failed', {
@@ -1225,7 +1447,7 @@ export function runSkillPlan(filePath, { root = getCareerOpsRoot(), apply = fals
   let toolResult;
   let after;
   try {
-    toolResult = bridge.importer(join(root, call.contractFile), {
+    toolResult = await bridge.importer(join(root, call.contractFile), {
       root,
       apply: true,
       replace,
@@ -1373,7 +1595,7 @@ function parseArguments(argv) {
   return { command: positional[0], planFile: positional[1], json, apply, replace };
 }
 
-function main() {
+async function main() {
   const args = parseArguments(process.argv);
   if (!args) {
     console.error(`Invalid arguments.\n${USAGE}`);
@@ -1402,13 +1624,13 @@ function main() {
         `目标对象：${result.summary.targetObjects.join(', ')}`,
         `计划哈希：${result.summary.contentHash}`,
         result.summary.dispatchable
-          ? 'v2 dispatch 计划已绑定契约文件字节哈希；全部 8 个注册契约工具均可显式执行。'
+          ? 'v2 dispatch 计划已绑定契约文件字节哈希；全部 11 个注册契约工具均可显式执行。'
           : 'v1 计划只登记审批，不调用模型、不执行契约工具、不写目标对象。',
       ].join('\n'));
       return;
     }
 
-    const result = runSkillPlan(args.planFile, {
+    const result = await runSkillPlan(args.planFile, {
       root: getCareerOpsRoot(),
       apply: args.apply,
       replace: args.replace,
@@ -1445,5 +1667,5 @@ function main() {
 }
 
 if (isMainModule(import.meta.url)) {
-  main();
+  await main();
 }

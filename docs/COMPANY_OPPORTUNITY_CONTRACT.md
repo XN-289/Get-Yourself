@@ -112,6 +112,20 @@ The interview-management frontend may participate in this contract through an ex
 
 The browser never writes `cli/data`, never contacts the CLI process directly, and never claims that a download is an applied mutation. The downloaded filename can be passed to the CLI from its actual save location. This bridge does not import a cloud record, upload progress, mount an artifact, or execute a node skill.
 
+## Skill Runtime Dispatch
+
+The local Skill Runtime exposes three deterministic bridges from the `opportunity-management` skill:
+
+| Tool | Exact declared targets | Boundary |
+|---|---|---|
+| `company-opportunity.import` | `data/company-opportunities/{opportunityId}.json`, `data/applications.md` | Imports the confirmed opportunity and links or repairs its tracker row. |
+| `company-opportunity-node.mutate` | `data/company-opportunities/{opportunityId}.json`, `data/company-opportunity-mutations/{opportunityId}/{mutationId}.json` | Applies a complete ordered node list and records the mutation. |
+| `company-opportunity-artifact.mount` | `data/company-opportunities/{opportunityId}.json`, `data/company-opportunity-artifact-mounts/{opportunityId}/{mountId}.json` | Appends a real-artifact descriptor and records the mount. |
+
+A v2 plan must bind the exact bytes of the corresponding company contract. Runtime derives the target paths from the safe `opportunityId` plus the action's `mutationId` or `mountId`, and rejects a plan whose target objects differ from that derivation. The referenced artifact remains part of the mount contract rather than a Runtime fingerprint target; its exact byte hash is still checked by the deterministic importer before apply.
+
+Runtime preserves the same user-owned boundaries as direct CLI execution: it does not submit an application, infer or change tracker status, execute a node skill, move an artifact, upload progress, or start cloud synchronization. Apply still records target fingerprints and `prepared / dispatched / failed` state; target drift and a different confirmed package require explicit `--replace`.
+
 ## Tracker Persistence
 
 The default tracker is `data/applications.md`. Header-aware parsing supports customized columns and Chinese headers, including `日期`, `公司`, `渠道`, `地点`, `岗位`, `评分`, `状态`, `简历`, `报告`, and `备注`; custom column widths and unrelated rows are preserved.
