@@ -4,7 +4,7 @@
 |---|---|
 | 文档状态 | 已准备，未用户验收 |
 | 准备日期 | 2026-09-04 |
-| 来源 | `docs/PRODUCT_DESIGN_V0.1.md` v0.1 r9 第 14.5 节；验收方法见 `docs/ACCEPTANCE_STANDARD_V0.1.md` |
+| 来源 | `docs/PRODUCT_DESIGN_V0.1.md` v0.1 r10 第 14.5 节；验收方法见 `docs/ACCEPTANCE_STANDARD_V0.1.md` |
 | 验收对象 | Agent 工作台、能力资产、简历管理、面试管理、本地 Skill Runtime、Stage 6a、Stage 6b |
 | 结论口径 | 通过 / 需修改 / 阻断 |
 
