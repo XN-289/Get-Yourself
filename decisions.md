@@ -97,3 +97,12 @@ Sources: user direction in this project thread on 2026-09-02; architecture study
 25. **The resume-library contract remains `get-yourself.resume-library v1`.** Object-oriented UI changes presentation and management semantics without changing schema identity, fingerprints, CLI write approval, or compatibility rules.
 
 Source: user direction in this project thread on 2026-09-03.
+
+## 2026-09-04
+
+1. **The v0.1 backend remains a Spring Boot modular monolith.** The product does not split it into microservices or create a parallel backend inside the frontend/local workbench; module boundaries evolve inside the current deployable system.
+2. **The backend architecture-control document is a binding change constraint, not completed hardening.** Cloud authority remains account, growth evidence, scoring, memory, Agent Trace, and device authorization; local authority remains resumes, materials, STAR stories, opportunity workflow, Skill Runtime outputs, and unconfirmed sync queues. Documenting the architecture does not change implementation progress or user acceptance.
+3. **Stage 6c has a double gate.** Before authorized API, database, cloud-projection, upload-retry, or automatic-import work begins, Stage 6b must pass user acceptance of the local boundary, and the backend P0 architecture gates must be either engineering-fixed or explicitly accepted by the user. The gates are endpoint authorization/ownership clarity, truthful Trace redaction semantics, and device-token limits around explicit cloud writes.
+4. **Trace artifacts are treated as unredacted until redaction semantics are fixed.** Resume full text, STAR originals, credentials, raw personal documents, and other prohibited private content must not be written to platform trace artifacts merely because a redaction flag exists.
+
+Source: user direction in this project thread on 2026-09-04; `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`.

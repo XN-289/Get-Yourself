@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-04 11:53
+Updated: 2026-09-04 12:27
 Current phase: implementation
 
 ## 一句话现状
@@ -16,6 +16,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 2026-09-04 验收准备补充：已新增 `docs/UNIFIED_ACCEPTANCE_V0.1.md`，按 A0-A7 覆盖环境预检、Agent、能力资产、简历、面试、Skill Runtime、Stage 6a 与 6b。清单保留真实用户鼠标右键拖拽、滚动后选区映射和 6c 前置门槛；当前所有用户验收结论仍为“待验收”。本轮准备基线为 CLI 129 pass / 0 fail、Stage 6a 14 pass / 0 fail、Stage 6b 9 pass / 0 fail、Skill Runtime 示例 dry-run 通过、前端 build 通过但有 chunk 体积警告；本机缺 Maven 与 Docker，后端回归和真实网页导出闭环无法复验。
 
 2026-09-04 后端架构补充：已新增 `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`，基于当前代码完成运行拓扑、身份与设备边界、模块/路由归属、数据权威、outbox、证据评分链路、AI/Agent Trace 与风险登记。后端结论是 Spring Boot 模块化单体；本轮只做架构掌控与变更规则，不启动 6c，不修改后端运行行为。
+
+2026-09-04 PRD r8 补充：后端架构控制基线已合入 `docs/PRODUCT_DESIGN_V0.1.md`，并同步统一验收清单的 6c 收口口径。产品目标、Agent-first 四模块、简历对象管理、面试人工状态、隐私边界与既有验收规则不变；6c 前置门槛从“6b 用户本地侧验收”细化为“6b 用户本地侧验收 + 后端架构 P0 门槛修复或用户明确接受”。本轮只改文档，不代表后端重构、安全修复或 6c 开始。
 
 ## 已接受事实
 
@@ -67,6 +69,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - 仓库验证与用户验收是两个门槛：6a 测试通过允许并行推进 6b 实现与用户统一验收，但不能记录为用户验收；进入 6c 授权 API / 云端投影前，6b 必须通过仓库测试并获得用户对本地侧边界的验收 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 2026-09-03 第 21 条。
 - 后端当前形态是 Spring Boot 3.3 / Java 21 模块化单体；云侧权威是账号、成长证据、评分、记忆、Trace 与设备授权，本侧权威是简历、素材、STAR、机会流程与本地 Runtime 产物 — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`。
 - Agent Trace artifact 当前 `redacted=true` 只是无条件标记，并未真实脱敏；在修复前不得把简历全文、STAR 原文、凭据或原始个人文件写入 trace artifact — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`。
+- 6c 授权 API / 云端投影启动前必须同时满足 6b 用户本地侧验收与后端架构 P0 门槛处置；鉴权矩阵、Trace 脱敏语义和设备授权写入边界可以被工程修复，或由用户明确接受，不能因已登记文档而默认通过 — `docs/PRODUCT_DESIGN_V0.1.md` r8 与 `decisions.md` 2026-09-04。
 
 ## 决策索引
 
@@ -98,6 +101,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - 2026-09-03 — 仓库验证与用户验收分离；6b 可与统一验收并行，6c 前必须有 6b 测试与本地侧用户验收 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 第 21 条。
 - 2026-09-03 — 简历管理以一份简历为唯一可见主对象，手工与 Agent 共享唯一草稿，选区兜底 skill 采用证据门槛，简历库 v1 契约不变 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`。
 - 2026-09-04 — 建立后端架构控制基线：确认模块化单体、模块/路由归属、云本地数据权威、事务 outbox、AI/Trace 边界与 P0-gate / P1 / P2 风险清单；不改变实现和用户验收状态 — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`。
+- 2026-09-04 — PRD r8 将后端架构基线合入产品推进规则，并固定 6c 的用户本地侧验收 + 后端架构 P0 门槛双前置；不改变产品目标和既有模块契约 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`。
 
 ## 已实现
 
@@ -171,6 +175,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - Stage 6b 显式本地同步队列 — `cli/sync-queue.mjs`、`cli/tests/sync-queue.test.mjs`、`cli/gy.mjs`、`cli/tests/gy-entry.test.mjs`、`docs/SYNC_UNIT_CONTRACT.md`、`cli/DATA_CONTRACT.md`、`cli/README.md` 与 `cli/AGENTS.md`；提供队列 list / 状态过滤、dry-run 与 apply 入队、同单元幂等、同对象唯一当前条目、用户触发重试、认证 / 网络阻断、重绑后精确重确认、云端哈希冲突证据、取消审计隔离、删除墓碑、有界备份和 `gy --status` 只读摘要。队列不联网、不自动上传、不后台重试、不修改本地业务对象。
 - Stage 6b 验证 — 2026-09-03 `node --check sync-queue.mjs`、`node --check gy.mjs`、`node --test tests/sync-queue.test.mjs`（9 pass / 0 fail）、`node --test tests/gy-entry.test.mjs`（3 pass / 0 fail）与 `cli/` 下全量 `npm test`（129 pass / 0 fail）通过。统一用户验收仍未完成，6c 尚未开始。
 - 后端架构控制基线 — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`；基于当前 Java 代码与配置梳理 Spring Boot 模块化单体运行拓扑、Redis opaque session 与独立设备 token、active/supporting/frozen 模块和路由归属、云本地数据权威、事务 outbox 与五条队列、能力证据到确定性评分链路、AI/Agent Trace 边界、12 项架构风险与后续变更检查单。本轮不修改运行行为，Stage 6c 仍未启动。
+- PRD v0.1 r8 后端架构合入 — `docs/PRODUCT_DESIGN_V0.1.md`、`decisions.md` 与 `docs/UNIFIED_ACCEPTANCE_V0.1.md`；新增 4.3 后端架构控制基线、后端 P0 门槛、6c 双门槛、架构风险验收边界、开放问题与决策记录，并同步统一验收收口。产品目标与既有功能契约不变。
 
 - 2026-09-03 — 简历管理修订为以一份简历为唯一主对象，并实现唯一草稿汇流、历史抽屉、右键拖拽选区和证据门槛兜底 skill — 影响简历交付体验、Agent 片段改写边界和后续统一验收；`get-yourself.resume-library v1` 契约保持不变。
 - 简历对象管理验证 — 2026-09-03 19:11 `frontend/` 下 `npm run build` 通过；浏览器实测无能力证据时生成安全替换会被阻断，经 Agent 确认临时导入“跨端协作”证据后能生成保守替换稿并显示证据缺口，替换先进入编辑缓冲区，保存只写入 v4 草稿且当前投递版仍为 v3；确认定稿后当前投递版切到 v4，历史抽屉可显式切回 v3，本机简历文件桥保持收起。右键拖拽路径完成释放顺序、指针捕获与滚动偏移映射实现复查，但当前浏览器自动化接口无法发送真实右键拖动，待用户统一验收时用真实鼠标复测；390px 本轮未重复实测。
@@ -184,6 +189,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 
 ## 未决问题
 
+- P0-gate — 后端架构 BA-01 鉴权 / 所有权矩阵、BA-02 Trace 真实脱敏语义、BA-03 未来设备授权云写入边界尚未修复或获得用户明确接受 — 项目组与用户 — 阻塞 Stage 6c 授权 API / 数据库 / 云端投影 / 上传重试 — 在 6b 用户本地侧验收后逐项给出修复或明确接受结论。
 - P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定、Stage 4 素材/定稿/准备/简历对象管理/选区兜底 skill/版本库/显式事实链身份绑定链路、Stage 5 公司机会/tracker/节点 mutation/产物挂载本地桥接、Skill Runtime v0.2 审批账本 / 全量 11 条契约执行桥与 Stage 6 合同 + 6a builder / validator + 6b 显式队列是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑、简历/面试契约工具、公司机会导入、节点 mutation、产物挂载、`resume-fact-chain.mjs`、`skill-runtime.mjs`、`sync-unit.mjs`、`sync-queue.mjs list/enqueue/retry/cancel/mark/reconfirm` 与 `node --test tests/sync-queue.test.mjs`。
 - P1 — “能力资产”最终命名 — 用户 — 不阻塞实现 — 继续使用暂名。
 - P1 — 产品与技术评审未完成 — 项目组 — 不阻塞 Stage 1 入口实现 — 修订 PRD 后提交评审。
@@ -192,7 +198,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 
 1. 与用户执行 `docs/UNIFIED_ACCEPTANCE_V0.1.md`：按 A0-A7 顺序检查 Agent、能力资产、简历管理、面试管理、本地 Runtime、Stage 6a 与 Stage 6b；逐项记录通过 / 需修改 / 阻断，简历管理必须包含真实鼠标右键拖拽与滚动后选区复测。
 2. 修复统一验收中的体验阻断；修复优先级高于继续扩展云端能力。
-3. 6b 获得用户本地侧验收前，不启动 6c 授权 API、数据库或云端投影；不做自动上传、自动重试或自动导入。
+3. 6b 获得用户本地侧验收且后端架构 P0 门槛被修复或由用户明确接受前，不启动 6c 授权 API、数据库或云端投影；不做自动上传、自动重试或自动导入。
 
 ## 恢复上下文
 
@@ -214,6 +220,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 
 ## 最近更新
 
+- 2026-09-04 — PRD 修订至 v0.1 r8 — 将后端模块化单体、云本地权威和架构 P0 门槛合入产品推进规则，并同步统一验收清单；6c 改为用户本地侧验收 + 后端架构门槛双前置，不改变产品目标、模块边界或契约版本。
 - 2026-09-01 — 新增项目状态台账与决策留痕；完成 PRD Agent-first、四模块、无独立教练/日程口径修订 — 影响产品文档与后续实现范围。
 - 2026-09-01 — 实现 Stage 1 `gy` 确定性对话入口、只读状态检查、简历模式映射与 CLI 测试运行器 — 影响 CLI 入口、用户层写入边界和后续 Stage 2 节奏。
 - 2026-09-01 — 实现 Stage 2a 能力证据包契约、严格校验、显式导入/替换、状态展示与路由 — 影响能力资产模块、简历证据引用边界和后续网页导出。
