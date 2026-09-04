@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-04 15:05
+Updated: 2026-09-04 15:08
 Current phase: implementation
 
 ## 一句话现状
@@ -34,6 +34,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 2026-09-04 A5 机器预检补充：本地 Skill Runtime 封闭发现显示 7 个 skill / 11 条 dispatchable 契约桥；示例 check / dry-run 通过，未注册目标被 `target-out-of-scope` 拒绝；隔离根显式 apply 写入 2 个声明目标并记录指纹，重复 apply 幂等且不改变文件哈希、时间、数量或生成备份；同 `runId` 不同计划被 `skill-run-conflict` 拒绝；`gy --status` 只读展示 Runtime 状态且不自动补 onboarding 文件。该结果属于 E2 机器证据，A5 用户验收结论仍为待验收。
 
 2026-09-04 A6 机器预检补充：Stage 6a 专项测试 14 pass / 0 fail，语法检查通过；合同首批同步对象仍只含公司机会进度摘要与 Trace 决策摘要，禁传简历全文、JD 原文、STAR 原稿、联系人与凭证；实现保持无联网、无用户层写入、无队列写入、无 CLI 入口的纯函数边界。A6-4 用户冲突口径确认仍待验收。
+
+2026-09-04 A7 机器预检补充：Stage 6b 队列专项测试 9 pass / 0 fail，语法检查通过；`list` 与 `gy --status` 只读展示本地队列且模式为无联网、无自动上传、无后台重试、不写业务对象，连续只读调用后队列文件哈希与时间不变；命令与合同复核确认 enqueue 默认 dry-run、写入需 `--apply`、retry 复用幂等键、重绑需精确重确认，队列只保存摘要与指纹，取消不删除本地权威对象。A7 用户本地侧结论仍待验收，6c 继续禁止启动。
 
 ## 已接受事实
 

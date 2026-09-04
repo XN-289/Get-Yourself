@@ -220,6 +220,8 @@ A6 结论：待验收。
 
 A7 结论：待验收。
 
+2026-09-04 15:08 机器预检补充：`node --test tests/sync-queue.test.mjs` 为 9 pass / 0 fail，覆盖显式入队、幂等、同对象当前条目、认证 / 网络阻断、重绑、冲突、取消、墓碑与状态过滤；`node --check sync-queue.mjs` 通过。只读 `list --json` 与 `gy --status --json` 均显示 `network: false`、`automaticUpload: false`、`automaticRetry: false`、`writesBusinessObjects: false`；连续执行两个只读命令后队列文件哈希与修改时间不变。命令复核确认 `enqueue` 默认 dry-run、写入必须 `--apply`，retry 由用户触发并复用同一幂等键，重绑后必须用同一单元精确重确认；静态扫描未发现网络调用或定时后台任务。队列合同与数据契约确认只保存摘要、身份与指纹，不保存全文、联系人、凭证或本地绝对路径，取消仅移除队列条目并留审计。A7-6 用户本地侧结论仍待验收。
+
 ## 验收收口
 
 | 收口项 | 要求 | 结论 |
