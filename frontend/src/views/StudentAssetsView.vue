@@ -171,7 +171,7 @@ function submitEvidenceExport() {
           <p>还没有导入能力证据。先在 Agent 工作台连接本地工位，或直接口述一段经历。</p>
         </div>
 
-        <template v-else>
+        <template v-if="evidenceAbilities.length">
           <article v-for="ability in evidenceAbilities" :key="ability.id" class="asset-card">
             <div>
               <strong>{{ ability.name }}</strong>
@@ -190,11 +190,12 @@ function submitEvidenceExport() {
               }}
             </WorkbenchStatus>
           </article>
-          <article class="feedback-source">
-            <Repeat :size="17" />
-            <span>面试复盘与 JD 差距会作为候选证据进入这里，用户确认后参与评分。</span>
-          </article>
         </template>
+
+        <article class="feedback-source">
+          <Repeat :size="17" />
+          <span>面试复盘与 JD 差距会作为候选证据进入这里，用户确认后参与评分。</span>
+        </article>
       </WorkbenchPanel>
     </div>
   </StudentWorkbenchModule>

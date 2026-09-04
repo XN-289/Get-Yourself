@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-04 13:26
+Updated: 2026-09-04 14:08
 Current phase: implementation
 
 ## 一句话现状
@@ -22,6 +22,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 2026-09-04 验收标准补充：已新增 `docs/ACCEPTANCE_STANDARD_V0.1.md`，把验收方法沉淀为独立标准，定义 E0-E4 证据等级、M1-M10 case 设计矩阵、S0-S2 缺陷级别、通过 / 需修改 / 阻断结论、五类测试身份、通用与模块 case、真实用户硬门槛、后端架构 P0 门槛、回归规则和记录格式。标准含 106 个 case ID，作为 v0.1 发布前门槛；A0-A7 仍是首批批次执行清单，未覆盖 case 保持未执行。PRD 修订至 r9 并让统一验收包引用该标准；本轮不改变产品范围、A0-A7 当前执行顺序或任何用户验收结论。
 
 2026-09-04 验收预检补充：A0 自动化基线重跑通过（CLI 129 pass / 0 fail、前端 build 通过并保留既知 chunk 警告、`/student/workbench` HTTP 200）；本机 8080 后端无监听，新登录经 Vite 代理返回 HTTP 500，因此 A0-5 与 A2 真实网页导出闭环继续阻断。A1 使用独立浏览器上下文完成会话内机器预检：简历确认只生成 v4 草稿且 v3 当前投递版不变、取消不写入、注入指令的 JD 保持只读评估、三个模块路由可打开、390px 无横向溢出且 console 无错误。该 A1 检查使用 API 替身，只作为 E2 机器证据，所有用户验收结论仍为待验收。
+
+2026-09-04 A2 机器预检补充：能力资产空态现在始终显示候选证据确认边界；导出控件缺年份或目标方向时禁用，受控 HTTP 500 显示可见错误且不触发下载或导入；Agent“复盘反哺”确认后的接口权限表达卡片明确显示“候选证据 / 面试反哺”，未被伪装成已确认评分；1440px 与 390px 横向溢出为 0，前端 build 通过并保留既知 chunk 警告。该检查使用 API 替身，只作为 E2 机器证据；8080 后端仍无监听，A2 真实下载、导入与回刷闭环继续阻断。
 
 ## 已接受事实
 
@@ -163,6 +165,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - Stage 5 防骗核查验证 — 2026-09-02 `cli/` 下 `npm test` 71 pass / 0 fail；`node --check scam-check.mjs`、`node --check gy.mjs`、`node --check lib/intent-router.mjs`、`node --check tests/scam-check.test.mjs` 通过；示例包 `check` 输出 `high_risk / stop`、红色 1 条 / 黄色 0 条 / 证据 2 条；仓库根 `git diff --check` 通过。
 - Agent 页面内 skill 确认流 — `frontend/src/stores/studentWorkbench.ts` 与 `frontend/src/views/StudentAgentConsoleView.vue`；经历结构化、能力资产结构化、简历生成和复盘反哺先生成执行计划，展示目标模块、将写入对象和不会改动对象；用户确认后写入当前会话对象并记录 Trace，取消则不改目标模块；岗位评估、面试准备和周计划保持只读，不伪装沉淀。
 - Agent skill 确认流验证 — 2026-09-02 `frontend/` 下 `npm run build` 通过；浏览器实测“生成简历”确认后简历线新增 / 复用唯一草稿且当前投递版、定稿和导出版未被覆盖，“复盘反哺”取消后目标能力资产状态保持不变；执行卡状态可在待确认、已执行、已取消间正确流转，确认与取消均记录 Trace；390px 下页面与执行卡无横向溢出，测试后浏览器视口已恢复默认。
+- 能力资产候选证据边界 — `frontend/src/views/StudentAssetsView.vue`；空态与有证据状态均显示“面试复盘与 JD 差距会作为候选证据进入这里，用户确认后参与评分”，避免候选证据在空态下丢失确认边界。
+- 能力资产 A2 预检验证 — 2026-09-04 `frontend/` 下 `npm run build` 通过并保留既知 chunk 警告；独立浏览器上下文实测空态 / “未导入”、导出输入门控、受控 HTTP 500 可见错误且无下载、Agent 复盘反哺后的“候选证据 / 面试反哺”展示、1440px 与 390px 横向溢出 0、无页面脚本错误。该检查使用 API 替身，不替代用户验收或真实后端导出。
 - 本地 Skill Runtime v0.1 审批账本 — `cli/skill-runtime.mjs`、`cli/templates/skill-runtime.example.json`、`docs/SKILL_RUNTIME_CONTRACT.md`、`cli/tests/skill-runtime.test.mjs`、`cli/gy.mjs`、`cli/AGENTS.md`、`cli/README.md` 与 `cli/DATA_CONTRACT.md`；提供 6 个封闭 skill、只读发现、严格计划校验、skill/tool 双重目标白名单、默认 dry-run、显式 `--apply` 审批记录、幂等导入、同 `runId` 冲突保护、替换备份与 `gy --status` 只读状态；记录显式标记 `approval-ledger` 且工具调用数、目标写入数为 0。
 - Skill Runtime v0.1 验证 — 2026-09-03 `node --check skill-runtime.mjs`、`node --check gy.mjs`、`node --check tests/skill-runtime.test.mjs`、`node --test tests/skill-runtime.test.mjs`（3 pass / 0 fail）与 `cli/` 下 `npm test`（77 pass / 0 fail）通过；示例计划 `check` 通过，dry-run 不创建数据目录，apply 只写 `data/skill-runs/{runId}.json`，重复 apply 幂等，同 runId 不同计划拒绝，显式 replace 生成备份，目标对象不被写入。
 - 本地 Skill Runtime v0.2 基础契约 dispatcher（历史阶段） — `cli/skill-runtime.mjs`、`cli/templates/skill-runtime.example.json`、`cli/tests/skill-runtime.test.mjs`、`docs/SKILL_RUNTIME_CONTRACT.md`、`docs/PRODUCT_DESIGN_V0.1.md`、`cli/README.md`、`cli/AGENTS.md` 与 `cli/DATA_CONTRACT.md`；v1 计划继续只登记审批，v2 计划绑定契约文件 `/` 分隔相对路径与精确字节 SHA-256，并在 check / dry-run / apply 前重验；该历史阶段 8 条执行桥覆盖素材、JD 分析、防骗核查、定稿、渲染、面试准备、复盘与能力反哺，固定目标必须精确匹配，动态目标必须由契约内安全身份字段派生且与计划目标一致；apply 先写 `prepared`，成功写 `dispatched`，失败写 `failed`，记录目标 before / after 指纹、bridge 专属工具结果与备份路径；目标冲突、同 runId 冲突、契约漂移、身份目标不匹配、目录目标、依赖缺失和最终记录写失败均显式失败。
@@ -225,6 +229,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 
 ## 最近更新
 
+- 2026-09-04 — A2 能力资产机器预检 — 修复空态候选证据边界不可见问题，验证导出失败反馈、候选证据标识与窄屏布局；真实后端导出闭环仍因 8080 无监听阻断，用户结论保持待验收。
 - 2026-09-04 — PRD 修订至 v0.1 r8 — 将后端模块化单体、云本地权威和架构 P0 门槛合入产品推进规则，并同步统一验收清单；6c 改为用户本地侧验收 + 后端架构门槛双前置，不改变产品目标、模块边界或契约版本。
 - 2026-09-04 — 新增独立验收标准 — 定义证据等级、case 矩阵、缺陷分级、模块结论、人工硬门槛与回归规则；PRD r9 和统一验收包引用该标准，不改变产品范围或当前待验收状态。
 - 2026-09-01 — 新增项目状态台账与决策留痕；完成 PRD Agent-first、四模块、无独立教练/日程口径修订 — 影响产品文档与后续实现范围。
