@@ -186,6 +186,8 @@ A4 结论：待验收。
 
 A5 结论：待验收。
 
+2026-09-04 15:03 机器预检补充：`list` 显示 7 个封闭 skill 与 11 条 dispatchable 契约桥；示例 `check` 通过并输出计划哈希，示例 dry-run 为 `applied: false` 且目标保持 missing。把目标改为未注册的 `data/unregistered-materials.json` 后被 `target-out-of-scope` 拒绝，未产生 run record 或目标。隔离数据根首次 `run --apply` 为 `dispatched`，写入 2 个声明目标并记录 before / after 指纹；重复 apply 返回 `unchanged`，4 个文件的哈希、大小、修改时间与文件数均不变，未生成备份。同 `runId` 不同 `userIntent` 的计划被 `skill-run-conflict` 拒绝并提示需要 `--replace`。隔离根 `gy --status --json` 能只读展示 Runtime 状态，未自动创建缺失 onboarding 文件。该检查属于 E2 机器证据，不替代用户对审批文案、目标边界和故障恢复的理解与确认。
+
 ## A6 Stage 6a 同步单元
 
 Stage 6a 是仓库合同与纯函数能力验收，不提供用户可见上传功能。这里只确认构建、校验、冲突分类和无联网 / 无用户层写入边界。

@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-04 14:56
+Updated: 2026-09-04 15:03
 Current phase: implementation
 
 ## 一句话现状
@@ -30,6 +30,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 2026-09-04 A3 机器预检补充：修复简历右键拖拽选区镜像层的滚动补偿方向和 camelCase 样式名读取错误。修复后 1440px 与 390px 的顶部选区、编辑器滚动到底后选区、菜单可见性、横向溢出与 console 检查均通过，`frontend/` 下 `npm run build` 通过并保留既知 chunk 警告。该结果仍不能替代用户真实鼠标验收，A3-4 到 A3-6 继续待用户确认。
 
 2026-09-04 A4 机器预检补充：面试管理外层状态小按钮只打开抽屉、用户确认后才写入状态；自定义节点只追加当前公司机会；真实拖拽与抽屉左移只重排当前机会，另一家公司节点不变；Offer 用户确认后有成功鼓励文案；1440px 与 390px 页面本体横向溢出为 0，窄屏流程轨内部横向滚动，console 错误 0。该结果仍不替代用户对拖拽手感与真实流程管理的验收。
+
+2026-09-04 A5 机器预检补充：本地 Skill Runtime 封闭发现显示 7 个 skill / 11 条 dispatchable 契约桥；示例 check / dry-run 通过，未注册目标被 `target-out-of-scope` 拒绝；隔离根显式 apply 写入 2 个声明目标并记录指纹，重复 apply 幂等且不改变文件哈希、时间、数量或生成备份；同 `runId` 不同计划被 `skill-run-conflict` 拒绝；`gy --status` 只读展示 Runtime 状态且不自动补 onboarding 文件。该结果属于 E2 机器证据，A5 用户验收结论仍为待验收。
 
 ## 已接受事实
 
