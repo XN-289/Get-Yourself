@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-04 11:27
+Updated: 2026-09-04 11:53
 Current phase: implementation
 
 ## 一句话现状
@@ -14,6 +14,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 2026-09-04 补充：PRD 已校准至 v0.1 r7。产品目标不变；本轮只区分仓库实现、仓库验证与用户验收三件事。Stage 1-5 已实现的本地 / 前端能力仍全部待用户统一验收；简历右键拖拽必须由用户用真实鼠标在未滚动与滚动后的编辑器中复测；6a / 6b 已通过仓库测试但未获用户本地侧验收，6c 不得启动。
 
 2026-09-04 验收准备补充：已新增 `docs/UNIFIED_ACCEPTANCE_V0.1.md`，按 A0-A7 覆盖环境预检、Agent、能力资产、简历、面试、Skill Runtime、Stage 6a 与 6b。清单保留真实用户鼠标右键拖拽、滚动后选区映射和 6c 前置门槛；当前所有用户验收结论仍为“待验收”。本轮准备基线为 CLI 129 pass / 0 fail、Stage 6a 14 pass / 0 fail、Stage 6b 9 pass / 0 fail、Skill Runtime 示例 dry-run 通过、前端 build 通过但有 chunk 体积警告；本机缺 Maven 与 Docker，后端回归和真实网页导出闭环无法复验。
+
+2026-09-04 后端架构补充：已新增 `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`，基于当前代码完成运行拓扑、身份与设备边界、模块/路由归属、数据权威、outbox、证据评分链路、AI/Agent Trace 与风险登记。后端结论是 Spring Boot 模块化单体；本轮只做架构掌控与变更规则，不启动 6c，不修改后端运行行为。
 
 ## 已接受事实
 
@@ -63,6 +65,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - Stage 6 按 6a 本地确定性构建 / 校验、6b 显式本地队列、6c 授权 API 与云端投影、6d 网页摘要与 Trace 汇总顺序推进，前置门槛未通过不得进入后续实现 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 2026-09-03 第 20 条。
 - Stage 6b 队列只写 `data/sync-queue.json` 与 `data/sync-queue-backups/*`，不联网、不上传、不后台重试、不修改业务对象；`pending` 只表示本地待发 — `cli/sync-queue.mjs`、`cli/tests/sync-queue.test.mjs` 与 `cli/DATA_CONTRACT.md`。
 - 仓库验证与用户验收是两个门槛：6a 测试通过允许并行推进 6b 实现与用户统一验收，但不能记录为用户验收；进入 6c 授权 API / 云端投影前，6b 必须通过仓库测试并获得用户对本地侧边界的验收 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 2026-09-03 第 21 条。
+- 后端当前形态是 Spring Boot 3.3 / Java 21 模块化单体；云侧权威是账号、成长证据、评分、记忆、Trace 与设备授权，本侧权威是简历、素材、STAR、机会流程与本地 Runtime 产物 — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`。
+- Agent Trace artifact 当前 `redacted=true` 只是无条件标记，并未真实脱敏；在修复前不得把简历全文、STAR 原文、凭据或原始个人文件写入 trace artifact — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`。
 
 ## 决策索引
 
@@ -93,6 +97,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - 2026-09-03 — Stage 6 首批同步单元、basis 冲突、append-only Trace、多设备合并、显式队列、删除墓碑与 6a-6d 本地优先实施顺序 — `docs/SYNC_UNIT_CONTRACT.md`、`docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`。
 - 2026-09-03 — 仓库验证与用户验收分离；6b 可与统一验收并行，6c 前必须有 6b 测试与本地侧用户验收 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 第 21 条。
 - 2026-09-03 — 简历管理以一份简历为唯一可见主对象，手工与 Agent 共享唯一草稿，选区兜底 skill 采用证据门槛，简历库 v1 契约不变 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`。
+- 2026-09-04 — 建立后端架构控制基线：确认模块化单体、模块/路由归属、云本地数据权威、事务 outbox、AI/Trace 边界与 P0-gate / P1 / P2 风险清单；不改变实现和用户验收状态 — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`。
 
 ## 已实现
 
@@ -165,11 +170,13 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - Stage 6a 验证 — 2026-09-03 `node --check sync-unit.mjs`、`node --check tests/sync-unit.test.mjs`、`node --test tests/sync-unit.test.mjs`（14 pass / 0 fail）与 `cli/` 下全量 `npm test`（120 pass / 0 fail）通过。专项测试覆盖合同门槛八类规则；6b/6c/6d 未开始，统一用户验收仍未完成。
 - Stage 6b 显式本地同步队列 — `cli/sync-queue.mjs`、`cli/tests/sync-queue.test.mjs`、`cli/gy.mjs`、`cli/tests/gy-entry.test.mjs`、`docs/SYNC_UNIT_CONTRACT.md`、`cli/DATA_CONTRACT.md`、`cli/README.md` 与 `cli/AGENTS.md`；提供队列 list / 状态过滤、dry-run 与 apply 入队、同单元幂等、同对象唯一当前条目、用户触发重试、认证 / 网络阻断、重绑后精确重确认、云端哈希冲突证据、取消审计隔离、删除墓碑、有界备份和 `gy --status` 只读摘要。队列不联网、不自动上传、不后台重试、不修改本地业务对象。
 - Stage 6b 验证 — 2026-09-03 `node --check sync-queue.mjs`、`node --check gy.mjs`、`node --test tests/sync-queue.test.mjs`（9 pass / 0 fail）、`node --test tests/gy-entry.test.mjs`（3 pass / 0 fail）与 `cli/` 下全量 `npm test`（129 pass / 0 fail）通过。统一用户验收仍未完成，6c 尚未开始。
+- 后端架构控制基线 — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`；基于当前 Java 代码与配置梳理 Spring Boot 模块化单体运行拓扑、Redis opaque session 与独立设备 token、active/supporting/frozen 模块和路由归属、云本地数据权威、事务 outbox 与五条队列、能力证据到确定性评分链路、AI/Agent Trace 边界、12 项架构风险与后续变更检查单。本轮不修改运行行为，Stage 6c 仍未启动。
 
 - 2026-09-03 — 简历管理修订为以一份简历为唯一主对象，并实现唯一草稿汇流、历史抽屉、右键拖拽选区和证据门槛兜底 skill — 影响简历交付体验、Agent 片段改写边界和后续统一验收；`get-yourself.resume-library v1` 契约保持不变。
 - 简历对象管理验证 — 2026-09-03 19:11 `frontend/` 下 `npm run build` 通过；浏览器实测无能力证据时生成安全替换会被阻断，经 Agent 确认临时导入“跨端协作”证据后能生成保守替换稿并显示证据缺口，替换先进入编辑缓冲区，保存只写入 v4 草稿且当前投递版仍为 v3；确认定稿后当前投递版切到 v4，历史抽屉可显式切回 v3，本机简历文件桥保持收起。右键拖拽路径完成释放顺序、指针捕获与滚动偏移映射实现复查，但当前浏览器自动化接口无法发送真实右键拖动，待用户统一验收时用真实鼠标复测；390px 本轮未重复实测。
 - 2026-09-04 — PRD 校准至 v0.1 r7 — 明确当前实现、仓库验证与用户验收分离；补充真实右键拖拽、编辑器滚动映射、资产上下文与建议 / 替换 Trace 的人工验收项，并重申 6c 前必须完成 6a / 6b 用户本地侧验收；不改变产品目标、模块边界或契约版本。
 - 2026-09-04 — 新增用户统一验收包 — 按 A0-A7 固化真实路由、CLI 命令、预期结果、禁止行为和待验收结论；记录本轮 CLI / 前端 / 6a / 6b / Runtime 基线与后端环境阻断，验收结论不得由仓库测试替代。
+- 2026-09-04 — 新增后端架构控制基线 — 确认模块化单体与云本地权威边界，登记鉴权、Trace 脱敏、legacy 密码、冻结域耦合、outbox 并发与 journal 事件错配等风险；本轮为文档掌控，不代表后端重构或 Stage 6c 开始。
 
 ## 已验收
 
