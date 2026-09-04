@@ -1,11 +1,13 @@
 # PROJECT_STATE
 
-Updated: 2026-09-04 15:11
+Updated: 2026-09-04 18:50
 Current phase: implementation
 
 ## 一句话现状
 
-Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一份简历为主对象的版本管理、选区证据门槛兜底 skill、简历版本库显式文件桥、简历事实链显式身份绑定与只读审计、学生端工具台 UI 基座、页面内 skill 显式确认流、本地 Skill Runtime v0.1 审批账本与 v0.2 全量 11 条契约执行桥、Stage 6a 同步单元本地 builder / validator、Stage 6b 显式本地同步队列、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥与本地能力反哺台账已实现；前端 Demo、`gy`、证据包、设备绑定、Stage 4、Stage 5 本地桥接、显式事实链身份绑定、Runtime v0.2 与 Stage 6a/6b 仍待用户统一验收，平台自动同步尚未开始。
+Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一份简历为主对象的版本管理、选区证据门槛兜底 skill、简历版本库显式文件桥、简历事实链显式身份绑定与只读审计、学生端工具台 UI 基座、页面内 skill 显式确认流、本地 Skill Runtime v0.1 审批账本与 v0.2 全量 11 条契约执行桥、Stage 6a 同步单元本地 builder / validator、Stage 6b 显式本地同步队列、Stage 1 `gy` 本地对话入口、Stage 2a 能力证据包离线导入、Stage 2b 网页显式导出、Stage 3 最小设备绑定闭环、Stage 4a 简历素材/STAR 故事、Stage 4b 简历定稿/面试准备、Stage 4c 面试复盘、结构化简历渲染、岗位分析、本地防骗核查、公司机会/投递清单本地桥接、公司机会节点 mutation、真实产物挂载、面试管理显式文件桥、本地能力反哺台账与后端 P0 当前加固范围已实现；前端 Demo、`gy`、证据包、设备绑定、Stage 4、Stage 5 本地桥接、显式事实链身份绑定、Runtime v0.2、Stage 6a/6b 与后端 P0 体验 / 风险结论仍待用户统一验收，平台自动同步尚未开始。
+
+2026-09-04 后端 P0 加固补充：已建立 85 条路由 / 23 个请求 Controller 的鉴权与所有权矩阵，新增能力状态与评分申诉的跨用户拒绝测试；Agent Trace 新写入仅保存受控类型、240 字符内脱敏摘要和 summary-only 元数据，不再保存原始 content；V23 将历史 artifact 重写为 legacy summary-only 并重算 SHA-256。当前工程验证已完成：后端回归 49 pass / 0 fail；隔离 MariaDB 11.4.13 数据从 V22 迁移到 V23 成功，seeded email / 手机号 / password / 简历原文残留为 0，存储哈希与重算 SHA-256 一致。该结果不覆盖 MySQL 8.4；迁移后 Hibernate 无法识别 MariaDB dialect，应用启动未通过，不能登记为完整后端启动验证。BA-01 冻结域公共入口与集中式策略、BA-03 未来 6c 逐单元授权边界仍待收口；6c 仍未解锁。
 
 2026-09-03 下午补充：Stage 6a 已落地本地确定性构建 / 校验纯函数与 14 个专项测试，Stage 6b 已落地显式本地队列与 9 个专项测试，覆盖自然身份、内容指纹、禁传字段、basis 冲突、append-only Trace、队列持久化、幂等入队、认证 / 网络阻断、用户触发重试、重绑确认、冲突证据、取消隔离和删除墓碑。6c 授权 API / 数据库 / 云端投影与 6d 网页摘要 / Trace 汇总均未开始；平台自动同步尚未开始。
 
@@ -88,7 +90,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - Stage 6b 队列只写 `data/sync-queue.json` 与 `data/sync-queue-backups/*`，不联网、不上传、不后台重试、不修改业务对象；`pending` 只表示本地待发 — `cli/sync-queue.mjs`、`cli/tests/sync-queue.test.mjs` 与 `cli/DATA_CONTRACT.md`。
 - 仓库验证与用户验收是两个门槛：6a 测试通过允许并行推进 6b 实现与用户统一验收，但不能记录为用户验收；进入 6c 授权 API / 云端投影前，6b 必须通过仓库测试并获得用户对本地侧边界的验收 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md` 2026-09-03 第 21 条。
 - 后端当前形态是 Spring Boot 3.3 / Java 21 模块化单体；云侧权威是账号、成长证据、评分、记忆、Trace 与设备授权，本侧权威是简历、素材、STAR、机会流程与本地 Runtime 产物 — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`。
-- Agent Trace artifact 当前 `redacted=true` 只是无条件标记，并未真实脱敏；在修复前不得把简历全文、STAR 原文、凭据或原始个人文件写入 trace artifact — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`。
+- Agent Trace artifact 新写入当前为 summary-only：受控类型、240 字符内脱敏摘要和 `rawContentRetained=false`；V23 将历史 artifact 重写为 legacy summary-only。该实现不授权调用方把简历全文、STAR 原文、凭据、原始个人文件或本机绝对路径塞进摘要 — `AgentTraceArtifactService`、`V23__redact_agent_trace_artifacts.sql` 与 `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`。
 - 6c 授权 API / 云端投影启动前必须同时满足 6b 用户本地侧验收与后端架构 P0 门槛处置；鉴权矩阵、Trace 脱敏语义和设备授权写入边界可以被工程修复，或由用户明确接受，不能因已登记文档而默认通过 — `docs/PRODUCT_DESIGN_V0.1.md` r8 与 `decisions.md` 2026-09-04。
 
 ## 决策索引
@@ -123,6 +125,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - 2026-09-04 — 建立后端架构控制基线：确认模块化单体、模块/路由归属、云本地数据权威、事务 outbox、AI/Trace 边界与 P0-gate / P1 / P2 风险清单；不改变实现和用户验收状态 — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`。
 - 2026-09-04 — PRD r8 将后端架构基线合入产品推进规则，并固定 6c 的用户本地侧验收 + 后端架构 P0 门槛双前置；不改变产品目标和既有模块契约 — `docs/PRODUCT_DESIGN_V0.1.md` 与 `decisions.md`。
 - 2026-09-04 — 验收方法独立成文：定义证据等级、case 设计矩阵、缺陷分级、模块结论、真人硬门槛、记录格式与回归规则；统一验收包继续承担当前批次执行 — `docs/ACCEPTANCE_STANDARD_V0.1.md` 与 `decisions.md`。
+- 2026-09-04 — 后端 P0 加固在不解锁 6c 的前提下记录工程进展：BA-01 建立路由 / 所有权矩阵并补跨用户拒绝测试，BA-02 新写入与历史迁移均改为 summary-only，BA-03 确认设备 token 仅限状态与断开；工程验证不能替代用户验收，BA-01 冻结域公共入口仍需处置或风险接受 — `decisions.md` 第 6 条。
 
 ## 已实现
 
@@ -201,6 +204,9 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - Stage 6b 验证 — 2026-09-03 `node --check sync-queue.mjs`、`node --check gy.mjs`、`node --test tests/sync-queue.test.mjs`（9 pass / 0 fail）、`node --test tests/gy-entry.test.mjs`（3 pass / 0 fail）与 `cli/` 下全量 `npm test`（129 pass / 0 fail）通过。统一用户验收仍未完成，6c 尚未开始。
 - 后端架构控制基线 — `docs/BACKEND_ARCHITECTURE_CONTROL_V0.1.md`；基于当前 Java 代码与配置梳理 Spring Boot 模块化单体运行拓扑、Redis opaque session 与独立设备 token、active/supporting/frozen 模块和路由归属、云本地数据权威、事务 outbox 与五条队列、能力证据到确定性评分链路、AI/Agent Trace 边界、12 项架构风险与后续变更检查单。本轮不修改运行行为，Stage 6c 仍未启动。
 - PRD v0.1 r8 后端架构合入 — `docs/PRODUCT_DESIGN_V0.1.md`、`decisions.md` 与 `docs/UNIFIED_ACCEPTANCE_V0.1.md`；新增 4.3 后端架构控制基线、后端 P0 门槛、6c 双门槛、架构风险验收边界、开放问题与决策记录，并同步统一验收收口。产品目标与既有功能契约不变。
+- 后端 P0 Trace 摘要化 — `backend/src/main/java/com/getyourself/backend/agentlog/AgentTraceArtifactService.java`、`backend/src/main/resources/db/migration/V23__redact_agent_trace_artifacts.sql` 与 `backend/src/test/java/com/getyourself/backend/agentlog/AgentTraceArtifactServiceTest.java`；新写入忽略原始 content，仅保存受控 artifact 类型、脱敏摘要和 summary-only 元数据；赋值型敏感词、Bearer token、邮箱、大陆手机号和 18 位身份证号会被遮蔽；V23 重写历史 artifact、标记 redacted、重算内容哈希。
+- 后端 P0 路由 / 所有权基线 — `docs/BACKEND_ROUTE_AUTH_MATRIX_V0.1.md`、`backend/src/test/java/com/getyourself/backend/abilityscore/AbilityEvidenceTimelineServiceTest.java` 与 `backend/src/test/java/com/getyourself/backend/abilityscore/AbilityScoreAppealServiceTest.java`；矩阵覆盖 85 个 handler / 23 个请求 Controller，设备 token 仅出现在状态与断开两条路由，测试钉住另一用户的能力状态与申诉访问必须拒绝。
+- 后端 P0 验证 — 2026-09-04 18:43 使用仓库外隔离 Maven / JDK 运行 `backend/` 全量测试：49 run / 0 fail / 0 error / 0 skipped；隔离 MariaDB 11.4.13 从 V22 迁移至 V23 成功，Flyway version 23 且 success=1，legacy summary、redaction mode、rawContentRetained、redacted、64 位哈希、存储哈希一致性和敏感残留 0 均通过 SQL 断言。迁移后应用启动在 Hibernate dialect 识别处失败，因此不声明启动通过；MySQL 8.4 未验证。
 
 - 2026-09-03 — 简历管理修订为以一份简历为唯一主对象，并实现唯一草稿汇流、历史抽屉、右键拖拽选区和证据门槛兜底 skill — 影响简历交付体验、Agent 片段改写边界和后续统一验收；`get-yourself.resume-library v1` 契约保持不变。
 - 简历对象管理验证 — 2026-09-03 19:11 `frontend/` 下 `npm run build` 通过；浏览器实测无能力证据时生成安全替换会被阻断，经 Agent 确认临时导入“跨端协作”证据后能生成保守替换稿并显示证据缺口，替换先进入编辑缓冲区，保存只写入 v4 草稿且当前投递版仍为 v3；确认定稿后当前投递版切到 v4，历史抽屉可显式切回 v3，本机简历文件桥保持收起。右键拖拽路径完成释放顺序、指针捕获与滚动偏移映射实现复查，但当前浏览器自动化接口无法发送真实右键拖动，待用户统一验收时用真实鼠标复测；390px 本轮未重复实测。
@@ -214,7 +220,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 
 ## 未决问题
 
-- P0-gate — 后端架构 BA-01 鉴权 / 所有权矩阵、BA-02 Trace 真实脱敏语义、BA-03 未来设备授权云写入边界尚未修复或获得用户明确接受 — 项目组与用户 — 阻塞 Stage 6c 授权 API / 数据库 / 云端投影 / 上传重试 — 在 6b 用户本地侧验收后逐项给出修复或明确接受结论。
+- P0-gate — BA-01 冻结域公共变更 / 重建索引入口与集中式运行时策略尚未处置，BA-02 的 MySQL 8.4 与迁移后完整启动链路证据尚未补齐，BA-03 尚需在 6c 设计时做逐单元显式授权复核；三项未收口或未被用户明确接受前，Stage 6c 授权 API / 数据库 / 云端投影 / 上传重试继续阻塞。
 - P1 — 前端 Demo、Stage 1 `gy` 入口、Stage 2 证据包文件闭环、Stage 3 设备绑定、Stage 4 素材/定稿/准备/简历对象管理/选区兜底 skill/版本库/显式事实链身份绑定链路、Stage 5 公司机会/tracker/节点 mutation/产物挂载本地桥接、Skill Runtime v0.2 审批账本 / 全量 11 条契约执行桥与 Stage 6 合同 + 6a builder / validator + 6b 显式队列是否通过用户验收 — 用户 — 不阻塞按用户指示缓步推进，但未验收前不得记录为已验收 — 用户检查 `/student/workbench`、独立模块路由、`node gy.mjs`、证据包导出/导入、设备绑定/解绑、简历/面试契约工具、公司机会导入、节点 mutation、产物挂载、`resume-fact-chain.mjs`、`skill-runtime.mjs`、`sync-unit.mjs`、`sync-queue.mjs list/enqueue/retry/cancel/mark/reconfirm` 与 `node --test tests/sync-queue.test.mjs`。
 - P1 — “能力资产”最终命名 — 用户 — 不阻塞实现 — 继续使用暂名。
 - P1 — 产品与技术评审未完成 — 项目组 — 不阻塞 Stage 1 入口实现 — 修订 PRD 后提交评审。
@@ -223,7 +229,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 
 1. 与用户执行 `docs/UNIFIED_ACCEPTANCE_V0.1.md`：按 A0-A7 顺序检查 Agent、能力资产、简历管理、面试管理、本地 Runtime、Stage 6a 与 Stage 6b；逐项记录通过 / 需修改 / 阻断，简历管理必须包含真实鼠标右键拖拽与滚动后选区复测。
 2. 修复统一验收中的体验阻断；修复优先级高于继续扩展云端能力。
-3. 6b 获得用户本地侧验收且后端架构 P0 门槛被修复或由用户明确接受前，不启动 6c 授权 API、数据库或云端投影；不做自动上传、自动重试或自动导入。
+3. 收口后端 P0 剩余证据：处置冻结域公共入口或取得用户风险接受，补目标数据库 / 完整启动链路验证，并在 6c 设计前复核设备 token 逐单元授权边界。
+4. 6b 获得用户本地侧验收且后端架构 P0 门槛被修复或由用户明确接受前，不启动 6c 授权 API、数据库或云端投影；不做自动上传、自动重试或自动导入。
 
 ## 恢复上下文
 
@@ -245,6 +252,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 
 ## 最近更新
 
+- 2026-09-04 — 后端 P0 当前加固范围工程验证完成 — 新增 85 路由 / 23 Controller 鉴权与所有权矩阵、跨用户拒绝测试、Trace 新写入 summary-only 与 V23 历史迁移；后端回归 49 pass / 0 fail，隔离 MariaDB 11.4.13 V22→V23 迁移与敏感残留检查通过。MySQL 8.4、完整启动链、BA-01 冻结域公共入口集中处置与用户验收仍开放，6c 继续禁止启动。
 - 2026-09-04 — PRD 修订至 v0.1 r10 — 新增模块大白话进度表，并校准 A1-A7 机器预检、用户验收与后端环境阻断边界；产品目标与模块边界不变。
 - 2026-09-04 — A2 能力资产机器预检 — 修复空态候选证据边界不可见问题并验证 API 替身场景；随后用不入库的 MariaDB / Redis / 打包后端兼容环境完成真实导出、CLI 导入与网页回刷预检。该预检不改变 Maven / Docker 标准依赖结论，用户结论保持待验收。
 - 2026-09-04 — A3 简历选区映射修复 — 修正右键拖拽镜像层滚动补偿与样式复制，桌面和窄屏滚动前后选区预检通过；真实鼠标验收仍待用户完成。

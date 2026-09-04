@@ -24,6 +24,22 @@ class AbilityScoreAppealServiceTest {
     private AbilityScoreResultRepository resultRepository;
 
     @Test
+    void rejectsScoreResultOwnedByAnotherUser() {
+        AbilityScoreResultEntity result = scoreResult(7L, "student-1", "java-backend");
+        when(resultRepository.findById(7L)).thenReturn(Optional.of(result));
+
+        AbilityScoreAppealService service = new AbilityScoreAppealService(
+                appealRepository,
+                resultRepository
+        );
+
+        assertThrows(
+                ApiException.class,
+                () -> service.createUserAppeal("student-2", 7L, "Please review it again.", null)
+        );
+    }
+
+    @Test
     void createsOnePendingAppealOwnedByCurrentUser() {
         AbilityScoreResultEntity result = scoreResult(7L, "student-1", "java-backend");
         when(resultRepository.findById(7L)).thenReturn(Optional.of(result));

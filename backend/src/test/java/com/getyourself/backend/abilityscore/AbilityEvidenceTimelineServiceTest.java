@@ -11,12 +11,31 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AbilityEvidenceTimelineServiceTest {
+    @Test
+    void rejectsAbilityStateOwnedByAnotherUser() {
+        UserAbilityStateRepository stateRepository = mock(UserAbilityStateRepository.class);
+        AbilityScoreResultRepository resultRepository = mock(AbilityScoreResultRepository.class);
+        GrowthTagEvidenceRepository evidenceRepository = mock(GrowthTagEvidenceRepository.class);
+        AbilityEvidenceTimelineService service = new AbilityEvidenceTimelineService(
+                stateRepository,
+                resultRepository,
+                evidenceRepository
+        );
+        when(stateRepository.findById(42L)).thenReturn(Optional.of(state("user-1", "Applied LLM Integration")));
+
+        assertThrows(
+                com.getyourself.backend.common.ApiException.class,
+                () -> service.timeline("user-2", 42L)
+        );
+    }
+
     @Test
     void linksEvidenceByAchievementRecordInsteadOfDimensionName() {
         UserAbilityStateRepository stateRepository = mock(UserAbilityStateRepository.class);

@@ -1,8 +1,8 @@
 # Get Yourself Backend Architecture Control v0.1
 
-Updated: 2026-09-04 11:53
-Status: code-grounded architecture baseline
-Scope: `backend/` architecture control only; no runtime behavior is changed by this document
+Updated: 2026-09-04 18:50
+Status: code-grounded architecture baseline plus the first verified P0 hardening batch
+Scope: `backend/` architecture control and the backend changes required by its P0 gates
 
 ## 1. Conclusion And Product Boundary
 
@@ -25,7 +25,7 @@ The backend is not the authority for:
 - Local skill execution records and local artifacts
 - Any local file before the user explicitly confirms an outbound sync unit
 
-Stage 6a and 6b only produce and queue local summaries. Stage 6c cloud projection is not implemented and remains blocked by user acceptance. This document does not change that gate.
+Stage 6a and 6b only produce and queue local summaries. Stage 6c cloud projection is not implemented and remains blocked by Stage 6b user acceptance plus disposal of BA-01 through BA-03. This document and the current hardening batch do not change that gate.
 
 ## 2. Runtime Topology
 
@@ -52,7 +52,7 @@ Runtime control facts:
 
 - `backend/pom.xml` uses Spring Boot 3.3.12, Java 21, Web, Validation, JPA, Redis, AMQP, Flyway, MySQL driver, and Spring Security crypto.
 - `GetYourselfBackendApplication` enables scheduling. Scheduled work includes outbox dispatch, user memory refresh, and legacy event expiration.
-- JPA uses `ddl-auto: validate`; schema ownership belongs to Flyway migrations, currently `V1` through `V22`.
+- JPA uses `ddl-auto: validate`; schema ownership belongs to Flyway migrations, currently `V1` through `V23`.
 - RabbitMQ listener auto-startup defaults to `false` in `application.yml`, while the example environment enables it for local integration. This difference avoids startup failure before RabbitMQ is ready, but operators must know which mode they are running.
 - OpenSearch and rerank are config-gated and disabled by default because they serve frozen activity retrieval, not the v0.1 student job-search path.
 - The AI provider is optional. Missing keys or failed model requests fall back to deterministic rules rather than blocking the main workflow.
@@ -82,13 +82,13 @@ Workbench authorization is intentionally separate from web login:
 - Rebinding the same installation ID revokes the previous device authorization.
 - Web disconnect and CLI disconnect both revoke the cloud device record; local files remain under CLI control.
 
-The device token currently authorizes device status and disconnect only. It does not prove interactive web login and must not silently authorize cloud data reads or uploads. Any future Stage 6c API must require explicit user authorization and an active device relationship; it must not turn the device token into a second unrestricted session token.
+The device token currently authorizes device status and disconnect only; `docs/BACKEND_ROUTE_AUTH_MATRIX_V0.1.md` inventories those as the only two `X-Device-Token` routes. It does not prove interactive web login and must not silently authorize cloud data reads or uploads. Any future Stage 6c API must require explicit user authorization and an active device relationship; it must not turn the device token into a second unrestricted session token.
 
 ### 3.3 Known Auth Gaps
 
 | Gap | Architectural consequence | Control rule |
 |---|---|---|
-| No centralized endpoint authorization matrix | Route protection depends on each controller remembering `CurrentUser` | New data-bearing API requires a route-by-route auth and ownership decision before implementation |
+| Authorization remains controller/service-owned even though a full route matrix now exists | Route protection depends on each controller and service enforcing its documented rule | Keep the route matrix current; central policy or route disablement remains separate hardening |
 | Legacy `{plain}` password comparison remains | Old hashes can be matched without BCrypt | Plan a migration/rehash path before production; do not create new plain hashes |
 | Local CORS defaults are permissive | Local prototyping convenience, production exposure if copied | Production origin allowlist must be explicit and reviewed |
 | Frozen controllers remain compiled and routed | Freezing is currently product and review discipline, not runtime isolation | Do not add features; route deprecation/removal needs its own data migration plan |
@@ -137,6 +137,8 @@ Frozen for v0.1:
 "Frozen" means no new product capability, route expansion, UI surface, scoring rule, or event flow. Code and tables may remain because historical growth evidence, old accounts, and migrations still reference them. Physical removal requires an explicit data-retention and migration decision.
 
 ## 5. Route Control Baseline
+
+The route-by-route inventory is maintained in `docs/BACKEND_ROUTE_AUTH_MATRIX_V0.1.md`. Its current code baseline covers 85 handler methods in 23 request controllers. The matrix records accepted identity, ownership rule, writes, active/hidden/historical/frozen state, and known public gaps. It is a review contract, not a centralized runtime policy.
 
 | Route prefix | Module | v0.1 route state |
 |---|---|---|
@@ -235,7 +237,15 @@ Trace storage currently consists of:
 
 Trace writes are intended to survive business transaction failure through `REQUIRES_NEW`. Artifact persistence failure is logged and swallowed so audit failure does not always break the user-facing path. This is useful availability behavior, but acceptance criteria must allow a run with missing artifacts rather than claiming every trace is complete.
 
-Critical privacy defect: `AgentTraceArtifactService.record()` sets `redacted=true` unconditionally while storing full `contentJson`. The flag is therefore false assurance. Until fixed, architecture review must treat trace artifacts as unredacted and avoid storing resume full text, STAR originals, credentials, or raw private documents in this table.
+The former implementation set `redacted=true` unconditionally while storing full `contentJson`, making the flag false assurance. The 2026-09-04 hardening batch changes that behavior:
+
+- `AgentTraceArtifactService.record()` does not serialize the passed content object.
+- It persists only a bounded artifact type, a sanitized summary no longer than 240 characters, `redaction.mode=summary-only`, and `rawContentRetained=false`.
+- Sensitive assignment values, bearer tokens, emails, mainland mobile numbers, and 18-digit ID numbers are redacted from the summary; unstructured artifact types are replaced with `UNSAFE_ARTIFACT_TYPE`.
+- Serialization failures persist no exception text.
+- `V23__redact_agent_trace_artifacts.sql` replaces legacy artifact JSON with summary-only metadata, marks it redacted, and recomputes its hash.
+
+This is an engineering privacy fix, not permission for callers to put prohibited originals into the summary. Callers still must pass decision summaries rather than resume full text, STAR originals, credentials, raw personal documents, or local absolute paths.
 
 ## 7. AI And Agent Control
 
@@ -303,11 +313,11 @@ Priority meaning:
 - `P1`: next architecture hardening batch
 - `P2`: controlled cleanup after v0.1 acceptance
 
-| ID | Priority | Risk | Control direction |
+| ID | Priority | Risk | Current disposition |
 |---|---|---|---|
-| BA-01 | P0-gate | Authorization is per-controller and there is no central endpoint policy | Build route/auth inventory first; centralize only after behavior is explicit |
-| BA-02 | P0-gate | Trace artifact claims redaction but stores full JSON | Fix semantics and migration before any broader trace exposure |
-| BA-03 | P0-gate | Stage 6c would introduce device-authorized cloud writes | Require active device plus explicit user authorization, idempotency, conflict evidence, and trace |
+| BA-01 | P0-gate | Authorization is per-controller and there is no central endpoint policy | The 85-route matrix now makes identity, ownership, and writes explicit, focused tests reject another user's ability state and appeal, and the 49-test backend regression passed. Runtime enforcement still belongs to controllers/services; frozen public mutation gaps remain exposed and require route disablement, role control, or explicit user risk acceptance |
+| BA-02 | P0-gate | Trace artifact claims redaction but stores full JSON | Current-scope engineering verification passed: new writes retain only sanitized summary metadata, V23 rewrites legacy rows, the 49-test backend regression passed, and a real MariaDB 11.4 V22-to-V23 migration passed. This is not MySQL 8.4 verification, and the post-migration Hibernate dialect failure means no application-startup pass is claimed |
+| BA-03 | P0-gate | Stage 6c would introduce device-authorized cloud writes | The matrix confirms the device token is accepted only by status and disconnect. No sync endpoint exists; future 6c still requires active device, explicit per-unit user authorization, idempotency, conflict evidence, Trace, and a fresh route-boundary review |
 | BA-04 | P1 | `{plain}` password compatibility remains | Migrate or force rehash before production |
 | BA-05 | P1 | Active achievement/assessment code imports frozen `eventquality` | Introduce a historical evidence read model, then decouple |
 | BA-06 | P1 | Outbox dispatcher lacks distributed locking | Single-instance v0.1 is acceptable; add lease/lock before multi-instance |
@@ -352,17 +362,24 @@ Priority meaning:
 
 ## 11. Verification Record
 
-This revision is documentation-only. Required repository check for this change:
+Required repository checks for this change:
 
 ```powershell
 git diff --check
 ```
 
-Required backend check for any future Java or configuration change:
+Required backend check for Java or configuration changes:
 
 ```powershell
 cd backend
 mvn test
 ```
 
-Current local environment still has neither `mvn` nor `docker` on PATH. Therefore no backend regression or infrastructure-dependent test is claimed for this documentation-only revision. Existing backend test classes cover ability scoring, evidence export, retrieval helpers, and workbench device behavior, but they are not a substitute for user acceptance.
+### 2026-09-04 P0 Hardening Evidence
+
+- Backend regression passed with an isolated Maven 3.9.9 / JDK 21 runtime outside the repository: 49 tests run, 0 failures, 0 errors, 0 skipped at 18:43 (`BUILD SUCCESS`).
+- Real database migration was verified on MariaDB 11.4.13 in an isolated temporary data directory copied from V22 state. Flyway validated 23 migrations and applied V23 successfully.
+- The migration fixture seeded one legacy artifact containing an email, mobile number, password assignment, and raw resume text. Post-migration SQL assertions confirmed version 23 and success, summary `[legacy artifact redacted]`, `redaction.mode=legacy-summary-only`, `rawContentRetained=false`, `redacted=1`, a valid 64-character hash matching SHA-256 of the stored JSON, and zero residual matches for the seeded sensitive values.
+- A post-migration application start attempt failed after Flyway succeeded because Hibernate could not determine the MariaDB dialect. No backend startup pass is claimed.
+- Verification used MariaDB 11.4 only. MySQL 8.4 remains unverified and must not inherit this result.
+- Temporary MariaDB, Redis, JDK, and Maven assets were outside the repository; the temporary services were stopped after verification.
