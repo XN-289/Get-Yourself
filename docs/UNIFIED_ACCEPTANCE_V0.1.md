@@ -201,6 +201,8 @@ Stage 6a 是仓库合同与纯函数能力验收，不提供用户可见上传�
 
 A6 结论：待验收。
 
+2026-09-04 15:05 机器预检补充：`node --test tests/sync-unit.test.mjs` 为 14 pass / 0 fail，覆盖 canonical hash、自然身份、禁传字段、幂等键、basis 分类、Trace append-only、重绑、取消、墓碑与精确重试；`node --check sync-unit.mjs` 通过。合同复核确认首批仅 `opportunity.progress.v1` 与 `trace.decision.v1`，简历全文、JD 原文、STAR 原稿、联系人、凭证与本地路径属于禁传内容。实现复核确认 Stage 6a 为导出的确定性 builder / validator / classifier，无网络调用、无文件写入、无队列写入，也未暴露 CLI 命令。A6-4 的冲突口径解释仍待用户确认。
+
 ## A7 Stage 6b 显式本地队列
 
 目录：`cli/`
