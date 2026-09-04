@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-04 14:52
+Updated: 2026-09-04 14:56
 Current phase: implementation
 
 ## 一句话现状
@@ -28,6 +28,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 2026-09-04 A2 真实闭环预检补充：临时搭建不入库的 MariaDB / Redis / 当前打包后端兼容环境，显式评估演示记录并重建成长标签；H2 MySQL / MariaDB 兼容模式在 V2 方言迁移失败，已确认不能替代真实 MariaDB。真实网页导出 v1 证据包成功，CLI check 通过 2 能力 / 2 证据；隔离数据根默认 import 为 `applied=false` 且不落盘，显式 apply 仅写 `data/evidence-package.json`，重复 apply 幂等且不改文件时间、哈希或文件数；回刷网页后平台评分与证据快照不变，console 无错误。该结果为 E2 机器证据，不改变 Maven / Docker 标准依赖结论，A0-A7 用户验收结论仍全部待验收。
 
 2026-09-04 A3 机器预检补充：修复简历右键拖拽选区镜像层的滚动补偿方向和 camelCase 样式名读取错误。修复后 1440px 与 390px 的顶部选区、编辑器滚动到底后选区、菜单可见性、横向溢出与 console 检查均通过，`frontend/` 下 `npm run build` 通过并保留既知 chunk 警告。该结果仍不能替代用户真实鼠标验收，A3-4 到 A3-6 继续待用户确认。
+
+2026-09-04 A4 机器预检补充：面试管理外层状态小按钮只打开抽屉、用户确认后才写入状态；自定义节点只追加当前公司机会；真实拖拽与抽屉左移只重排当前机会，另一家公司节点不变；Offer 用户确认后有成功鼓励文案；1440px 与 390px 页面本体横向溢出为 0，窄屏流程轨内部横向滚动，console 错误 0。该结果仍不替代用户对拖拽手感与真实流程管理的验收。
 
 ## 已接受事实
 
@@ -121,6 +123,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - 学生端工具台 UI 基座 — `frontend/src/components/ui/`、`frontend/src/components/agent/AgentMarkdown.vue` 与四个学生端模块页；统一面板、按钮、状态胶囊与确认弹窗，Agent 消息改为安全 Markdown 渲染，证据包导出接入 Vue Query mutation。
 - 学生端 UI 基座验证 — `frontend/` 下 `npm run build` 通过，`npm audit --json` 0 vulnerabilities；`/student/workbench`、`/student/assets`、`/student/resume`、`/student/interview` 在 1440px 桌面与 390px 窄屏完成布局检查，确认弹窗在窄屏完成居中、焦点、Esc 关闭与滚动锁定恢复检查，Agent Markdown 完成 raw HTML 禁用与 sanitize 冒烟。
 - 公司机会横向流程轨版面试管理 — `frontend/src/stores/studentWorkbench.ts`、`frontend/src/views/StudentInterviewView.vue`、`frontend/src/components/ui/WorkbenchDrawer.vue` 与 `frontend/package.json`；支持公司机会、可扩展节点、横向紧凑总览、右侧节点抽屉、抽屉左移/右移、SortableJS 同公司内真实拖拽排序、人工状态确认、skill 关联展示、流程内鼓励文案和 Offer 庆祝反馈。
+- 面试管理 A4 预检验证 — 2026-09-04 独立浏览器上下文实测状态小按钮先开抽屉、用户确认写入、自定义节点追加当前机会、拖拽与抽屉左移不跨公司、Offer 鼓励反馈、1440px / 390px 布局与 console；机器预检通过，用户验收仍待完成。
 - 横向流程轨验证 — 2026-09-01 `frontend/` 下 `npm run build` 与 `npm audit --json` 通过（0 vulnerabilities）；1440x900 Playwright 真实鼠标序列把“JD 分析”向右拖拽后顺序从 JD/简历/投递变为简历/投递/JD，页面无整体横向溢出；390px 下流程轨保持 `row` 且内部滚动、页面本体溢出为 0、节点状态与小按钮不越界；节点卡片与外部小按钮均能打开抽屉，状态切换、抽屉左移、Esc 关闭与焦点返回、Offer 从等待中重新确认均实测通过。
 - v0.1 Agent-first 产品设计修订 — `docs/PRODUCT_DESIGN_V0.1.md`，commit `d153802`。
 - Stage 1 `gy` 本地入口 — `cli/gy.mjs`、`cli/lib/intent-router.mjs`、`cli/modes/cv.md`；`npm test` 结果 9 pass / 0 fail，`node gy.mjs --status` 与自然语言路由人工检查通过。
@@ -236,6 +239,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 
 - 2026-09-04 — A2 能力资产机器预检 — 修复空态候选证据边界不可见问题并验证 API 替身场景；随后用不入库的 MariaDB / Redis / 打包后端兼容环境完成真实导出、CLI 导入与网页回刷预检。该预检不改变 Maven / Docker 标准依赖结论，用户结论保持待验收。
 - 2026-09-04 — A3 简历选区映射修复 — 修正右键拖拽镜像层滚动补偿与样式复制，桌面和窄屏滚动前后选区预检通过；真实鼠标验收仍待用户完成。
+- 2026-09-04 — A4 面试管理机器预检 — 状态确认、节点追加、同机会拖拽 / 左移、Offer 反馈与窄屏布局检查通过；用户验收仍待完成。
 - 2026-09-04 — PRD 修订至 v0.1 r8 — 将后端模块化单体、云本地权威和架构 P0 门槛合入产品推进规则，并同步统一验收清单；6c 改为用户本地侧验收 + 后端架构门槛双前置，不改变产品目标、模块边界或契约版本。
 - 2026-09-04 — 新增独立验收标准 — 定义证据等级、case 矩阵、缺陷分级、模块结论、人工硬门槛与回归规则；PRD r9 和统一验收包引用该标准，不改变产品范围或当前待验收状态。
 - 2026-09-01 — 新增项目状态台账与决策留痕；完成 PRD Agent-first、四模块、无独立教练/日程口径修订 — 影响产品文档与后续实现范围。
