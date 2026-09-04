@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-09-04 14:48
+Updated: 2026-09-04 14:52
 Current phase: implementation
 
 ## 一句话现状
@@ -26,6 +26,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 2026-09-04 A2 机器预检补充：能力资产空态现在始终显示候选证据确认边界；导出控件缺年份或目标方向时禁用，受控 HTTP 500 显示可见错误且不触发下载或导入；Agent“复盘反哺”确认后的接口权限表达卡片明确显示“候选证据 / 面试反哺”，未被伪装成已确认评分；1440px 与 390px 横向溢出为 0，前端 build 通过并保留既知 chunk 警告。该检查使用 API 替身，只作为 E2 机器证据；8080 后端仍无监听，A2 真实下载、导入与回刷闭环继续阻断。
 
 2026-09-04 A2 真实闭环预检补充：临时搭建不入库的 MariaDB / Redis / 当前打包后端兼容环境，显式评估演示记录并重建成长标签；H2 MySQL / MariaDB 兼容模式在 V2 方言迁移失败，已确认不能替代真实 MariaDB。真实网页导出 v1 证据包成功，CLI check 通过 2 能力 / 2 证据；隔离数据根默认 import 为 `applied=false` 且不落盘，显式 apply 仅写 `data/evidence-package.json`，重复 apply 幂等且不改文件时间、哈希或文件数；回刷网页后平台评分与证据快照不变，console 无错误。该结果为 E2 机器证据，不改变 Maven / Docker 标准依赖结论，A0-A7 用户验收结论仍全部待验收。
+
+2026-09-04 A3 机器预检补充：修复简历右键拖拽选区镜像层的滚动补偿方向和 camelCase 样式名读取错误。修复后 1440px 与 390px 的顶部选区、编辑器滚动到底后选区、菜单可见性、横向溢出与 console 检查均通过，`frontend/` 下 `npm run build` 通过并保留既知 chunk 警告。该结果仍不能替代用户真实鼠标验收，A3-4 到 A3-6 继续待用户确认。
 
 ## 已接受事实
 
@@ -152,6 +154,7 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 - 中文简历模板目录验证 — 2026-09-02 `cli/` 下 `npm test` 56 pass / 0 fail；`frontend/` 下 `npm run build` 通过；`node resume-render.mjs list` 只读输出 11 套模板；`git diff --check` 通过。
 - 简历对象管理 — `frontend/src/stores/studentWorkbench.ts`、`frontend/src/views/StudentResumeView.vue` 与 `frontend/src/utils/resumeSelectionSkill.ts`；每份简历包含标题、目标岗位、唯一当前投递版、唯一待处理草稿和版本树，版本记录状态、模板、来源、文件名、版本说明和全文；页面支持平铺对象列表、版本预览、当前投递版标记、本机导入、草稿派生、草稿编辑、选区兜底 skill、定稿、标记导出、历史抽屉和历史版本切换。
 - 简历版本管理验证 — 2026-09-02 浏览器实测从 Java 主简历 v2 派生 v4 草稿、保存“联调结果补强”、确认 v3 未被覆盖、v4 定稿并设为当前投递版、切回 v2 历史投递版均通过；已有 v4 草稿时从 v2 继续会显示“打开现有草稿”并复用该草稿；Agent 生成后进入简历管理会直接选中 v4 草稿，同时当前投递版仍显示 v3；390px 页面无横向溢出，编辑抽屉占满视口且内部无横向滚动；`frontend/` 下 `npm run build` 通过。
+- 简历选区映射修复 — `frontend/src/views/StudentResumeView.vue`；右键拖拽镜像层按 textarea 滚动偏移反向定位，并把复制的 camelCase 样式属性转换为 CSS 连字符读取。2026-09-04 Playwright 在 1440px 与 390px 验证未滚动顶部选区、滚动到底后选区、菜单可见性、页面横向溢出与 console；修复后前端 build 通过。用户真实鼠标验收仍待完成。
 - 简历版本库文件桥 — `cli/resume-library.mjs`、`cli/templates/resume-library.example.json`、`frontend/src/utils/resumeLibrary.ts`、`frontend/src/components/resume/LocalResumeLibraryBridge.vue` 与 `frontend/src/stores/studentWorkbench.ts`；CLI 支持 v1 严格校验、只读 check、默认 dry-run、显式 `--apply` / `--replace`、幂等导入、备份和原子写，前端支持导出会话版本库、读取本地版本库并确认后替换会话对象，`gy --status` 只读展示版本库状态；契约 ID 分配先锁定外部显式 ID、本地默认 ID 避让，时间统一毫秒 UTC，`generatedAt` 与 `traceId` 均不参与语义哈希，标题 / 岗位 / 全文 / 控制字符 / 文件名和 Windows 保留设备名在两端与前端会话层均有校验。
 - 简历版本库验证 — 2026-09-02 `cli/` 下 `npm test` 74 pass / 0 fail，新增 3 个 Node 测试通过；示例库 `check`、dry-run、`--apply`、幂等导入、不同库替换保护和备份隔离已覆盖；`frontend/` 下 `npm run build` 通过；浏览器实测真实导出、CLI `check` 与前后端内容哈希一致（`sha256:b84e7f1ce47877c91b0e02026fb42b461d9ec81dd9ee38015f9da56ddf2dc07b`）、示例库读取确认后正确替换为 1 线 / 2 版且浏览器未写 `cli/data`；1280px 与 390px 页面横向溢出均为 0，导出 / 读取确认弹窗在窄屏完整可见，Esc 取消后无残留弹窗与滚动锁定；修复 `WorkbenchPanel` 窄屏被内容最小宽度撑开的问题。
 - 简历版本库对抗检验 — 2026-09-02 发现并修复三类身份漂移：外部显式契约 ID 被误避让为 `-2`、展示时间丢秒后回导漂移、每次新 `traceId` 参与语义哈希导致同内容重导出被误判变更；浏览器连续导出两份仅 `generatedAt` / `traceId` 不同的 JSON，内容哈希均一致（`sha256:23f2e45b91aef316578e68d36f94a16afa083aa64d3abda586dbc045859d4e0e`），CLI `check` 同哈希，临时数据根第一次导入为 `imported`、第二次为 `unchanged` 且未生成备份；`cli/` 下 `npm test` 74 pass / 0 fail、`frontend/` 下 `npm run build` 通过、`git diff --check` 通过。
@@ -231,7 +234,8 @@ Agent-first 前端 Demo、横向流程轨与节点抽屉版面试管理、以一
 
 ## 最近更新
 
-- 2026-09-04 — A2 能力资产机器预检 — 修复空态候选证据边界不可见问题，验证导出失败反馈、候选证据标识与窄屏布局；真实后端导出闭环仍因 8080 无监听阻断，用户结论保持待验收。
+- 2026-09-04 — A2 能力资产机器预检 — 修复空态候选证据边界不可见问题并验证 API 替身场景；随后用不入库的 MariaDB / Redis / 打包后端兼容环境完成真实导出、CLI 导入与网页回刷预检。该预检不改变 Maven / Docker 标准依赖结论，用户结论保持待验收。
+- 2026-09-04 — A3 简历选区映射修复 — 修正右键拖拽镜像层滚动补偿与样式复制，桌面和窄屏滚动前后选区预检通过；真实鼠标验收仍待用户完成。
 - 2026-09-04 — PRD 修订至 v0.1 r8 — 将后端模块化单体、云本地权威和架构 P0 门槛合入产品推进规则，并同步统一验收清单；6c 改为用户本地侧验收 + 后端架构门槛双前置，不改变产品目标、模块边界或契约版本。
 - 2026-09-04 — 新增独立验收标准 — 定义证据等级、case 矩阵、缺陷分级、模块结论、人工硬门槛与回归规则；PRD r9 和统一验收包引用该标准，不改变产品范围或当前待验收状态。
 - 2026-09-01 — 新增项目状态台账与决策留痕；完成 PRD Agent-first、四模块、无独立教练/日程口径修订 — 影响产品文档与后续实现范围。

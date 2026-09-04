@@ -142,6 +142,8 @@ A2 结论：待验收。
 
 A3 结论：待验收。
 
+2026-09-04 14:52 机器预检补充：修复右键拖拽选区镜像层的两处映射问题——镜像层坐标改为按 textarea 的 `scrollLeft` / `scrollTop` 反向补偿，复制样式时把 camelCase 属性转换为 CSS 连字符，避免 `line-height`、`white-space` 等关键样式丢失。修复后在 1440px 与 390px 各执行顶部选区、编辑器滚动到底后选区、菜单可见性与页面横向溢出检查：选区均命中预期 marker，`.selection-menu` 可见，页面横向溢出为 0，console 无页面错误；修复后 `frontend/` 下 `npm run build` 通过并保留既知 chunk 体积警告。该结果属于 E2 机器证据，A3-4、A3-5 与 A3-6 仍必须由用户用真实鼠标完成验收。
+
 ## A4 面试管理
 
 入口：`/student/interview`

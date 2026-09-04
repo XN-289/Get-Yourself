@@ -352,11 +352,13 @@ function buildTextareaPointMap(textarea: HTMLTextAreaElement) {
   ] as const;
 
   for (const property of styleProperties) {
-    mirror.style[property] = sourceStyle.getPropertyValue(property);
+    const cssName = property.replace(/[A-Z]/g, (character) => `-${character.toLowerCase()}`);
+    const value = sourceStyle.getPropertyValue(cssName);
+    if (value) mirror.style[property] = value;
   }
   mirror.style.position = "fixed";
-  mirror.style.left = `${rect.left + textarea.scrollLeft}px`;
-  mirror.style.top = `${rect.top + textarea.scrollTop}px`;
+  mirror.style.left = `${rect.left - textarea.scrollLeft}px`;
+  mirror.style.top = `${rect.top - textarea.scrollTop}px`;
   mirror.style.width = `${textarea.clientWidth}px`;
   mirror.style.height = "auto";
   mirror.style.overflow = "hidden";
